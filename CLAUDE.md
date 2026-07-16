@@ -123,7 +123,21 @@ session may not read that file — but read it if available.
 - [ ] **Flag any decision that's expensive to reverse before writing it into multiple docs.**
 
 **Also standing:**
-- Mermaid for all diagrams. **Render-check every block before committing** (see §8).
+- 🔴 **Every cross-reference is an assertion, and it gets the same audit as a cited number.**
+  Writing *"per doc 01 §5"* is a claim that doc 01 §5 says what you say it says. **Re-read the target
+  section — not your memory of it — every single time you cite one.**
+
+  **Why this is the package's actual failure mode, and why it's counterintuitive:** the *"gap over a
+  fabrication"* rule is holding — no invented facts have shipped. **But three of the most significant
+  findings so far were internal inconsistencies, not external errors:** doc 00 pointing at a doc 01 §5
+  that didn't carry the claim · I4's wording satisfied while its purpose was defeated · **doc 01 §3
+  refuting doc 00 §5 mid-sentence.** None required research. All required re-reading what we had
+  already written.
+
+  **The bias is specific and it is backwards:** we trust our own prior text *more* than an external
+  source — when prior text is the thing **most likely to have been revised without every pointer being
+  updated.** An external source is at least stable. **Internal references are the ones to distrust.**
+- Mermaid for all diagrams. **Render-check every block before committing** (see §9).
 - Teach the reasoning on non-obvious calls, in ~2 sentences. The founder is optimizing for learning
   the reasoning, not just receiving artifacts.
 - Every significant decision → a short ADR in `docs/adr/` (context / options / decision /
