@@ -285,7 +285,7 @@ graph TB
 | # | Invariant | Why it exists | Violated by |
 |---|---|---|---|
 | **I1** | Raw prompt text **never** crosses B3 → B4 in Phase 0 | Decision #2. This is the entire security-questionnaire answer: *"your keystrokes never leave the machine."* | Any telemetry that logs content "for debugging" |
-| **I2** | The **mapping vault never crosses B2 → B1** | The vault holds `PERSON_1 → John Tan`. Putting it in the MAIN world hands the page the de-pseudonymization key — **building an exfiltration channel into the thing we're protecting** | A convenience `window.__vault` for debugging |
+| **I2** | The **mapping table never crosses B2 → B1** | Holds `hash(value) → PERSON_1` — **forward-only, hash-keyed** (doc 04 §2.2). **Still sensitive at rest**: we hold the salt and names are a small keyspace, so hashes + placeholders are recoverable by a determined reader (doc 04 §2.3). **Not** a de-pseudonymization key — there is **no path** from `PERSON_1` back to a name. | A convenience `window.__vault` for debugging |
 | **I3** | Audit events crossing B3 → B4 carry **hashes, classes, counts — never values** | Decision #5. Otherwise our audit DB becomes the most toxic PII store in the customer's org — we'd *be* the breach we sell against | "Just log the finding so support can reproduce it" |
 | **I4** | The **org dictionary is sensitive at rest** on the device | A list of a company's unannounced codenames is a target in itself (ADR 0004). It inherits the on-device rule — synced encrypted, matched locally | Storing it in plain `chrome.storage.local` |
 | **I5** | The verdict cache in B2 holds **hash + boolean**, never text | Keeps the smallest possible surface in the least-trusted of our own contexts | Caching findings alongside verdicts for the modal |
@@ -325,6 +325,18 @@ text is **injected by us**, into a **persisted, server-synced** conversation vie
 **Scope of doc 04.** Doc 04 designs the rehydration mechanism and documents the implementation-level
 implications of this kill — the design work is real and it is a genuine Phase 1+ question. **Doc 04
 does not re-open the decision.**
+
+> **Corrected 2026-07-16 (doc 04 §2.2) — the kill paid a dividend nobody costed.** The **I2** row above
+> originally described the vault as `PERSON_1 → John Tan` and called it *"the de-pseudonymization
+> key."* **It was specified while rehydration was still a feature, and rehydration was the reverse
+> map's only consumer.** Pseudonymization only ever queries `value → placeholder`, which a salted hash
+> answers — so **the artifact this section called "the de-pseudonymization key" is not built.**
+>
+> **Killing rehydration didn't just close the hole this section describes — it deleted the asset that
+> made the hole worth exploiting.** The mapping table **remains sensitive at rest** (doc 04 §2.3: we
+> hold the salt, and names are a small keyspace — hashing is blast-radius reduction, **not** a security
+> boundary) and **I2 still binds**, now as defense-in-depth rather than as the thing standing between
+> us and catastrophe.
 
 ---
 

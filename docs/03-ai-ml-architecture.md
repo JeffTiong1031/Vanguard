@@ -222,11 +222,32 @@ incorporations.** A company registered in 1985 → MM=85 → rejected. In 2015 �
    to catch.
 
 **Decision:** L1 emits **NRIC** and **SSM** as *distinct finding classes*, disambiguated by **context
-tokens (1)** with hyphenation **(3)** as a tiebreak. **When both fail, emit the finding as ambiguous
-and let the modal ask the human** — a modal that says *"is this an IC or a company number?"* is honest
-friction on a genuinely ambiguous string, and it is **enormously better than guessing silently in
-either direction.** Doc 07 owns the precision target; **this section owns the admission that a 12-digit
-Malaysian number is not always decidable from the digits alone.**
+tokens (1)** with hyphenation **(3)** as a tiebreak. **When both fail, emit the finding as ambiguous.**
+Doc 07 owns the precision target; **this section owns the admission that a 12-digit Malaysian number is
+not always decidable from the digits alone.**
+
+> 🔴 **Corrected 2026-07-16 — the resolution moved to [doc 04 §5.2](04-redaction-and-context-preservation.md).
+> The finding above is unchanged: the collision is real, the day filter is defeated by construction,
+> ~86% still holds.**
+>
+> **This section originally proposed:** *"let the modal ask the human — a modal that says 'is this an IC
+> or a company number?' is honest friction on a genuinely ambiguous string."* **Designing the modal
+> (doc 04) shows that's wrong, and wrong in a way doc 00 had already named.**
+>
+> 1. **It asks the wrong person.** Per doc 00 §4 the user is not the buyer, pays the tool's entire cost,
+>    and wants the popup gone. It hands **the hardest classification in the product** to the person with
+>    the least incentive to get it right — and then treats their click as ground truth.
+> 2. **It is doc 00 §1.6's "active poisoning" in a new costume** — user adjudication of exactly the
+>    cases the system found hardest, from the population with the strongest incentive to lie. **The
+>    error came from solving the classifier's problem instead of the human's.**
+> 3. **The question is usually irrelevant, which is what actually resolves it:** the class only matters
+>    **if tenant policy treats the two differently.** If both are sensitive — the common case — the
+>    answer is *mask it* either way.
+>
+> **→ Ambiguity is a policy question, not a user question.** Default to the more restrictive class
+> (NRIC), let the **admin** configure whether company numbers are sensitive, and leave the user the
+> escape hatch that already exists: **Ignore + reason**, which lands in the compliance log where an
+> override belongs. **doc 04 §5.2 carries the full reasoning.**
 
 ### 2.4 U3 — every other format, individually
 
