@@ -53,9 +53,22 @@ market they can't reach.
 **Accepted:**
 - The deck says: **"Multilingual gets us in the door. Vendor-neutrality is why we're still there when
   the platform notices."** Wedge and moat are stated separately and never blurred.
-- **We must never sell an LLM.** Not a first-party model, not a resale, not a "sanctioned assistant"
-  SKU. The moment we have a model to route to, we are Google with less capital. This constrains the
-  roadmap permanently and should be tested against every future revenue idea.
+- **We never become a model vendor or a model router.** Not a first-party model, not a resale margin,
+  not a "sanctioned assistant" SKU, not routing prompts to a model we're paid to prefer. The moment
+  we have a model to route *to*, we are Google with less capital and the neutrality claim is gone.
+  This is not a scruple sitting beside the moat — **it is the moat's necessary condition.** Test
+  every future revenue idea against it.
+
+  **Phrase this precisely for investors**, because the wrong phrasing sounds like a founder leaving
+  money on the table:
+
+  > ✅ *"We don't become a model vendor or router — neutrality is the asset we're selling."*
+  > ❌ *"We won't take a dollar adjacent to LLM usage."*
+
+  The constraint is **narrow and load-bearing**, not a blanket refusal to monetize. Seat licences,
+  policy management, audit and compliance reporting, on-prem/VPC deployment, per-scan pricing, and
+  usage-based tiers are all fully open. What's closed is exactly one thing: having a horse in the
+  race we're refereeing.
 - Reinforces the §1.8 repositioning: policing the boundary between sanctioned and unsanctioned AI is
   a product the platforms structurally cannot offer credibly.
 - The 18–24 month head-start estimate is low confidence and should not appear in the deck as a number.

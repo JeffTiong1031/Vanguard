@@ -17,20 +17,21 @@ If you read one section, read this one.
    over an IC number. Careers end over the unreleased earnings, the M&A codename, the customer list,
    the source code — **none of which has a regex, an NER class, or a public training set.** Your
    accuracy is inversely proportional to the stakes.
-3. **The highest-value feature in your product is hiding in your "deferred" pile, and it needs no ML
+3. **The highest-value feature in your product was hiding in your "deferred" pile, and it needs no ML
    at all.** Org-custom sensitivity — project codenames, internal IDs — is a customer-supplied
-   dictionary. Trivial to build, highest value, creates switching cost. **Pull it into Phase 0.**
-   This is the single most actionable finding in this document.
+   dictionary. Trivial to build, highest value, creates switching cost. **Now in Phase 0** (approved
+   2026-07-16). The single most actionable finding in this document.
 4. **Reframe the Ignore+reason loop.** As ML training data it's poisoned by adversarial users and
    worth ~nothing. As a **compliance artifact** — *"here are the 47 times your staff overrode the
    control, and what they typed as justification"* — it's the report the buyer actually wants. Same
    feature, different product.
 5. **The desktop apps are an uncovered hole in your threat model.** ChatGPT and Claude ship native
    desktop clients. Block someone in the browser and the uncovered channel is one click away.
-6. **Your market may be closing.** Enterprise LLM tiers (ChatGPT Enterprise, Claude for Work, Gemini
-   in Workspace) sell zero-retention and no-training contractually. The compliance officer's cheapest
-   fix is to buy one and mandate it. **Your durable job is not "redact PII" — it's policing the
-   boundary between sanctioned and unsanctioned AI.** That framing survives; the DLP framing doesn't.
+6. **Your market may be closing, and the escape is a *second* sentence, not a first.** Enterprise LLM
+   tiers sell zero-retention contractually, so the buyer's cheapest fix is procurement. The answer —
+   **policing the boundary between sanctioned and unsanctioned AI** — is what makes the product
+   durable. But it goes *second*. **Lead with the mechanic: typing-time, context-preserving
+   pseudonymization**, the thing Layer 2 structurally cannot do and Layer 4 won't do well.
 7. **Verdict: build it, but sell it as a seatbelt, not a vault** — and know that the wedge
    (multilingual) is not the moat (vendor-neutrality).
 
@@ -101,12 +102,15 @@ the most commercially important thing in the product:
 - **It makes the buyer a participant.** The compliance officer *configures* it. That's an
   onboarding ritual that converts a purchase into a commitment.
 
-**Recommendation: promote org-custom dictionary matching to a Phase 0 L1 feature**, alongside the
-regional regex fast-path. It is cheap, it is differentiated, and it is the only part of the detection
-stack whose value is not capped by model quality.
+**Decision (approved 2026-07-16): org-custom dictionary matching is a Phase 0 L1 feature**, alongside
+the regional regex fast-path. It is cheap, it is differentiated, and it is the only part of the
+detection stack whose value is not capped by model quality.
 
-*(This is a scope addition to a locked Phase 0. It's small — days, not weeks — and I think it's worth
-reopening decision #7's boundary for. Founder call.)*
+*Not scope creep against decision #7. That decision was a boundary against the six-month file-parsing
+swamp (§1.7) — a fundamentally different kind of cost. This is a sub-millisecond, no-ML, auditable
+L1 addition that happens to sit on the other side of the highest-value/lowest-difficulty quadrant.
+Deferring the cheap thing because it shares a doc with the expensive thing would be filing by
+accident rather than by cost.* See [ADR 0004](adr/0004-org-custom-dictionary-in-phase-0.md).
 
 ### 1.4 The desktop-app hole
 
@@ -203,21 +207,41 @@ So your durable job is **not "redact PII."** It's:
 
 > **Enforce the boundary between sanctioned and unsanctioned AI, and prove it was enforced.**
 
-Three things follow, and they're strategically load-bearing:
+That framing survives enterprise-tier adoption. Two things follow, and they're strategically
+load-bearing:
 
-1. **Your first-order value is visibility, not redaction.** *"Here is every AI surface your staff
-   touched last month, and which were unsanctioned"* is a report no one in the org can produce today,
-   and it sells without any detection quality at all. Redaction is what you do *after* they're scared
-   by the report.
+1. **It survives — and inverts — the procurement threat.** The more sanctioned AI a company buys, the
+   more it needs someone to prove the boundary holds. Your TAM **grows** with enterprise LLM adoption
+   instead of shrinking. That's the rare case where the thing that looked like your extinction event
+   is actually your tailwind.
 2. **It strengthens the vendor-neutrality moat** (§5). The sanctioned tool is one vendor; you police
    everything else. Google will never build that — policing Gemini's competitors while exempting
    Gemini is a product nobody trusts.
-3. **It survives enterprise-tier adoption.** The more sanctioned AI a company buys, the more it needs
-   someone to prove the boundary holds. Your TAM *grows* with enterprise LLM adoption instead of
-   shrinking.
 
-**Recommendation:** the deck leads with shadow-AI boundary enforcement. The redaction engine stays —
-it's the technically differentiated part — but it is the *second* thing you say, not the first.
+### Recommendation — and the ordering is the whole point
+
+**Lead with the mechanic: typing-time, context-preserving pseudonymization.**
+
+It is the thing **Layer 2 structurally cannot do** — a proxy sees a *committed* request; it can
+refuse or corrupt it, and its UX ceiling is a 403 page — and the thing **Layer 4 won't do well**,
+because of §5's conflict. It puts the first meeting on ground you own.
+
+**Do not lead with "visibility."** Even a sharpened version. The word is the CASB's own vocabulary:
+discovery and shadow-IT reporting is *precisely* what Netskope and Zscaler already sell your buyer,
+from a licence they've already paid for. Say "visibility" in sentence one and you have invited a
+feature comparison against an incumbent **before your differentiation has landed** — a comparison you
+don't need to enter and are not positioned to win. The word costs you the frame.
+
+**Second, as the durability argument:** shadow-AI boundary policing is the answer to the question
+that *will* be asked, probably in the first meeting:
+
+> *"Why don't I just buy ChatGPT Enterprise and mandate it?"*
+
+Deployed in that slot it's an asset. Deployed in the first slot it's an own goal.
+
+**Visibility is retained — as evidence, not as the pitch.** It's what the audit trail produces
+(§1.6), and it lands *after* the buyer already believes you're differentiated. Same capability,
+different sentence, entirely different meeting.
 
 ---
 
@@ -263,15 +287,26 @@ graph TB
 | Vendor | Form factor | Note `[verify]` |
 |---|---|---|
 | **Nightfall AI** | API/SaaS DLP, GenAI coverage | Established DLP brand extending into GenAI |
-| **Prompt Security** | Browser extension + gateway | Believed acquired by SentinelOne `[verify — if true, this is the category's first exit and a datapoint *for* you]` |
+| **Prompt Security** | Browser extension + gateway | **Acquired by SentinelOne, closed 2025-09-05** ✅ *confirmed — founder research* |
 | **Harmonic Security** | GenAI-native DLP | Closest to your positioning |
 | **LayerX** | Browser-extension security platform | Extension form factor, broader than prompts |
 
 **Read:** the peer set is real, funded, and English-first. None of them is defensible against Layer 4
-either — which is why an acquisition (if the Prompt Security datapoint holds) is the category's
-likely outcome rather than an IPO. **That's not a reason not to build.** It's a reason to be honest
-in the deck about what a good outcome looks like, and to build the thing an acquirer wants: a wedge
-into a market they can't reach and a team that can execute.
+either — which is why **acquisition is the category's likely outcome rather than an IPO.** The
+SentinelOne/Prompt Security close (2025-09-05) is no longer a hypothesis; it's the category's proof
+point, and it is a datapoint **for** you in two ways:
+
+1. **The exit path is demonstrated, and the acquirer type is now known.** It wasn't Google or
+   Microsoft — it was an endpoint-security incumbent buying a prompt-layer capability it couldn't
+   grow organically. That's the shape of your outcome, and it tells you who to be legible to.
+2. **It validates the category and shortens the window simultaneously.** An exit proves buyers exist
+   and tells every incumbent the category is real. Read against §5: the 18–24 month head-start
+   estimate should be treated as the *optimistic* end after this close, not the midpoint.
+
+**That's not a reason not to build.** It's a reason to be honest in the deck about what a good
+outcome looks like, and to build the thing an acquirer wants: a wedge into a market they can't reach
+(SEA multilingual) and a team that can execute. An acquirer buys distribution-adjacent capability —
+which is exactly what "we're already inside 40 Malaysian mid-market accounts" is.
 
 ### 2.3 Layer 2 — network / CASB / SWG
 
@@ -477,10 +512,13 @@ here.**
 
 **Build it.** With four corrections to the concept as briefed:
 
-1. **Lead with shadow-AI visibility, not redaction** (§1.8). It sells before your detection is good,
-   it survives enterprise-tier adoption, and it's the framing the platforms structurally can't copy.
+1. **Lead with typing-time, context-preserving pseudonymization** (§1.8) — the mechanic Layer 2
+   structurally cannot do and Layer 4 won't do well. **Shadow-AI boundary policing goes second**, as
+   the durability argument answering *"why not just buy ChatGPT Enterprise?"* **Never lead with
+   "visibility"**: it's the CASB's own word and it starts a comparison against a vendor already
+   installed at the account.
 2. **Pull org-custom dictionary into Phase 0** (§1.3). Highest value, no ML, days of work, and the
-   only lock-in available to you. This is the finding I'd act on first.
+   only lock-in available to you. This is the finding I'd act on first. *(Approved.)*
 3. **Reframe Ignore+reason as compliance evidence, not training data** (§1.6). Turns your most
    poisoned input into your best report.
 4. **Say the threat model out loud** (§6). Seatbelt, not vault. Underclaiming is a moat of its own in
