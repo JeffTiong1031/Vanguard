@@ -224,14 +224,20 @@ sensitive data never reaches the provider.** That claim is load-bearing in the d
 story and in the sales conversation. A control that quietly undoes itself on the return path is worse
 than no control, because the audit trail says it worked.
 
-**Related threat-model gap — flagged, currently unaddressed in doc 00 §6.** The provider's page JS
-can already read the **composer** while the user types, *before* pseudonymization. The raw text sits
-in their DOM the whole time. This is the same class of exposure and it means pseudonymization
-protects against the provider's **server**, not the provider's **client**. That's an acceptable scope
-(a malicious provider defeats everything, and hostile client-side exfiltration by OpenAI is out of
-scope), but **it should be stated explicitly in the threat model rather than found in DD.** The
-difference that makes rehydration worse: composer text is transient and user-controlled, whereas
-rehydrated text is **injected by us** into a persisted, server-synced conversation view.
+**Related — the provider-client boundary. ✅ RESOLVED: folded into `docs/00` §6 (commit `1f5e0a4`).**
+The provider's page JS can already read the **composer** while the user types, *before* any
+redaction. The raw text is in their DOM the whole time; nothing we build changes that. So
+pseudonymization protects against the provider's **server**, never their **client**. Doc 00 §6 now
+carries this as a "not defended" row plus a subsection stating the boundary precisely.
+
+**The claim-scoping rule this produces is binding on every downstream doc and on the deck:**
+> ❌ Never *"the provider never sees it"* — false, and provable in one line of devtools.
+> ✅ Always *"it never reaches their servers or their training set"* — true, is what the buyer cares
+> about, and is what the DPA and retention terms are written against.
+
+**Why rehydration is still worse than the composer exposure** (and why the kill above stands):
+composer text is transient and user-controlled; rehydrated text is **injected by us** into a
+persisted, server-synced conversation view.
 
 #### Other obligations
 - **ADR 0004 → constrains doc 02:** the org dictionary is **sensitive at rest**. A list of a company's

@@ -484,6 +484,7 @@ them first:
 | Not defended | Why | Mitigation |
 |---|---|---|
 | **A determined insider** | Runs on their machine, their process, their debugger | **None. Accepted.** Out of scope by design. |
+| **A malicious or compromised provider client** | **The composer is the provider's own DOM.** Their JS reads every keystroke as it's typed — **before any redaction has run, independent of our extension, and unfixable by it.** We protect against the provider's **server**, never their **client**. | **None. Accepted.** If the provider's page is hostile, nothing running on that page saves you. |
 | **Native desktop apps** (ChatGPT/Claude) | Not a browser | Customer's EDR/app-allowlisting. **Not ours.** (§1.4) |
 | **Mobile / personal devices** | Not a browser we control | BYOD policy. Not ours. |
 | **Other browsers** | Unless force-installed on all | Force-install list must cover the estate |
@@ -494,6 +495,35 @@ them first:
 | **Uninstalling the extension** | Phase 0: one click | Force-install (B3) — **the whole enterprise story depends on this** |
 | **Every other exfil channel** (email, Slack, Drive, USB) | You're a point solution | Their existing DLP. Say so. |
 | **A provider breaking your adapter** | They ship UI weekly | Doc 05's adapter + self-test. **Ongoing tax, forever.** |
+
+### The provider-client boundary, stated precisely
+
+That second row deserves more than a table cell, because it defines the **shape** of what
+pseudonymization means and it is cheap to say now and expensive to have surfaced in diligence.
+
+We type into **their** text box. The raw text sits in **their** DOM for the entire time the user is
+composing it. Nothing we build changes that — not the gate, not the on-device model, not the
+offscreen engine. Our interception happens between the composer and the **network request**, so the
+protection we actually provide is:
+
+> **The provider's *servers*, logs, and training sets never see the sensitive value. The provider's
+> *page* always could.**
+
+**Why this is acceptable scope, not a hole to patch:** the threat we're addressing is the provider's
+**legitimate** data handling — prompts landing in retention, in logs, in a training corpus. That's a
+real, documented, contractually-relevant risk. A provider whose client-side JS covertly exfiltrates
+your composer is running an *attack*, and against that attacker no browser-side control helps,
+including ours. You cannot defend a page from the page.
+
+**What it obliges us to do is scope the claim exactly.** Never say *"the provider never sees it."*
+Say *"it never reaches their servers or their training set."* The first is false and an advisor will
+prove it in one line of devtools. The second is true, is what the buyer actually cares about, and is
+what the DPA and the retention terms are written against.
+
+*(This also explains why de-pseudonymization is killed for Phase 0 — see doc 01 §5. Rehydration
+would write the plaintext **back** into that same untrusted DOM, on a persisted, server-synced
+surface, handing the provider's server through a normal product feature exactly the value the whole
+pipeline withheld from it.)*
 
 ### The one-sentence honest summary
 
