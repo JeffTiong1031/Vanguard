@@ -1,7 +1,7 @@
 # CLAUDE.md — Session Briefing
 
 > **Read this first, before touching any deliverable.** This is a briefing for a future session, not
-> prose for the founder. Last updated: 2026-07-16, after doc 01 committed (`4a670cd`).
+> prose for the founder. Last updated: 2026-07-16, after doc 02 committed (`295561c`).
 
 ---
 
@@ -33,9 +33,9 @@ consistent state.
 | 1 | `ASSUMPTIONS.md` | ✅ **done, committed** (`c7f0964`, amended `5206294`) |
 | 2 | `docs/00-critique-and-positioning.md` | ✅ **done, committed** (`c7de4e8`, revised `f4bc6e0`) |
 | 3 | `docs/01-hld.md` | ✅ **done, committed** (`4a670cd`) |
-| 4 | `docs/02-privacy-architecture.md` | ⬜ **not started ← NEXT** |
-| 5 | `docs/03-ai-ml-architecture.md` | ⬜ not started |
-| 6 | `docs/04-redaction-and-context-preservation.md` | ⬜ not started — ⚠️ **rehydration is a SETTLED KILL for Phase 0, see §6.5.** Design it; don't ship it. |
+| 4 | `docs/02-privacy-architecture.md` | ✅ **done, committed** (`295561c`) |
+| 5 | `docs/03-ai-ml-architecture.md` | ⬜ **not started ← NEXT** |
+| 6 | `docs/04-redaction-and-context-preservation.md` | ⬜ not started — ⚠️ **rehydration is a SETTLED KILL, see §6.5.** Design it; don't ship it. Doc 01 §5 now carries the kill; doc 04 documents implications and **does not re-decide**. |
 | 7 | `docs/05-lld.md` | ⬜ not started |
 | 8 | `docs/06-performance-and-scale.md` | ⬜ not started |
 | 9 | `docs/07-ml-training-and-data-strategy.md` | ⬜ not started |
@@ -43,8 +43,8 @@ consistent state.
 | 11 | `docs/08-roadmap-and-risks.md` | ⬜ not started — **written LAST** so it inherits real risks |
 
 **ADRs committed so far:** 0001 buyer · 0002 form factor · 0003 wedge-vs-moat · 0004 org dictionary ·
-0005 gate in isolated world · 0006 offscreen document · 0007 Python backend. New ADRs continue from
-**0008**.
+0005 gate in isolated world · 0006 offscreen document · 0007 Python backend · 0008 hybrid split by
+workload · 0009 org-dictionary key custody. New ADRs continue from **0010**.
 
 ---
 
@@ -81,8 +81,13 @@ earlier positions, and acting on a remembered version will reintroduce errors al
 2. **`docs/00-critique-and-positioning.md`** — the critique, competitive landscape, buyer argument,
    wedge-vs-moat split, threat model.
 3. **`docs/01-hld.md`** — the architecture. §0 (the one architectural idea) and §5 (trust boundary
-   invariants I1–I5) are load-bearing for everything downstream.
-4. **Everything in `docs/adr/`** — all seven. 0003 and 0005 both record **reversed CTO positions**;
+   invariants I1–I5) are load-bearing for everything downstream. §5 now carries the **rehydration
+   kill**.
+4. **`docs/02-privacy-architecture.md`** — the posture and its defense. Load-bearing sections: **§1.5**
+   (on-device is *architecturally* forced, not privacy-forced — this distinction is easy to lose and
+   changes what's fragile), **§2.6** (why "hybrid" as everyone else means it is strictly worse), and
+   **§5** (the org-dictionary custody gap — **the weakest privacy claim in the package**).
+5. **Everything in `docs/adr/`** — all nine. 0003 and 0005 both record **reversed CTO positions**;
    reading a summary instead of the ADR will lose the reversal.
 
 **External, outside the repo:** the approved plan lives at
@@ -158,17 +163,7 @@ enterprise policy may disable it on exactly the fleet we're targeting.
 ### 6.4 Agreed positions for docs not yet written
 Approved during planning; transcribed here so they survive.
 
-**Doc 02 (next):**
-- **Kill list with reasons:** TEE / Nitro Enclaves = **theater at pre-seed** (reject). Federated
-  learning = **reject** (no user base to federate). DP-SGD = **reject for v1** (no real training data
-  to protect yet).
-- **Keep:** client-side pseudonymization, zero-retention, local labeling, synthetic data generation.
-- **The paradox dissolution argument** (this is doc 02's spine): *"to protect the user's data my
-  server must see it"* is a **consumer** paradox. At the enterprise buyer, the data is the
-  **company's**, the company already has inspection rights, and a DPA under GDPR Art. 28 / PDPA makes
-  us a data processor like every other DLP vendor. The objection was never *"you see our data"* — it
-  was *"where, who, how long, and is it in your training set."* **That is a legal answer, not an
-  architectural one.** Spending pre-seed runway on TEEs to solve it is a category error.
+**Doc 02 — ✅ WRITTEN (`295561c`). All of the above landed. Do not re-derive; read the doc.**
 
 **Doc 05:**
 - **Auto-submit verdict: NO.** Unreliable across React/Lexical synthetic event systems; grey-zone
@@ -239,17 +234,44 @@ carries this as a "not defended" row plus a subsection stating the boundary prec
 composer text is transient and user-controlled; rehydrated text is **injected by us** into a
 persisted, server-synced conversation view.
 
+#### The invariant-letter-vs-purpose trap — now the package's named failure mode
+**Twice now, a design satisfied an invariant's wording while defeating its purpose.** Doc 01 §5
+(rehydration doesn't violate I1 — it defeats I1's purpose) and doc 02 §5.1 (encryption-at-rest
+satisfies I4's *"never sent in the clear"* while we hold the plaintext the moment the admin types it).
+**Check the invariant's purpose, not its wording.** Expect a third instance and look for it.
+
+*A related recurring error, also twice: choosing a cryptographic mechanism for how it reads rather
+than what it resists — TEEs (doc 02 §4.2) and salted-hash dictionary matching (ADR 0009). Codenames
+are memorable words, so a salted hash is brute-forced in milliseconds. It survives a diagram review
+and fails a first-year crypto exercise.*
+
+#### Obligations handed forward by doc 02
+- **ADR 0009 → doc 05:** verify **U19**. Phase 1 key custody rides the same machine policy as
+  `ExtensionInstallForcelist`, so it is **coupled to B3** — if the segment won't deploy machine policy
+  we lose the control story *and* the dictionary's key-custody upgrade. Two consequences, one
+  assumption.
+- **ADR 0009 → Phase 0 code:** **per-tenant DEKs, from day one.** Not an optimization — a global DEK
+  makes staged crypto-shredding impossible and forces a flag-day migration. Cheap now, painful later.
+- **Doc 02 §2.4 → doc 06 (🔴 specification, not a hint):** engine **slow** vs engine **dead** are
+  different failures. Slow fails to friction and self-clears; **dead does not resolve at all in the
+  current design.** The obvious patch — a timeout that lets the send through — is a **silent
+  fail-open**, i.e. decision #8's spirit and doc 00 §6's worst case. Doc 06 specifies: timeout →
+  degrade to **advisory-only** (reusing decision #3's existing mode) → surfaced to user **and** admin
+  as *"protection degraded."* **No timeout value has been invented** — doc 06 derives it from the U6
+  measurement.
+- **Doc 02 §4.5 → doc 07:** DP-SGD's revisit trigger is **the first real prompt in the training set**,
+  not a date. Its Phase 0 rejection is structural: DP protects *training-set members*, and a synthetic
+  corpus (C3) has none — a rigorous guarantee about nobody.
+- **Doc 02 §6.4 → doc 05:** extension **permissions and the auto-update channel** are the security
+  questionnaire rows we **cannot** answer "N/A" — they're a remote-code-execution path into every
+  managed browser in the estate. Doc 05 owns that answer.
+
 #### Other obligations
-- **ADR 0004 → constrains doc 02:** the org dictionary is **sensitive at rest**. A list of a company's
-  unannounced codenames is itself a target, so it inherits the on-device rule — synced encrypted,
-  matched locally, never sent to our servers in the clear (doc 01 invariant **I4**).
 - **ADR 0004 → doc 07:** exact-match only in Phase 0. Fuzzy matching reintroduces false positives
   into the one layer whose entire value is its precision.
-- **ADR 0004 → constrains doc 02:** the org dictionary is **sensitive at rest**. A list of a company's
-  unannounced codenames is itself a target, so it inherits the on-device rule — synced encrypted,
-  matched locally, never sent to our servers in the clear (doc 01 invariant **I4**).
-- **ADR 0004 → doc 07:** exact-match only in Phase 0. Fuzzy matching reintroduces false positives
-  into the one layer whose entire value is its precision.
+- **ADR 0004 → doc 02: ✅ DISCHARGED.** The org dictionary's encrypted-distribution design is
+  [ADR 0009](docs/adr/0009-org-dictionary-key-custody.md). **I4 is the one invariant posture B cannot
+  claim in full** (doc 02 §7) — Phase 0 is a *contractual* control, Phase 1 makes it *mathematical*.
 
 ---
 
@@ -295,8 +317,6 @@ buyer (doc 00 §6). Test:
 ### Other unverified claims blocking downstream docs
 Full register is `ASSUMPTIONS.md` §3 (U1–U16). Blocking ones by doc:
 
-- **doc 02:** U13 (AWS `ap-southeast-5` Malaysia GA) — data residency is real friction in a Malaysian
-  enterprise sale.
 - **doc 03:** U1/U2 (Malaysian NRIC has **no check digit**; format `YYMMDD-PB-###G`) — validation is
   structural (date validity + birth-state-code table), not arithmetic. U3 (other MY formats — mark
   each verified/unverified **individually**, never as a block). U4/U5 (param counts, vocab-trim math).
@@ -310,39 +330,76 @@ Full register is `ASSUMPTIONS.md` §3 (U1–U16). Blocking ones by doc:
 - **doc 00:** U8/U9 (Chrome Enterprise Premium native DLP; Microsoft Purview endpoint DLP) — these
   underpin the "Layer 4 is the real competitor" argument. Still `[verify]`.
 
-**Resolved this session:** SentinelOne acquired Prompt Security, closed **2025-09-05** (founder
-research). Read: acquirer type is now known — an **endpoint-security incumbent, not a hyperscaler** —
-and the 18–24 month head-start estimate should be treated as the **optimistic end** after this close,
-not the midpoint.
+**New, raised by doc 02** (full text in `ASSUMPTIONS.md` §3):
+- **U17** — `ap-southeast-5` per-service availability (ECS/Fargate, S3, KMS, RDS). **Check before doc
+  08 sizes Phase 1**; the residency decision assumes the stack runs there.
+- **U18** — PDPA **DPO appointment threshold**. The obligation is confirmed and **its date has already
+  passed (2025-06-01)**, binding processors too. We may already be non-compliant. Doc 08 cost line.
+- **U19** — `chrome.storage.managed` as the tenant-key channel. **ADR 0009's entire Phase 1 key-custody
+  upgrade rests on it** — it's what turns I4 from a contractual control into a mathematical one.
+
+**Resolved so far:**
+- **SentinelOne acquired Prompt Security, closed 2025-09-05** (founder research). Acquirer type is now
+  known — an **endpoint-security incumbent, not a hyperscaler** — and the 18–24 month head-start
+  estimate is the **optimistic end** after this close, not the midpoint.
+- **U13 ✅ TRUE** — AWS `ap-southeast-5` (Malaysia) **GA since 2024-08-22**. **This corrected F3**:
+  Phase 1 files land **in-country for MY tenants from day one**; residency is a per-tenant config, not
+  a later upgrade. Deletes a Transfer Impact Assessment from every Malaysian deal.
+- **PDPA moved and the docs hadn't caught up** (doc 02 §6.1). Act A1554 phased in across 2025:
+  processors **directly liable** under the Security Principle since **2025-04-01** (RM1m and/or 3
+  years); DPO + breach notification since **2025-06-01**; **s129 cross-border whitelist repealed**.
+  **Net: strengthens the dissolution argument** — criminal exposure in the buyer's own jurisdiction
+  beats any attestation — **but creates obligations already overdue.**
 
 ---
 
 ## 8. Immediate next action
 
-**Write `docs/02-privacy-architecture.md`.** The founder said to **weight effort here** — it is the
-most important document in the package.
+**Write `docs/03-ai-ml-architecture.md`.**
+
+**This doc is where the package's numbers live, and it is the one most exposed to an investor's ML
+advisor.** Docs 00–02 argued positions; this one has to do arithmetic and cite sources. §5's rule bites
+hardest here: **every number cited, or tagged `(estimate)` / `(unverified)`.**
 
 **Scope:**
-1. **The core paradox — solve it or kill it.** Spine of the doc is the §6.4 dissolution argument: it's
-   a *consumer* paradox that mostly dissolves at the enterprise buyer via DPA / data-processor status.
-   The residual is a compliance answer (where, who, how long, training?), not an architecture answer.
-2. **Rigorously compare three postures** — A on-device only / B hybrid / C cloud-first. For **each**:
-   architecture, latency, detection quality ceiling, **cost per user/month**, compliance story,
-   failure modes.
-3. **Pick one and defend it as an ADR (0008).** The locked answer is decision #2 (hybrid **split by
-   workload** — prompt on-device always, files cloud under DPA). **Note:** this is *not* the
-   confidence-based escalation usually meant by "hybrid" — that variant was rejected because
-   escalating *ambiguous* spans exfiltrates precisely the hardest, most unusual sensitive data, and
-   does so **stripped of the context** a semantic layer needs to judge it. Worst of both. Splitting by
-   **workload** is honest and explainable in one sentence to a security reviewer: *"Your typing never
-   leaves the machine. Files are processed in-region under our DPA, zero retention."*
-4. **Verdict on all seven techniques**, including the rejected ones with reasons — see §6.4 kill list:
-   client-side pre-tokenization/pseudonymization · TEE/confidential computing · ephemeral zero-retention
-   + attestation · federated learning · DP-SGD · local labeling · synthetic data generation.
-5. **Compliance posture:** GDPR, **Malaysia PDPA (primary — order PDPA-first, per F2)**, and what an
-   enterprise security questionnaire (SOC 2 / VPAT-style) asks on day one.
-6. **Must honour:** doc 01 invariants **I1–I5**; ADR 0004's constraint that the **org dictionary is
-   sensitive at rest** and needs an encrypted distribution design (§6.5).
+1. **The detection stack: L1 (regex + checksums + org dictionary) → L2 (multilingual NER) → L3
+   (absent in Phase 0, and doc 01 §7 says why).** Doc 01 §3 already fixed the ordering and the reason:
+   **L1 masks before L2 sees the text**, which shortens the sequence *and* strips the digit-soup an
+   English-first tokenizer fragments worst. L1 makes L2 **cheaper and more accurate** — a compounding
+   win, not just an ordering.
+2. **The fragmentation argument.** Doc 00 §5 forward-references this doc for it: an English-first
+   tokenizer shreds `890101-14-5555` into digit soup, destroying the identifier's schema before the
+   model sees it. **This is a real engineering advantage and also one Google could replicate with a
+   vocabulary swap** — state both halves; ADR 0003 turns on exactly that honesty.
+3. **Resolve U1/U2/U3 — Malaysian identifier formats.** U1/U2: NRIC has **no check digit**; format
+   `YYMMDD-PB-###G`; validation is **structural** (date validity + birth-state code table), not
+   arithmetic — contrast with Luhn for cards. **U3: mark every other MY format
+   (old-format IC, passport, LHDN tax, EPF/KWSP, ROC/ROB) verified or unverified INDIVIDUALLY, never
+   as a block.** Doc 02 verified U13 and PDPA by search; do the same here rather than tagging by
+   default.
+4. **Resolve U4/U5 — the model budget, and re-derive it from the right class (§6.2).** XLM-R /
+   mDeBERTa-v3 class (~250k vocab), **not** the small-model class the original brief assumed. The
+   **embedding matrix dominates** (~192M embedding vs. ~86M backbone) — **multilingual is paid for in
+   download size and RAM, not FLOPs.** Evaluate **vocabulary trimming** to EN/BM/ZH. **Do the real
+   math here; §6.2's ~135 MB is an estimate this doc is supposed to replace.**
+5. **U6 is the highest-priority number in the package and it has no measurement behind it.** Do not
+   launder it into fact. **No tokens/sec figures until measured or cited.**
+6. **Quantization + runtime:** int8, ONNX Runtime Web (doc 01 §6 rejected `transformers.js` precisely
+   because quantization control *is* the memory budget). WebGPU is **opportunistic** per D3 — and per
+   §6.3, the offscreen document **preserves** WebGPU rather than trading it away.
+7. **Must honour:** D2 (the hardware floor every number derives from) · ADR 0004 (exact-match only,
+   Aho-Corasick, no fuzzy) · ADR 0006 (one engine, offscreen, and **every scan crosses a context
+   boundary** — that hop is in the U6 budget, not outside it).
+
+**Inherited from doc 02 §8 — read these before starting:**
+- **The on-device budget is now contractual, not preferential.** Doc 02 §6.4's questionnaire answers
+  (*"we never receive them"*) **depend** on prompt text never leaving. This doc's budget is what makes
+  those sentences true.
+- **If U6 fails, we lose the GATE (doc 01 §0), not the privacy posture** (doc 02 §1.5). Different
+  failures, different blast radii, different fallbacks. **Do not let a latency result read as a privacy
+  result** — and note ADR 0008 says a U6 failure does *not* reopen the posture.
+- **§6.2's consequence still stands:** vocabulary trimming may force a **distillation step Phase 0
+  never budgeted for.** That surfaces in **doc 08 as a ranked risk** — not silently absorbed here.
 
 **Then:** 3-line summary in chat → wait for go-ahead → commit (no `Co-Authored-By`).
 
