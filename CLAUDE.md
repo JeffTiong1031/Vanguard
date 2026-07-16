@@ -34,8 +34,21 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 
 ## 2. Deliverable checklist
 
-**Working tree is clean. Nothing is mid-write or uncommitted.** A fresh session starts from a
-consistent state.
+> **Session ended 2026-07-16.** ✅ **Working tree clean · everything committed · everything pushed.**
+> `origin/main` = local `main` = **`d214656`** *(plus this commit)* at
+> `github.com/JeffTiong1031/Vanguard`. **Nothing is mid-write.** A fresh session starts from a
+> consistent state — **read §4, then go to §8.**
+>
+> **This session shipped:** docs **02**, **03**, **04** · ADRs **0008**, **0009** · the rehydration
+> kill settled in doc 01 §5 · **six correction passes** (E2 · F3/U13 · the fragmentation argument in
+> doc 00 §5 + doc 01 §3 · I2 in doc 01 §5 · doc 03 §2.3's UI resolution) · **U1–U5 and U13 resolved by
+> citation** · U17–U19 raised · the **cross-reference audit rule** added to §5.
+>
+> **The pattern worth knowing before you write anything:** every correction this session made a claim
+> **narrower and more true**, and **none of them lost anything real** — the wedge, the posture, and the
+> NRIC/SSM collision all survived intact. That is the signature of a package whose **claims were
+> slightly ahead of its evidence**, not one whose thesis is wrong. **Expect to find more of these, and
+> expect them to tighten rather than break things.**
 
 | # | Deliverable | Status |
 |---|---|---|
@@ -159,8 +172,15 @@ silently lost unless carried forward.**
 ### 6.1 Commit attribution — applies immediately
 **Do not add a `Co-Authored-By: Claude` trailer to commits.** The founder asked for sole attribution
 to his GitHub account. `git config user.name/user.email` is already `JeffTiong1031
-<jefftiong1031@gmail.com>`, so authorship is correct by default — just omit the trailer. *(Commits
-`c7f0964`–`c7de4e8` predate this instruction and still carry it; leave them, do not rewrite history.)*
+<jefftiong1031@gmail.com>`, so **authorship is correct by default** — just omit the trailer.
+**Verified 2026-07-16: all 18 commits on `origin/main` are authored by `JeffTiong1031
+<jefftiong1031@gmail.com>`, sole author, no exceptions.**
+
+*Four commits predate this instruction and still carry the trailer in their message body:*
+**`c7f0964`, `5206294`, `c7de4e8`, `6364657`.** **Leave them — do not rewrite history.** *(Corrected
+2026-07-16: this note previously said the range was `c7f0964`–`c7de4e8`, which is wrong — `6364657` is
+later in history than doc 01 and also carries it. The trailer stopped at `ae7d831`, not at `c7de4e8`.
+Caught while verifying the push. A claim about our own git history is still a claim.)*
 
 ### 6.2 Doc 06 — the L2 backbone is a cost shift, not an architecture swap
 Founder flag, accepted. **✅ Doc 03 did the real math (`d740a68`); U4 and U5 are RESOLVED.** The
