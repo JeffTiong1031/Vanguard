@@ -35,7 +35,7 @@ consistent state.
 | 3 | `docs/01-hld.md` | ✅ **done, committed** (`4a670cd`) |
 | 4 | `docs/02-privacy-architecture.md` | ⬜ **not started ← NEXT** |
 | 5 | `docs/03-ai-ml-architecture.md` | ⬜ not started |
-| 6 | `docs/04-redaction-and-context-preservation.md` | ⬜ not started |
+| 6 | `docs/04-redaction-and-context-preservation.md` | ⬜ not started — ⚠️ **rehydration is a SETTLED KILL for Phase 0, see §6.5.** Design it; don't ship it. |
 | 7 | `docs/05-lld.md` | ⬜ not started |
 | 8 | `docs/06-performance-and-scale.md` | ⬜ not started |
 | 9 | `docs/07-ml-training-and-data-strategy.md` | ⬜ not started |
@@ -135,7 +135,27 @@ XLM-R/mDeBERTa-v3 class (~250k vocab), NOT the small-model class the original br
   budgeted for.** Goes into **doc 08 as a ranked risk**, not into doc 06 as a silent line item.
 - **No tokens/sec figures until measured or cited.**
 
-### 6.3 Agreed positions for docs not yet written
+### 6.3 WebGPU — the offscreen-document choice does NOT block it
+**Correction recorded 2026-07-16.** An **offscreen document is a Window context, so WebGPU is
+available there.** A service worker is a worker context and WebGPU is unavailable *(SW support is
+`[unverified]` and has moved across Chrome versions)*.
+
+**Why this needs saying:** ADR 0006 puts the engine in an offscreen document, and a fresh session
+could plausibly infer that this trades away GPU acceleration. **It does not — it's the choice that
+preserves it.** Do not let doc 06 be written on the assumption that WebGPU is structurally
+unavailable to us; it isn't, and a budget derived from that assumption would be pessimistic in a way
+that changes conclusions.
+
+**Note the SW/WebGPU question is moot for us regardless.** ADR 0006 rejects the service worker on
+**~30s idle termination + reloading 135 MB on most scans** — not on GPU access. That reasoning is
+unaffected either way.
+
+**D3's hedge stands, unchanged:** WebGPU is **opportunistic, hardware- and policy-dependent**. Assume
+CPU/WASM as the baseline; treat WebGPU as an optimization, **never** a requirement. **U15** (WebGPU
+availability under enterprise Chrome policy) remains open and materially affects doc 06's budget —
+enterprise policy may disable it on exactly the fleet we're targeting.
+
+### 6.4 Agreed positions for docs not yet written
 Approved during planning; transcribed here so they survive.
 
 **Doc 02 (next):**
@@ -179,12 +199,46 @@ Approved during planning; transcribed here so they survive.
   the founder confirmed this is a deliberate constraint, not a compromise: solo would collapse the
   multilingual ML edge into regex-chasing, and more headcount would let the performance budget go soft.
 
-### 6.4 Obligations handed forward by committed docs
-- **`docs/01-hld.md` §5 → doc 04 owes a verdict:** de-pseudonymization **must write plaintext into
-  the DOM**, where the provider's page JS can read it. Nothing is *sent* (the response already
-  arrived), but an "edit message" feature, rich-text copy handler, or analytics that scrape rendered
-  content could re-serialize it. **This is an unresolved leak vector and may kill rehydration.** The
-  CTO has already warned the founder he may return from doc 04 recommending against shipping it.
+### 6.5 Obligations handed forward by committed docs
+
+#### 🔴 SETTLED KILL — de-pseudonymization does NOT ship in Phase 0
+**Decided 2026-07-16 by the founder. This is a closed decision, not an open warning. Do not reopen
+it, and do not soften it back to "designed but deferred pending assessment."** Doc 04 still *designs*
+the mechanism (it's a Phase 1+ question and the design work is real), but **Phase 0 ships no
+rehydration. Full stop.**
+
+**State the reason precisely, because the imprecise version invites a reversal.** The kill is *not*
+that rehydration violates invariant **I1** — it doesn't. We send nothing to our server; I1 is intact.
+Anyone checking rehydration against I1 will find no violation and conclude it's safe. **That
+reasoning is wrong.** The actual defect:
+
+1. The entire pipeline exists to stop `John Tan` reaching **the provider's server**.
+2. Rehydration writes `John Tan` **back into the provider's page** (doc 01 §5, boundary B2 → B1).
+3. The provider's app has **legitimate, non-malicious** reasons to re-serialize rendered DOM —
+   edit-message, rich-text copy handlers, autosave, scroll/engagement analytics.
+4. So rehydration can hand the provider's server **exactly the value the whole product spent its
+   latency budget keeping away from it** — through a normal product feature, not an attack.
+
+**It doesn't break I1; it defeats I1's purpose, and it falsifies any blanket claim that the user's
+sensitive data never reaches the provider.** That claim is load-bearing in the doc 02 compliance
+story and in the sales conversation. A control that quietly undoes itself on the return path is worse
+than no control, because the audit trail says it worked.
+
+**Related threat-model gap — flagged, currently unaddressed in doc 00 §6.** The provider's page JS
+can already read the **composer** while the user types, *before* pseudonymization. The raw text sits
+in their DOM the whole time. This is the same class of exposure and it means pseudonymization
+protects against the provider's **server**, not the provider's **client**. That's an acceptable scope
+(a malicious provider defeats everything, and hostile client-side exfiltration by OpenAI is out of
+scope), but **it should be stated explicitly in the threat model rather than found in DD.** The
+difference that makes rehydration worse: composer text is transient and user-controlled, whereas
+rehydrated text is **injected by us** into a persisted, server-synced conversation view.
+
+#### Other obligations
+- **ADR 0004 → constrains doc 02:** the org dictionary is **sensitive at rest**. A list of a company's
+  unannounced codenames is itself a target, so it inherits the on-device rule — synced encrypted,
+  matched locally, never sent to our servers in the clear (doc 01 invariant **I4**).
+- **ADR 0004 → doc 07:** exact-match only in Phase 0. Fuzzy matching reintroduces false positives
+  into the one layer whose entire value is its precision.
 - **ADR 0004 → constrains doc 02:** the org dictionary is **sensitive at rest**. A list of a company's
   unannounced codenames is itself a target, so it inherits the on-device rule — synced encrypted,
   matched locally, never sent to our servers in the clear (doc 01 invariant **I4**).
@@ -201,8 +255,36 @@ Between them, these decide whether the design survives contact. All three are ch
 | Item | Claim | Why it's blocking | Owner doc |
 |---|---|---|---|
 | **B3** 🔴 | Target segment will actually force-install | **#1 priority — ranked above the two engineering spikes.** Asks *"will anyone deploy it?"* Deployment hurdle is low (one HKLM registry key on Windows; no Chrome Enterprise Core needed) but the **sales** hurdle is unmeasured. Requires **phone calls, not code.** | doc 08 |
-| **U12** 🔴 | From the **isolated world**, a capture-phase `document` listener preempts React AND `stopImmediatePropagation()` crosses the world boundary | **The gate mechanism itself.** If false, the architecture needs rework, not tuning. Must be proven **empirically, per surface** — not reasoned about. | doc 05 / code |
+| **U12** 🔴 | From the **isolated world**, a capture-phase `document` listener preempts React AND `stopImmediatePropagation()` crosses the world boundary | **The gate mechanism itself.** If false, the architecture needs rework, not tuning. Must be proven **empirically, per surface** — not reasoned about. **Has 3 sub-tests — see below.** | doc 05 / code |
 | **U6** 🔴 | On-device L2 inference = 30–100 ms on D2 hardware | **The zero-friction path.** If it's ~500 ms the cache is cold too often, the miss path dominates, and the product degrades to *"press Send twice, always."* **Highest-priority number to measure.** Currently an estimate with **no measurement behind it.** | doc 03 / doc 06 |
+
+#### U12 sub-tests — all three must pass, against **real ChatGPT and Claude**, not a test page
+
+**U12-a — Base claim.** An isolated-world capture listener on `document`, registered at
+`document_start`, fires before React's root-container delegation, and `stopImmediatePropagation()`
+suppresses the page's handler across the world boundary.
+
+**U12-b — IME / composition events (CJK and Malay).** 🔴 **Highest-irony risk in the project.**
+When composing Chinese via an IME, **Enter commits the composition — it does not mean "send."** A
+naive gate that intercepts every `keydown: Enter` will **break Chinese text input entirely.** Our
+differentiator is EN/BM/ZH support; the naive gate implementation breaks exactly the languages we
+differentiate on, for exactly the users we're selling to. Test:
+- `event.isComposing` and `keyCode === 229` behaviour during active composition, per surface.
+- Whether the gate correctly **passes through** composition-commit Enters and **only** intercepts
+  send-intent Enters.
+- Malay: Latin-script, so IME is unlikely to be the issue — but check platform predictive-text /
+  autocorrect interactions. **Honest asymmetry: CJK is where the real risk lives; Malay is a
+  lower-probability check, don't spend equal time on it.**
+
+**U12-c — Capture listener at `window` above `document`.** Does either target site register a
+capture-phase listener on **`window`**? `window` is *above* `document` in the propagation path, so a
+page listener there fires **before ours** — and if it calls `stopPropagation()`, **our gate never
+fires and is silently bypassed.** This is a fail-open bypass, the worst failure mode for a compliance
+buyer (doc 00 §6). Test:
+- Enumerate existing capture listeners at `window` on each surface.
+- If present, determine whether registering our own at `window` at `document_start` wins — at the same
+  node and phase, **first-registered wins**, so `document_start` timing is the lever.
+- This is precisely the class of silent miss the **log-only fetch observer** exists to detect (§6.4).
 
 ### Other unverified claims blocking downstream docs
 Full register is `ASSUMPTIONS.md` §3 (U1–U16). Blocking ones by doc:
@@ -235,7 +317,7 @@ not the midpoint.
 most important document in the package.
 
 **Scope:**
-1. **The core paradox — solve it or kill it.** Spine of the doc is the §6.3 dissolution argument: it's
+1. **The core paradox — solve it or kill it.** Spine of the doc is the §6.4 dissolution argument: it's
    a *consumer* paradox that mostly dissolves at the enterprise buyer via DPA / data-processor status.
    The residual is a compliance answer (where, who, how long, training?), not an architecture answer.
 2. **Rigorously compare three postures** — A on-device only / B hybrid / C cloud-first. For **each**:
@@ -248,13 +330,13 @@ most important document in the package.
    does so **stripped of the context** a semantic layer needs to judge it. Worst of both. Splitting by
    **workload** is honest and explainable in one sentence to a security reviewer: *"Your typing never
    leaves the machine. Files are processed in-region under our DPA, zero retention."*
-4. **Verdict on all seven techniques**, including the rejected ones with reasons — see §6.3 kill list:
+4. **Verdict on all seven techniques**, including the rejected ones with reasons — see §6.4 kill list:
    client-side pre-tokenization/pseudonymization · TEE/confidential computing · ephemeral zero-retention
    + attestation · federated learning · DP-SGD · local labeling · synthetic data generation.
 5. **Compliance posture:** GDPR, **Malaysia PDPA (primary — order PDPA-first, per F2)**, and what an
    enterprise security questionnaire (SOC 2 / VPAT-style) asks on day one.
 6. **Must honour:** doc 01 invariants **I1–I5**; ADR 0004's constraint that the **org dictionary is
-   sensitive at rest** and needs an encrypted distribution design (§6.4).
+   sensitive at rest** and needs an encrypted distribution design (§6.5).
 
 **Then:** 3-line summary in chat → wait for go-ahead → commit (no `Co-Authored-By`).
 
