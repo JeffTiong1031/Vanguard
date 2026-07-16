@@ -224,7 +224,7 @@ sensitive data never reaches the provider.** That claim is load-bearing in the d
 story and in the sales conversation. A control that quietly undoes itself on the return path is worse
 than no control, because the audit trail says it worked.
 
-**Related — the provider-client boundary. ✅ RESOLVED: folded into `docs/00` §6 (commit `1f5e0a4`).**
+**Related — the provider-client boundary. ✅ RESOLVED: folded into `docs/00` §6 (commit `00c78b6`).**
 The provider's page JS can already read the **composer** while the user types, *before* any
 redaction. The raw text is in their DOM the whole time; nothing we build changes that. So
 pseudonymization protects against the provider's **server**, never their **client**. Doc 00 §6 now
