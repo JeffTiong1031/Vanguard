@@ -1,7 +1,7 @@
 # CLAUDE.md — Session Briefing
 
 > **Read this first, before touching any deliverable.** This is a briefing for a future session, not
-> prose for the founder. Last updated: 2026-07-16, after doc 03 committed (`d740a68`).
+> prose for the founder. Last updated: 2026-07-16, after doc 04 committed (`4026bff`).
 
 ---
 
@@ -44,8 +44,8 @@ consistent state.
 | 3 | `docs/01-hld.md` | ✅ **done, committed** (`4a670cd`) |
 | 4 | `docs/02-privacy-architecture.md` | ✅ **done, committed** (`295561c`) |
 | 5 | `docs/03-ai-ml-architecture.md` | ✅ **done, committed** (`d740a68`) |
-| 6 | `docs/04-redaction-and-context-preservation.md` | ⬜ **not started ← NEXT** — ⚠️ **rehydration is a SETTLED KILL, see §6.5.** Design it; don't ship it. Doc 01 §5 carries the kill; doc 04 documents implications and **does not re-decide**. |
-| 7 | `docs/05-lld.md` | ⬜ not started |
+| 6 | `docs/04-redaction-and-context-preservation.md` | ✅ **done, committed** (`4026bff`) |
+| 7 | `docs/05-lld.md` | ⬜ **not started ← NEXT** |
 | 8 | `docs/06-performance-and-scale.md` | ⬜ not started |
 | 9 | `docs/07-ml-training-and-data-strategy.md` | ⬜ not started |
 | 10 | `code/` scaffold | ⬜ not started |
@@ -101,8 +101,14 @@ earlier positions, and acting on a remembered version will reintroduce errors al
    (the NRIC/SSM collision — and why structure *cannot* fix it), **§3** (the fragmentation correction:
    **the wedge is BM/ZH text NER, not tokenizing identifiers**), **§4.3** (the 86M backbone floor →
    distillation).
-6. **Everything in `docs/adr/`** — all nine. 0003 and 0005 both record **reversed CTO positions**;
-   reading a summary instead of the ADR will lose the reversal.
+6. **`docs/04-redaction-and-context-preservation.md`** — the outbound path. **§2.2** (the vault is
+   forward-only and hash-keyed — **there is no de-pseudonymization key**), **§2.3** (…**and it is still
+   sensitive** — hashing is not a boundary; the section records the error nearly recurring),
+   **§3.2** (the kill makes **surrogates dangerous**), **§5.2** (ambiguity is a **policy** question).
+7. **Everything in `docs/adr/`** — all nine. 0003 and 0005 both record **reversed CTO positions**;
+   reading a summary instead of the ADR will lose the reversal. **Doc 04 mints none, deliberately** —
+   its decisions all follow from decisions already recorded, and an ADR per section devalues the ones
+   recording real forks.
 
 **External, outside the repo:** the approved plan lives at
 `C:\Users\user\.claude\plans\role-you-are-acting-parsed-engelbart.md`. It contains agreed positions
@@ -407,45 +413,39 @@ Full register is `ASSUMPTIONS.md` §3 (U1–U16). Blocking ones by doc:
 
 ## 8. Immediate next action
 
-**Write `docs/04-redaction-and-context-preservation.md`.**
+**Write `docs/05-lld.md`.**
 
-> 🔴 **Read §6.5 FIRST. Rehydration is a SETTLED KILL, founder-closed 2026-07-16.** Doc 01 §5 carries
-> the kill and its precise reasoning. **Doc 04 designs the mechanism and documents this kill's
-> implementation-level implications. It does NOT re-decide, and it does not soften the kill back to
-> "deferred pending assessment."** If the doc starts arguing rehydration's merits, it has gone wrong.
-
-**What doc 04 is actually for.** The kill removed the *return* path, not the *outbound* one.
-**Pseudonymization still ships** — it is the product (doc 00 §7, ADR 0002, doc 02 §4.1). Doc 04 owns
-how `John Tan → PERSON_1` is chosen, applied, kept consistent, and surfaced.
+**Doc 05 is where the two week-1 spikes live, and it is the doc most likely to be wrong in ways that
+only a browser can reveal.** Docs 00–04 can be argued. **This one gets falsified by Chrome.**
 
 **Scope:**
-1. **The mapping vault** — doc 01 §2/§5. `PERSON_1 → John Tan`, lives in the offscreen document,
-   **invariant I2: it never crosses B2 → B1.** With rehydration killed, **I2 gets easier to hold** —
-   the only feature that ever wanted the vault in the page is gone. **Say that plainly; it's a
-   consequence of the kill worth banking.**
-2. **Consistency and its limits.** The same entity must map to the same placeholder **within a
-   conversation**, or the model's answer is incoherent. **Across conversations? Across sessions? After
-   a restart?** Each answer is a vault-lifetime decision with a privacy cost — a long-lived vault is a
-   **local database of every sensitive value the user ever typed.** **Pick a lifetime and defend it.**
-3. **Context preservation — the actual hard problem.** `PERSON_1` must preserve enough for the model to
-   stay useful: gender/number agreement in BM and ZH, honorifics, whether two placeholders co-refer.
-   **This is where the wedge shows up again:** placeholder schemes designed for English degrade
-   differently in Malay and Chinese.
-4. **What the user sees.** The modal's Accept / Accept All / Ignore+reason flow (doc 01 §4), the
-   **approval token** bound to `hash(rewritten)` with ~60s TTL, and the post-modal flow in §6.4 —
-   **the user always presses Send.**
-5. **Ignore+reason is a COMPLIANCE ARTIFACT, not training data** (doc 00 §1.6, doc 02 §4.6). Its
-   consumer is the admin console. **Do not design it as a label.**
-6. **Must honour:** I2 and I5 · decision #8 (no auto-submit, ever) · doc 00 §6's claim-scoping rule —
-   ❌ never *"the provider never sees it"* ✅ always *"it never reaches their servers or their training
-   set."* **The composer is their DOM and their JS reads every keystroke; nothing we build changes
-   that.**
-
-**Inherited from doc 03:**
-- **§2.3's ambiguous finding class** (NRIC vs. SSM, not decidable from digits alone) has to render as
-  *something* in the modal. **Doc 04 owns what the user is asked.**
-- **EPF/KWSP is not detectable** (§2.4) and **old-format IC is not shipping.** Doc 04's UI must not
-  imply coverage doc 03 says we don't have.
+1. 🔴 **U12 — the gate mechanism, all three sub-tests (§7).** This is the architecture's single point
+   of failure. **U12-a** base claim · **U12-b** IME/composition — **CJK Enter commits a composition, it
+   does not mean "send"**; a naive gate **breaks Chinese input entirely**, i.e. breaks the languages we
+   differentiate on, for the users we're selling to · **U12-c** a page capture listener on `window`
+   fires **above** `document` and would **silently bypass** us. **Must be proven empirically, per
+   surface, against real ChatGPT and Claude — not reasoned about.**
+2. **The site adapter layer.** Per-surface selectors, the self-test, and D4's churn assumption. **Every
+   send path must be covered — Enter, Ctrl/Cmd+Enter, Send button, paste-and-send, voice.** A miss
+   **fails open, silently** (doc 00 §6's worst case), which is why (3) exists.
+3. **The log-only fetch observer — CONFIRMED IN for Phase 0.** MAIN-world patch, **never aborts**,
+   reconciles outgoing sends against what the gate authorized. Unauthorized sends land in the audit
+   trail as **bypasses**. **U11 is dispositive here**: if `declarativeNetRequest` cannot inspect
+   request bodies, the observer **must** be a MAIN-world patch.
+4. **Offscreen lifecycle (ADR 0006).** Chrome may reclaim it; the SW must recreate it. 🔴 **Doc 04 §8
+   raises a correctness bug, not a perf one: if a live conversation's vault dies mid-thread,
+   placeholder numbering restarts and `PERSON_1` means two different people in one thread.**
+5. **The approval token** (doc 04 §6) — TTL (~60 s is an estimate), single-use, hash-bound, isolated
+   world. **Deterministic rewrite is load-bearing**: the token binds to `hash(rewritten)`, so identical
+   input must always produce identical output or the token never matches.
+6. **U10** (SW ~30 s idle) · **U16** (macOS `.mobileconfig` signing — **Windows HKLM is High confidence
+   and unaffected; this gap only touches the secondary platform**) · **U19** (`chrome.storage.managed`
+   as ADR 0009's Phase 1 key channel).
+7. **Doc 02 §6.4's un-N/A-able row:** our `host_permissions` and auto-update channel are **a remote
+   code execution path into every managed browser in the estate.** A good reviewer says so. **Doc 05
+   owns that answer** — it is the one security question the architecture cannot make inapplicable.
+8. **Must honour:** ADR 0005 (gate in the isolated world — and `composedPath()`, not `event.target`,
+   because shadow DOM retargets) · decision #8 · I2/I5.
 
 **Then:** 3-line summary in chat → wait for go-ahead → commit (no `Co-Authored-By`).
 
