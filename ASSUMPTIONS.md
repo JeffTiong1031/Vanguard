@@ -118,8 +118,28 @@ to be fatal.
 | ID | Assumption | Confidence | Blast radius if wrong |
 |---|---|---|---|
 | E1 | **Phase 0 surfaces = ChatGPT + Claude** | Medium | **LOW.** Adding Gemini is ~1 adapter. The count matters more than the identity. |
-| E2 | **De-pseudonymization of LLM responses is designed (doc 04) but not built until Phase 1** | Medium | **LOW–MEDIUM.** It's the demo's most impressive moment, so there's pressure to pull it forward. Resist: it's also the most fragile DOM work in the product. |
+| E2 | ~~De-pseudonymization is designed (doc 04) but not built until Phase 1~~ → **De-pseudonymization is KILLED. Not an assumption — a closed decision** (founder, 2026-07-16). Doc 04 designs the mechanism and documents the kill's implications; it does not re-decide. | **N/A — closed.** Confidence is not a meaningful axis for a decision. *(Was: Medium — a rating scored while the feature was still pending review.)* | **N/A — closed.** *(Was: LOW–MEDIUM.)* Nothing downstream may assume rehydration ships. **To reopen requires a mechanism that keeps plaintext out of the provider's persisted DOM entirely** — not a mitigation, a different architecture. See "reopening E2" below. |
 | E3 | The **improvement loop is not live in Phase 0** — feedback is captured, not trained on | High | **LOW.** Doc 07 designs it; nothing depends on it running during the demo. |
+
+#### Reopening E2 — what it would actually take
+
+E2 sat in this table as an assumption because it *was* one: the earlier framing had rehydration
+designed-but-deferred, pending doc 04's verdict. **That framing is dead.** It is recorded here as a
+closed decision so that no downstream doc re-derives it as an open question.
+
+**The reason matters more than the verdict, because the wrong reason reopens it.** Rehydration does
+**not** violate invariant **I1** (doc 01 §5) — nothing crosses B3 → B4. A reader checking it against
+the invariant table finds no violation and concludes it's safe. **That reasoning is wrong.**
+Rehydration writes plaintext back into the provider's **persisted, server-synced** DOM (B2 → B1),
+where their *legitimate* features — edit-message, rich-text copy handlers, autosave, analytics — can
+re-serialize it to their server. It doesn't break I1; **it defeats I1's purpose**, and it falsifies
+the scoped claim doc 02's compliance story rests on.
+
+**A reopening therefore requires an architecture, not a mitigation.** Specifically: a way to show the
+user the rehydrated answer *without* the plaintext ever entering the provider's DOM — e.g. rendering
+it in our own shadow-DOM surface composited over theirs, which is a different feature with a different
+fragility profile, not a patch to this one. **Pressure to reopen will come from the demo** (it's the
+most impressive moment in the product). That pressure is not a reason.
 
 ### F. Legal and compliance
 
@@ -188,6 +208,7 @@ re-argued.
 
 | Date | ID | Was | Now | Docs to re-open |
 |---|---|---|---|---|
+| 2026-07-16 | E2 | Rehydration recorded as an **assumption**: "designed (doc 04) but not built until Phase 1," Medium confidence, LOW–MEDIUM blast radius. Doc 01 §5 called it a "genuine, unresolved leak vector" and deferred the verdict to doc 04; doc 01 §7 made it "Phase 1, **if doc 04 clears it**." | **Not an assumption — a closed decision.** Founder killed rehydration 2026-07-16. Not deferred, not pending assessment, not scheduled for any phase absent a strong new reason. Confidence/blast-radius are **N/A — closed**; both prior ratings were scored while the feature was still under review and carried a false implication that the question was live. Doc 04 documents the mechanism and this kill's implications; **it does not re-decide.** *Carry-forward note: doc 00 §6 already stated the kill correctly and pointed at doc 01 §5 — but §5 didn't carry it, leaving the pointer dangling. This entry closes that gap.* | doc 01 §5/§7/§8 (**done, this commit**), ASSUMPTIONS E2 (**done**). Doc 00 §6 verified — **no change needed.** Doc 02 must not claim rehydration as a capability. Doc 04 inherits the kill as a premise. |
 | 2026-07-16 | B3 | CTO implied force-install requires Chrome Enterprise Core / cloud-managed browser estate | **Wrong.** `ExtensionInstallForcelist` works from OS-level machine policy with no cloud enrollment or licence. Windows = one registry key. macOS = signed config profile, heavier. Deployment hurdle materially lower than stated; **sales hurdle unchanged, so confidence stays Low.** | doc 00 (form-factor argument must not overstate the deployment barrier), doc 05, doc 08 |
 
 *A1/A2 (2–3 engineers, 18 months) were confirmed as-is by the founder, not corrected — the constraint

@@ -280,19 +280,41 @@ graph TB
 | **I4** | The **org dictionary is sensitive at rest** on the device | A list of a company's unannounced codenames is a target in itself (ADR 0004). It inherits the on-device rule — synced encrypted, matched locally | Storing it in plain `chrome.storage.local` |
 | **I5** | The verdict cache in B2 holds **hash + boolean**, never text | Keeps the smallest possible surface in the least-trusted of our own contexts | Caching findings alongside verdicts for the modal |
 
-### The boundary that isn't clean, and I won't pretend it is
+### The boundary that isn't clean — and the decision it forced
 
-**De-pseudonymization writes plaintext into the DOM (B2 → B1).**
+**De-pseudonymization writes plaintext into the DOM (B2 → B1). It does not ship.**
+
+> 🔴 **Settled kill, closed by the founder 2026-07-16.** Rehydration is **not** in Phase 0, and it is
+> not queued behind an assessment. This is a closed decision, not an open flag.
 
 To rehydrate the model's answer — turning `PERSON_1` back into `John Tan` in the rendered response —
-we must write the real name into the page. **The page's JS can read it.** The response already
-arrived, so nothing is *sent*, but if the provider's app re-serializes the DOM (an "edit message"
-feature, a rich-text copy handler, analytics that scrape rendered content), the plaintext can travel.
+we must write the real name into the provider's page.
 
-This is a **genuine, unresolved leak vector in the rehydration feature**, and it's the strongest
-argument for E2 (de-pseudonymization designed in doc 04, **not built in Phase 0**). Doc 04 owns the
-verdict. I'm flagging it here because it belongs on the trust-boundary diagram, not in a footnote —
-it's the one place our architecture deliberately hands plaintext to an untrusted context.
+**State the reason precisely, because the imprecise version invites a reversal.** The defect is *not*
+that rehydration violates **I1**. It doesn't. We send nothing to our backend; nothing crosses B3 → B4
+either way. Anyone checking rehydration against the invariant table will find no violation and
+conclude it's safe. **That check is the trap.** The actual defect:
+
+1. The entire pipeline exists to stop `John Tan` reaching **the provider's server**.
+2. Rehydration writes `John Tan` **back into the provider's page** — B2 → B1, the one boundary where
+   we deliberately hand plaintext to an untrusted context.
+3. The provider's app has **legitimate, non-malicious** reasons to re-serialize rendered DOM:
+   edit-message, rich-text copy handlers, autosave, scroll/engagement analytics.
+4. So rehydration can hand the provider's server **exactly the value the whole product spent its
+   latency budget keeping away from it** — through a normal product feature, not an attack.
+
+**It doesn't break I1; it defeats I1's purpose.** And it falsifies any blanket claim that the user's
+sensitive data never reaches the provider — a claim that is load-bearing in doc 02's compliance story
+and in the sales conversation. **A control that quietly undoes itself on the return path is worse than
+no control, because the audit trail says it worked.**
+
+**Why this is worse than the composer exposure** (doc 00 §6, the provider-client boundary): composer
+text is transient and user-controlled — the user typed it and nothing we do put it there. Rehydrated
+text is **injected by us**, into a **persisted, server-synced** conversation view.
+
+**Scope of doc 04.** Doc 04 designs the rehydration mechanism and documents the implementation-level
+implications of this kill — the design work is real and it is a genuine Phase 1+ question. **Doc 04
+does not re-open the decision.**
 
 ---
 
@@ -332,7 +354,7 @@ Naming these here so no one has to infer them from silence:
 |---|---|---|
 | **L3 semantic layer** | The genuinely hard one, and doc 00 §1.2 says it's the high-stakes layer. Not buildable on-device at A1 headcount in 4 weeks. **The org dictionary (ADR 0004) is the Phase 0 stand-in** — it catches the same high-stakes class deterministically. | Phase 1+ (cloud, for files) |
 | **File scanning** | Decision #7. Six-month swamp (doc 00 §1.7). | Phase 1 |
-| **De-pseudonymization** | E2, and the §5 DOM leak vector is unresolved | Phase 1, if doc 04 clears it |
+| **De-pseudonymization** | **Killed, not deferred** (§5). Writes plaintext into the provider's persisted DOM — defeats the pipeline's purpose through their *legitimate* features, not an attack. Founder-closed 2026-07-16. | **Not scheduled.** Doc 04 designs it; absent a strong new reason to revisit, it does not land in any phase. |
 | **Force-install** | Decision #6; gated on B3 primary research | Phase 1 |
 | **The improvement loop** | E3. Feedback is *captured*, not trained on — and per doc 00 §1.6 its primary consumer is the admin console anyway | Phase 1+ |
 | **Fail-closed** | A product decision, not an engineering one | Doc 06 argues it |
@@ -346,7 +368,10 @@ Naming these here so no one has to infer them from silence:
 2. **U12 (isolated-world capture listeners preempt React)** — the gate mechanism itself. Must be
    proven **per surface**, empirically, not reasoned about. Week-1 spike. → doc 05
 3. **Content-script → offscreen routing and its hop cost** — every scan crosses contexts. → doc 05/06
-4. **Vault plaintext in the DOM (§5)** — the one deliberate boundary violation. → doc 04
+4. ~~**Vault plaintext in the DOM (§5)**~~ — **closed, not open.** Rehydration is killed for Phase 0
+   and unscheduled beyond it (§5, founder-closed 2026-07-16). Doc 04 documents the mechanism and this
+   kill's implications; it does not re-decide. Listed here struck through rather than deleted so a
+   reader of an earlier draft can see the question was answered, not dropped.
 5. **Dictionary distribution while keeping I4** — encrypted sync of the customer's codenames. → doc 02
 
 ---
