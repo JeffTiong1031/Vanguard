@@ -1,7 +1,7 @@
 # CLAUDE.md — Session Briefing
 
 > **Read this first, before touching any deliverable.** This is a briefing for a future session, not
-> prose for the founder. Last updated: 2026-07-16, after doc 02 committed (`295561c`).
+> prose for the founder. Last updated: 2026-07-16, after doc 03 committed (`d740a68`).
 
 ---
 
@@ -21,6 +21,15 @@ not soften findings. The founder has overturned your positions twice (intercepti
 tokenizer argument) and improved them; **he pushes back well and expects you to push back too.**
 Agreeing with him quickly is the failure mode here, not disagreeing.
 
+> **He verifies independently, and he catches things. Assume he will check.** In the doc 03 session he
+> **verified the Wikipedia and Microsoft sources himself rather than taking them secondhand**, and
+> caught two real defects in the draft: a wrong SSM date (2016 → **11 October 2019**, contradicted by
+> the doc's *own cited sources*) and an imprecision that **understated a finding** (the NRIC/SSM
+> collision hits **~86%** of 2001–2012 incorporations, not "any" — because the day filter is defeated
+> by construction). **Both corrections tightened the doc.** The lesson for a fresh session: **re-read
+> your own citations before asserting from them**, and **apply the package's rigor to its own findings,
+> not just to its claims** — an overclaimed *finding* is still an overclaim.
+
 ---
 
 ## 2. Deliverable checklist
@@ -34,8 +43,8 @@ consistent state.
 | 2 | `docs/00-critique-and-positioning.md` | ✅ **done, committed** (`c7de4e8`, revised `f4bc6e0`) |
 | 3 | `docs/01-hld.md` | ✅ **done, committed** (`4a670cd`) |
 | 4 | `docs/02-privacy-architecture.md` | ✅ **done, committed** (`295561c`) |
-| 5 | `docs/03-ai-ml-architecture.md` | ⬜ **not started ← NEXT** |
-| 6 | `docs/04-redaction-and-context-preservation.md` | ⬜ not started — ⚠️ **rehydration is a SETTLED KILL, see §6.5.** Design it; don't ship it. Doc 01 §5 now carries the kill; doc 04 documents implications and **does not re-decide**. |
+| 5 | `docs/03-ai-ml-architecture.md` | ✅ **done, committed** (`d740a68`) |
+| 6 | `docs/04-redaction-and-context-preservation.md` | ⬜ **not started ← NEXT** — ⚠️ **rehydration is a SETTLED KILL, see §6.5.** Design it; don't ship it. Doc 01 §5 carries the kill; doc 04 documents implications and **does not re-decide**. |
 | 7 | `docs/05-lld.md` | ⬜ not started |
 | 8 | `docs/06-performance-and-scale.md` | ⬜ not started |
 | 9 | `docs/07-ml-training-and-data-strategy.md` | ⬜ not started |
@@ -76,8 +85,9 @@ workload · 0009 org-dictionary key custody. New ADRs continue from **0010**.
 **Actually read these files. Do not assume you know their contents.** They contain reversals of
 earlier positions, and acting on a remembered version will reintroduce errors already corrected.
 
-1. **`ASSUMPTIONS.md`** — assumptions A1–F4 with confidence + blast radius; the **U1–U16 unverified
-   claims register**; §4 deliberate non-assumptions; §5 correction log.
+1. **`ASSUMPTIONS.md`** — assumptions A1–F4 with confidence + blast radius; the **U1–U19 unverified
+   claims register** (**U1–U5 and U13 now resolved**; **E2 and F3 are closed/corrected, not open**);
+   §4 deliberate non-assumptions; **§5 correction log — read it, it is where the reversals live.**
 2. **`docs/00-critique-and-positioning.md`** — the critique, competitive landscape, buyer argument,
    wedge-vs-moat split, threat model.
 3. **`docs/01-hld.md`** — the architecture. §0 (the one architectural idea) and §5 (trust boundary
@@ -87,7 +97,11 @@ earlier positions, and acting on a remembered version will reintroduce errors al
    (on-device is *architecturally* forced, not privacy-forced — this distinction is easy to lose and
    changes what's fragile), **§2.6** (why "hybrid" as everyone else means it is strictly worse), and
    **§5** (the org-dictionary custody gap — **the weakest privacy claim in the package**).
-5. **Everything in `docs/adr/`** — all nine. 0003 and 0005 both record **reversed CTO positions**;
+5. **`docs/03-ai-ml-architecture.md`** — the numbers. **§2.1** (the phantom-checksum kill), **§2.3**
+   (the NRIC/SSM collision — and why structure *cannot* fix it), **§3** (the fragmentation correction:
+   **the wedge is BM/ZH text NER, not tokenizing identifiers**), **§4.3** (the 86M backbone floor →
+   distillation).
+6. **Everything in `docs/adr/`** — all nine. 0003 and 0005 both record **reversed CTO positions**;
    reading a summary instead of the ADR will lose the reversal.
 
 **External, outside the repo:** the approved plan lives at
@@ -129,16 +143,26 @@ to his GitHub account. `git config user.name/user.email` is already `JeffTiong10
 `c7f0964`–`c7de4e8` predate this instruction and still carry it; leave them, do not rewrite history.)*
 
 ### 6.2 Doc 06 — the L2 backbone is a cost shift, not an architecture swap
-Founder flag, accepted. Doc 06 **must re-derive its memory and download budget from the
-XLM-R/mDeBERTa-v3 class (~250k vocab), NOT the small-model class the original brief assumed.**
-- The **embedding matrix dominates**: mDeBERTa-v3-base ≈ 192M embedding params (250k × 768) vs. an
-  86M backbone *(estimate, U4)*. ~70% of weights are lookup table, not compute. **Multilingual is
-  paid for in download size and RAM, not FLOPs** — the budget a browser extension can least afford.
-- Mitigation to evaluate: **vocabulary trimming** to EN/BM/ZH (~60–80k tokens), cutting embedding
-  ~70%; plausibly ~278M → ~135M params, ~135 MB int8 *(estimate, U5 — doc 03 does the real math)*.
-- **Consequence to surface, not absorb:** this may force a **distillation step Phase 0 never
-  budgeted for.** Goes into **doc 08 as a ranked risk**, not into doc 06 as a silent line item.
-- **No tokens/sec figures until measured or cited.**
+Founder flag, accepted. **✅ Doc 03 did the real math (`d740a68`); U4 and U5 are RESOLVED.** The
+numbers below are now **cited, not estimated** — do not re-derive them, and do not reintroduce the
+estimates.
+- **Cited (Microsoft model card):** mDeBERTa-v3-base = **86M backbone + 190M embedding (250K vocab) =
+  280M total.** **68% of the model is a lookup table**, not compute. **Multilingual is paid for in
+  download size and RAM, not FLOPs** — the budget a browser extension can least afford.
+- **Vocabulary trimming works, once:** ~70K tokens → embedding **190M → ~54M (−72%)**, total
+  **280M → ~140M (~140 MB int8)**. U5's estimate was good.
+- 🔴 **The floor U5 never mentioned, and it's doc 06's problem:** **the 86M backbone is irreducible by
+  trimming.** Vocabulary trimming buys **exactly one halving and is then exhausted.** Below ~130 MB the
+  only lever is **distillation**. **Trigger: if doc 06's D2 memory budget lands below ~140 MB of
+  weights, distillation moves from a risk to a Phase 0 requirement** — and its fallback depends on
+  **C3**, the least-confident assumption in the package.
+- **Consequence surfaced, not absorbed:** → **doc 08 ranked risk**, not a silent doc 06 line item.
+- **Still open for doc 06:** the runtime multiple (§4.4 — weights ≠ RAM; ~1.5–2× is a rule of thumb
+  doc 03 refuses to assert), the int8 path (**it degrades BM/ZH accuracy first — the wedge is what
+  quantization eats**), and **U15**.
+- **No tokens/sec figures until measured or cited.** Doc 03 held this line and produced **none**;
+  doc 06 must not break it. Doc 03 §6 does leave a **falsifiable prediction**: trimming should cut
+  **memory ~50%, latency barely at all** (embedding is lookup, backbone is compute).
 
 ### 6.3 WebGPU — the offscreen-document choice does NOT block it
 **Correction recorded 2026-07-16.** An **offscreen document is a Window context, so WebGPU is
@@ -317,9 +341,7 @@ buyer (doc 00 §6). Test:
 ### Other unverified claims blocking downstream docs
 Full register is `ASSUMPTIONS.md` §3 (U1–U16). Blocking ones by doc:
 
-- **doc 03:** U1/U2 (Malaysian NRIC has **no check digit**; format `YYMMDD-PB-###G`) — validation is
-  structural (date validity + birth-state-code table), not arithmetic. U3 (other MY formats — mark
-  each verified/unverified **individually**, never as a block). U4/U5 (param counts, vocab-trim math).
+- **doc 06:** ~~U4/U5~~ ✅ resolved by doc 03 — see §6.2. **U15** remains.
 - **doc 06:** U15 (WebGPU availability under enterprise Chrome policy) — materially affects the budget.
 - **doc 05:** U10 (MV3 SW ~30s idle termination), U11 (**`declarativeNetRequest` cannot inspect
   request bodies** — if true this is *dispositive*: the fetch observer **must** be a MAIN-world patch,
@@ -338,6 +360,22 @@ Full register is `ASSUMPTIONS.md` §3 (U1–U16). Blocking ones by doc:
 - **U19** — `chrome.storage.managed` as the tenant-key channel. **ADR 0009's entire Phase 1 key-custody
   upgrade rests on it** — it's what turns I4 from a contractual control into a mathematical one.
 
+**Resolved by doc 03 (`d740a68`) — do not re-open, do not re-derive:**
+- **U1 ✅** no NRIC checksum → validation is structural. 🔴 **And a kill: a hobbyist repo claims ISO
+  7064 Mod 11,2 from trial-and-error fitting. DO NOT IMPLEMENT.** A phantom checksum **silently
+  rejects valid ICs** — recall collapse, invisible, in the layer whose value is determinism.
+  **§2.3's NRIC/SSM collision is the pressure that will make someone reach for it.**
+- **U2 ✅** `YYMMDD-PB-###G`; **exactly 14 of 100 PB codes unassigned** (`00`,`17`–`20`,`69`,`70`,
+  `73`,`80`,`81`,`94`–`97`). ⚠️ **gender digit rule still unverified — do not gate on it.**
+- **U3 ✅ individually:** LHDN TIN verified (`IG`; legacy `SG`/`OG` must still match — pre-2023 docs
+  are what people paste) · SSM 12-digit verified · passport medium · **old-format IC unverified, not
+  shipping** · **EPF/KWSP = 8 bare digits, not L1-detectable — keep it off any coverage slide.**
+- **U4 ✅ / U5 ✅** — see §6.2. **The 86M backbone floor is the finding.**
+- 🟠 **New, carried by doc 03 §2.3:** ~86% of **SSM numbers** for entities incorporated **2001–2012**
+  parse as valid NRICs. The NRIC day field lands on SSM's **entity-type code (01–06)**, so **the day
+  filter rejects nothing by construction.** Fix is context tokens + an **ambiguous finding class** —
+  a 12-digit Malaysian number is not always decidable from the digits alone.
+
 **Resolved so far:**
 - **SentinelOne acquired Prompt Security, closed 2025-09-05** (founder research). Acquirer type is now
   known — an **endpoint-security incumbent, not a hyperscaler** — and the 18–24 month head-start
@@ -355,55 +393,47 @@ Full register is `ASSUMPTIONS.md` §3 (U1–U16). Blocking ones by doc:
 
 ## 8. Immediate next action
 
-**Write `docs/03-ai-ml-architecture.md`.**
+**Write `docs/04-redaction-and-context-preservation.md`.**
 
-**This doc is where the package's numbers live, and it is the one most exposed to an investor's ML
-advisor.** Docs 00–02 argued positions; this one has to do arithmetic and cite sources. §5's rule bites
-hardest here: **every number cited, or tagged `(estimate)` / `(unverified)`.**
+> 🔴 **Read §6.5 FIRST. Rehydration is a SETTLED KILL, founder-closed 2026-07-16.** Doc 01 §5 carries
+> the kill and its precise reasoning. **Doc 04 designs the mechanism and documents this kill's
+> implementation-level implications. It does NOT re-decide, and it does not soften the kill back to
+> "deferred pending assessment."** If the doc starts arguing rehydration's merits, it has gone wrong.
+
+**What doc 04 is actually for.** The kill removed the *return* path, not the *outbound* one.
+**Pseudonymization still ships** — it is the product (doc 00 §7, ADR 0002, doc 02 §4.1). Doc 04 owns
+how `John Tan → PERSON_1` is chosen, applied, kept consistent, and surfaced.
 
 **Scope:**
-1. **The detection stack: L1 (regex + checksums + org dictionary) → L2 (multilingual NER) → L3
-   (absent in Phase 0, and doc 01 §7 says why).** Doc 01 §3 already fixed the ordering and the reason:
-   **L1 masks before L2 sees the text**, which shortens the sequence *and* strips the digit-soup an
-   English-first tokenizer fragments worst. L1 makes L2 **cheaper and more accurate** — a compounding
-   win, not just an ordering.
-2. **The fragmentation argument.** Doc 00 §5 forward-references this doc for it: an English-first
-   tokenizer shreds `890101-14-5555` into digit soup, destroying the identifier's schema before the
-   model sees it. **This is a real engineering advantage and also one Google could replicate with a
-   vocabulary swap** — state both halves; ADR 0003 turns on exactly that honesty.
-3. **Resolve U1/U2/U3 — Malaysian identifier formats.** U1/U2: NRIC has **no check digit**; format
-   `YYMMDD-PB-###G`; validation is **structural** (date validity + birth-state code table), not
-   arithmetic — contrast with Luhn for cards. **U3: mark every other MY format
-   (old-format IC, passport, LHDN tax, EPF/KWSP, ROC/ROB) verified or unverified INDIVIDUALLY, never
-   as a block.** Doc 02 verified U13 and PDPA by search; do the same here rather than tagging by
-   default.
-4. **Resolve U4/U5 — the model budget, and re-derive it from the right class (§6.2).** XLM-R /
-   mDeBERTa-v3 class (~250k vocab), **not** the small-model class the original brief assumed. The
-   **embedding matrix dominates** (~192M embedding vs. ~86M backbone) — **multilingual is paid for in
-   download size and RAM, not FLOPs.** Evaluate **vocabulary trimming** to EN/BM/ZH. **Do the real
-   math here; §6.2's ~135 MB is an estimate this doc is supposed to replace.**
-5. **U6 is the highest-priority number in the package and it has no measurement behind it.** Do not
-   launder it into fact. **No tokens/sec figures until measured or cited.**
-6. **Quantization + runtime:** int8, ONNX Runtime Web (doc 01 §6 rejected `transformers.js` precisely
-   because quantization control *is* the memory budget). WebGPU is **opportunistic** per D3 — and per
-   §6.3, the offscreen document **preserves** WebGPU rather than trading it away.
-7. **Must honour:** D2 (the hardware floor every number derives from) · ADR 0004 (exact-match only,
-   Aho-Corasick, no fuzzy) · ADR 0006 (one engine, offscreen, and **every scan crosses a context
-   boundary** — that hop is in the U6 budget, not outside it).
+1. **The mapping vault** — doc 01 §2/§5. `PERSON_1 → John Tan`, lives in the offscreen document,
+   **invariant I2: it never crosses B2 → B1.** With rehydration killed, **I2 gets easier to hold** —
+   the only feature that ever wanted the vault in the page is gone. **Say that plainly; it's a
+   consequence of the kill worth banking.**
+2. **Consistency and its limits.** The same entity must map to the same placeholder **within a
+   conversation**, or the model's answer is incoherent. **Across conversations? Across sessions? After
+   a restart?** Each answer is a vault-lifetime decision with a privacy cost — a long-lived vault is a
+   **local database of every sensitive value the user ever typed.** **Pick a lifetime and defend it.**
+3. **Context preservation — the actual hard problem.** `PERSON_1` must preserve enough for the model to
+   stay useful: gender/number agreement in BM and ZH, honorifics, whether two placeholders co-refer.
+   **This is where the wedge shows up again:** placeholder schemes designed for English degrade
+   differently in Malay and Chinese.
+4. **What the user sees.** The modal's Accept / Accept All / Ignore+reason flow (doc 01 §4), the
+   **approval token** bound to `hash(rewritten)` with ~60s TTL, and the post-modal flow in §6.4 —
+   **the user always presses Send.**
+5. **Ignore+reason is a COMPLIANCE ARTIFACT, not training data** (doc 00 §1.6, doc 02 §4.6). Its
+   consumer is the admin console. **Do not design it as a label.**
+6. **Must honour:** I2 and I5 · decision #8 (no auto-submit, ever) · doc 00 §6's claim-scoping rule —
+   ❌ never *"the provider never sees it"* ✅ always *"it never reaches their servers or their training
+   set."* **The composer is their DOM and their JS reads every keystroke; nothing we build changes
+   that.**
 
-**Inherited from doc 02 §8 — read these before starting:**
-- **The on-device budget is now contractual, not preferential.** Doc 02 §6.4's questionnaire answers
-  (*"we never receive them"*) **depend** on prompt text never leaving. This doc's budget is what makes
-  those sentences true.
-- **If U6 fails, we lose the GATE (doc 01 §0), not the privacy posture** (doc 02 §1.5). Different
-  failures, different blast radii, different fallbacks. **Do not let a latency result read as a privacy
-  result** — and note ADR 0008 says a U6 failure does *not* reopen the posture.
-- **§6.2's consequence still stands:** vocabulary trimming may force a **distillation step Phase 0
-  never budgeted for.** That surfaces in **doc 08 as a ranked risk** — not silently absorbed here.
+**Inherited from doc 03:**
+- **§2.3's ambiguous finding class** (NRIC vs. SSM, not decidable from digits alone) has to render as
+  *something* in the modal. **Doc 04 owns what the user is asked.**
+- **EPF/KWSP is not detectable** (§2.4) and **old-format IC is not shipping.** Doc 04's UI must not
+  imply coverage doc 03 says we don't have.
 
 **Then:** 3-line summary in chat → wait for go-ahead → commit (no `Co-Authored-By`).
-
----
 
 ## 9. Verification tooling (works, use it)
 
@@ -419,3 +449,11 @@ breaks the parse. It killed the most important diagram in doc 01 (the send-gate 
 caught because the block was actually rendered rather than eyeballed. **Lint for `;` in Mermaid
 blocks; render every block before committing.** `node` v24 and `@mermaid-js/mermaid-cli` v11 are
 available via `npx`.
+
+**Also worth running before every commit** (all three have caught real defects this package):
+- **Markdown table column consistency** — a ragged row renders as garbage and is invisible in review.
+- **Relative link resolution** — doc 00 §6 once pointed at a doc 01 §5 that didn't carry the claim.
+  **A link that resolves is not a link that's correct** — check the target says what you cite it for.
+- **Recompute every number in the doc independently** before committing. Doc 03's parameter and
+  probability arithmetic was re-derived from scratch and matched; that check is cheap and it is exactly
+  what an ML advisor will do first.
