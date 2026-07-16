@@ -168,8 +168,18 @@ effect**. The actual product of this flow is a warm cache entry keyed to the exa
 gate will look up milliseconds later.
 
 **L1-before-L2 is not just ordering, it's a compounding win.** L1 masks what it finds before L2 sees
-the text, which shortens the sequence *and* strips out precisely the digit-soup that an English-first
-tokenizer fragments worst (doc 03). L1 makes L2 cheaper **and** more accurate.
+the text, which **shortens the sequence** *and* **removes the spans L2 handles worst** — digit runs,
+which every modern tokenizer fragments into soup. L1 makes L2 cheaper **and** more accurate.
+
+> **Corrected 2026-07-16 (doc 03 §3).** This paragraph previously read *"strips out precisely the
+> digit-soup that an **English-first** tokenizer fragments worst,"* implying digit fragmentation is a
+> deficiency a multilingual tokenizer fixes. **It isn't — multilingual tokenizers split digit runs
+> too.** The masking win is real and tokenizer-independent; **the multilingual win is a separate thing
+> and lives in the surrounding BM/ZH text**, not in the identifiers (doc 00 §5, doc 03 §3).
+>
+> **Note the irony the old clause was hiding:** by masking the IC at L1, **we guarantee the tokenizer
+> never sees it** — which is exactly why doc 00's old tokenizer-based argument for the multilingual
+> model was self-defeating. This sentence contained the refutation of the claim it was citing.
 
 ---
 

@@ -429,10 +429,29 @@ at Chinese, and at the code-switched mixture your market actually types.
 That head start is a real asset. It wins the beachhead and the first 20 logos. **Calling it a moat is
 what gets you caught.**
 
-There's also a technical reason it's a better head start than it looks — the fragmentation argument
-in doc 03 (an English-first tokenizer shreds `890101-14-5555` into digit soup, destroying the
-identifier's schema before the model ever sees it). That's a real engineering advantage. It is also
-one Google could replicate with a vocabulary swap.
+There's also a technical reason it's a better head start than it looks, and it's worth stating
+correctly because **the obvious version of this argument is wrong.**
+
+> **Corrected 2026-07-16 (doc 03 §3).** An earlier draft of this section argued the advantage was
+> tokenization of identifiers: *"an English-first tokenizer shreds `890101-14-5555` into digit soup,
+> destroying the identifier's schema before the model ever sees it."* **That argument does not
+> survive.** Nearly every modern tokenizer splits digit runs — **multilingual ones included** — so
+> there is no advantage there to have. And worse, **L1 masks the IC number before L2 ever sees it**
+> (doc 01 §3), so the tokenizer's digit handling is irrelevant to the very example the argument used.
+> **The old version argued for the multilingual model using the one case the architecture routes
+> around.**
+
+**The wedge is real. It lives in the text, not the identifiers:**
+
+> **A regex catches the IC number in any language — nobody needs a model for that.** The model earns
+> its keep on **the text around it**: Malay's agglutinative morphology (`kewarganegaraan`), Chinese
+> without whitespace, and the code-switched sentence they arrive in — *"IC saya 890101-14-5555, boleh
+> check tak?"*. An English-first model fragments that **context** into noise, and context is what NER
+> needs to judge the names, addresses, and organisations that **no regex can see.**
+
+That is a real engineering advantage, and a **stronger** claim than the tokenizer story because it
+survives contact with our own architecture. **It is also still one Google could replicate with a
+vocabulary swap** — which is the whole point of this section, and the correction doesn't change it.
 
 ### The moat: vendor neutrality — **structural, and it widens**
 
