@@ -56,8 +56,45 @@ Confidence is my own, and deliberately not flattering.
 |---|---|---|---|
 | B1 | **No design partner and no willingness-to-pay evidence today** | Medium — implied, not confirmed | **HIGH.** Doc 00 argues positioning from first principles because there's no customer evidence to cite. If a design partner exists, doc 00 should lead with them and doc 08's kill criteria become measurable instead of hypothetical. |
 | B2 | Beachhead customer = **Malaysian/SEA mid-market enterprise, ~50–500 seats**, with an existing compliance function and regulated-ish data (banking, healthcare, telco, BPO) | Low | **HIGH.** Sets the entity taxonomy priority in doc 07 and the sales motion in doc 00. A large-enterprise (5000+) target changes the deployment story to procurement-led and adds ~9 months to first revenue. |
-| B3 | Customers have **managed Chrome** (or can adopt it) by Phase 1 | Low | **HIGH.** Decision #6 defers the real control to force-install. If the beachhead segment doesn't run managed browsers, **the enterprise control story never becomes real** and the product is permanently a nudge. This is arguably the single most dangerous assumption in this document. |
+| B3 | Customers can **force-install** the extension by Phase 1 | **Low** (unchanged after mitigation — see B3 expanded) | **HIGH.** Decision #6 defers the real control to force-install. If the beachhead segment won't deploy it, **the enterprise control story never becomes real** and the product is permanently a nudge. Arguably the single most dangerous assumption in this document. |
 | B4 | Buyer's fear is concentrated on **public LLM chat UIs**, not IDE copilots or API traffic | Medium | **MEDIUM.** If the fear is really in the IDE, the browser extension is the wrong surface entirely and doc 00's form-factor argument has to be reopened. |
+
+#### B3 — expanded (deployment hurdle vs. sales hurdle)
+
+**Founder research (2026-07-16), CTO concurring:** the target segment is characterised by high
+Workspace/M365 adoption, near-zero *active* browser governance, and an IT function of 1–2
+generalists. A search turned up nothing contradicting this. **Provenance: this is the founder's
+informed read, not verified data, and not mine — I asked for it rather than producing it.** I concur
+for a specific reason: buying Workspace/M365 is a procurement act, whereas governing a browser is an
+operational practice, and mid-market IT almost never staffs the latter. That reasoning is *why* the
+read is plausible; it is not evidence that it's true. **Stays Low until primary research lands.**
+
+**Mitigation — the deployment hurdle is far lower than "they need Chrome Enterprise Core."**
+My original framing implied force-install requires a cloud-managed browser estate. That was wrong.
+Chrome reads `ExtensionInstallForcelist` from **OS-level machine policy**, with no cloud enrollment
+and no Chrome Enterprise Core licence. This has always been how Chrome policy works.
+
+| Platform | Mechanism | Weight | Confidence |
+|---|---|---|---|
+| **Windows** (primary — matches the beachhead segment) | `HKLM\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist` via registry write or GPO | Genuinely a **5-minute script**. One registry key. | **High** — well-established behaviour |
+| **macOS** (secondary) | Signed **configuration profile** (`.mobileconfig`) — *not* a plain shell command. No MDM required, but must be installed and user-approved. | Heavier: authoring + signing + an approval click per machine | **Medium** — see U16; the specifics have shifted across macOS versions |
+
+Both paths require **local admin rights**, which a 150-seat BPO's IT generalist has. Admin rights are
+not the obstacle.
+
+**Why this does not raise the confidence rating.** The mitigation solves the *deployment* hurdle. It
+says nothing about the *sales* hurdle, which is the one that actually gates revenue:
+
+> Will a 150-seat BPO's lone IT generalist — who has never written a browser policy, has no budget
+> line for browser governance, and is measured on ticket closure — actually run this script for a
+> pre-seed vendor's extension?
+
+That is a question about organisational will, not technical feasibility, and a registry key does not
+answer it. **B3 stays Low.** Resolving it requires **primary research: 5–10 interviews with IT leads
+in the target segment.** That is doc 08's **#1 pre-Phase-0 validation item** — ranked above every
+engineering task, including the U6/U12 spikes, because those two ask *"can we build it?"* while this
+one asks *"will anyone deploy it?"* — and the second question is cheaper to answer and more likely
+to be fatal.
 
 ### C. Data
 
@@ -117,6 +154,7 @@ carries the doc that must resolve it.
 | U13 | AWS `ap-southeast-5` (Malaysia) exists and is generally available | Believed true | doc 02 |
 | U14 | No usable public EN/BM/ZH code-switched PII corpus exists (see C2) | Assumption masquerading as a fact — treat with suspicion | doc 07 |
 | U15 | WebGPU availability under enterprise Chrome policy | Unknown. Materially affects doc 06's budget. | doc 06 |
+| U16 | **macOS force-install specifics**: that a `.mobileconfig` must be *signed* (vs. merely installable-with-warning), and that root-owned `/Library/Preferences/com.google.Chrome.plist` is no longer an accepted policy source | Founder claim, CTO not confident. Requirements have moved across macOS versions. **Windows path (HKLM) is High confidence and unaffected** — this gap only touches the secondary platform. | doc 05 |
 
 **U6 and U12 are the two that can kill the design**, not merely dent it. U12 invalidates the gate
 mechanism; U6 invalidates the zero-friction path that makes the gate tolerable. Both are cheap to
@@ -150,4 +188,8 @@ re-argued.
 
 | Date | ID | Was | Now | Docs to re-open |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| 2026-07-16 | B3 | CTO implied force-install requires Chrome Enterprise Core / cloud-managed browser estate | **Wrong.** `ExtensionInstallForcelist` works from OS-level machine policy with no cloud enrollment or licence. Windows = one registry key. macOS = signed config profile, heavier. Deployment hurdle materially lower than stated; **sales hurdle unchanged, so confidence stays Low.** | doc 00 (form-factor argument must not overstate the deployment barrier), doc 05, doc 08 |
+
+*A1/A2 (2–3 engineers, 18 months) were confirmed as-is by the founder, not corrected — the constraint
+is deliberate: solo would collapse the multilingual edge into regex-chasing, and more headcount would
+let the performance budget go soft. No entry required.*
