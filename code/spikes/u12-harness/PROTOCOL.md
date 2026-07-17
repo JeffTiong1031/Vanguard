@@ -137,24 +137,62 @@ the users we're selling to, on the first keystroke of the first demo.
 | macOS Pinyin | macOS | 🟡 Low |
 | **Malay / English** | Any | 🟡 **Low, and say so.** Latin script, no IME. Doc 05: *"CJK is where the risk lives. Malay will almost certainly be fine. Spending equal time on both would be a way of looking rigorous while testing the wrong thing."* |
 
-**Do:** Windows Settings → add **Chinese (Simplified, China)** → Microsoft Pinyin. In the composer,
-type `nihao`, press **Enter to commit the candidate** (not to send). Do this ~10 times, mixed with
-real sends.
+> 🔴 **REWRITTEN 2026-07-17 after the first real run, because the analyser was wrong and this step
+> was what let it be wrong.**
+>
+> **The first version said:** *"type `nihao`, press Enter to commit… do this ~10 times, **mixed with
+> real sends**."* **That instruction is what made the capture unattributable**, and the analyser then
+> mis-paired it: it searched for the **nearest Enter anywhere in the log** and reported
+> `compositionend_then_keydown` — **the 🔴 dangerous verdict** — with gaps of **3.6 s to 40.8 s**.
+> Those were **send** Enters, seconds away, not composition commits.
+>
+> **Most compositions do not commit with Enter at all** — Microsoft Pinyin commits on **space**, a
+> **number key**, **punctuation**, or a **mouse click** on a candidate. So most `compositionend`s have
+> no commit-Enter, and the old analyser paired them with whatever Enter it could find.
+>
+> 🔴 **The lesson is bigger than the bug, and it is why the fix is not "add a time window."** It was
+> caught because **40.8 s is absurd.** A version of the same mis-pairing that grabbed an Enter **80 ms
+> away** would have produced a plausible *"dangerous ordering, window ≈ 80 ms"* — **and we would have
+> built a product parameter out of noise.** CLAUDE.md §9: **plausible numbers do not get checked.** A
+> time-bounded search would not have fixed the bug; **it would have made it look right.**
+>
+> **The analyser now pairs by causal adjacency** — *is the **next key event of any kind** after this
+> `compositionend` a `keydown: Enter`?* — because a commit and its keydown are **the same physical key
+> press**. **And this step now produces a capture with nothing left to mis-attribute.**
 
-Then read `analyse().u12b`:
+### 6a. 🔴 The focused capture — one composition, one Enter, then stop
 
-| `orderings[].order` | Meaning |
+**Do not mix sends into this.** The analyser refuses to emit a verdict unless the capture is focused,
+and that refusal is the point.
+
+1. Windows Settings → **Chinese (Simplified, China)** → **Microsoft Pinyin**.
+2. Click into the composer. **Press Reset on the HUD.**
+3. Type `nihao`.
+4. Press **Enter once — to commit the candidate.** *(Not to send.)*
+5. **Stop. Touch nothing else.** Do not press Enter again. Do not click.
+6. **Copy JSON.** Repeat the whole cycle ~5 times, **Reset each time**, one JSON per run.
+
+**Then read `analyse().u12b`:**
+
+| Field | Meaning |
 |---|---|
-| **`keydown_then_compositionend`** | ✅ The committing `Enter` arrives with `isComposing === true` → we read it and pass it through. **The gate rule as written works.** |
-| **`compositionend_then_keydown`** | 🔴 The committing `Enter` arrives with **`isComposing === false`** → **indistinguishable from a send-intent Enter** → the naive gate **swallows the user's composition.** Doc 05 §1.3's post-`compositionend` suppression window becomes **required**, and **its value comes from `gapDistributionMs` in this log.** |
+| **`enterWithIsComposingTrue > 0`** | ✅ **The safe ordering.** The committing Enter arrived with `isComposing === true` → we read it and pass it through. **The gate rule works as written. No window needed.** *(Directly observed — no pairing involved, so this number cannot be mis-attributed.)* |
+| **`compositionEndFollowedByEnter > 0`** + **`focusedCapture: true`** | 🔴 The committing Enter arrives with **`isComposing === false`** → **indistinguishable from a send-intent Enter** → the naive gate **swallows the composition.** Doc 05 §1.3's suppression window is **required**, and **its value comes from `gapDistributionMs`.** |
+| **`focusedCapture: false`** | 🔴 **No verdict. No window.** A `compositionend` committed by **mouse** cannot be told apart from one committed by a later Enter. **Redo 6a.** |
+| **`compositionEndsCommittedOtherwise`** | **The expected majority** — commits via space/number/mouse. 🔴 **This is the number the old analyser ate and turned into a false dangerous verdict.** Its presence is evidence of nothing. |
+| **`compositionsObserved: 0`** | **NOT TESTED. Not a pass.** Highest-risk sub-test; untested is untested. |
+| **verdict says "NONE COMMITTED WITH ENTER"** | **The case under test was not exercised.** Also not a pass — you committed with space or the mouse. Redo 6a and commit with **Enter**. |
 
-> 🔴 **Do not let me — or anyone — invent that window.** Doc 05 §1.3: *"No window value appears here.
-> It is derived from the U12-b measurement or it does not exist. Inventing '50 ms' now would be
-> exactly the fabrication `ASSUMPTIONS.md` §3 exists to prevent, and it would be a number that
-> silently decides whether Chinese input works."* **Send me `gapDistributionMs`.**
+> 🔴 **Do not let me — or anyone — invent that window.** Doc 05 §1.3: *"It is derived from the U12-b
+> measurement or it does not exist. Inventing '50 ms' now would be… a number that silently decides
+> whether Chinese input works."* **Send `gapDistributionMs` from a focused capture, or send nothing.**
 
-**If `compositionCommitsObserved: 0` → the sub-test did not run. That is NOT a pass.** It is the
-highest-risk of the three and an untested result is untested.
+### 6b. The UX check the log cannot make
+
+**Separately from the capture:** with the harness **ARMED**, type a few sentences of Chinese normally.
+**Does the IME still work?** Doc 05 §1.3's failure is that the gate **swallows compositions** — that is
+visible in one second and no log line states it. *(Your first run reported the UI worked. That is real
+evidence and it is not the ordering measurement — report both, separately.)*
 
 ---
 
@@ -164,13 +202,42 @@ ADR 0012 / doc 05 §10: `webRequest` sees the WebSocket **handshake**, never the
 surface that submits prompts over an open socket is **invisible to the observer.** Not believed
 likely; observable at zero marginal cost during this spike.
 
-Read the log for `kind: "main:websocket-send"` **at the moment you send a prompt**.
+> 🔴 **REWRITTEN 2026-07-17. The first version asked you to correlate WebSocket frames against the
+> moment of a send. You declined to close U20 on that, and you were right to** — ChatGPT emitted
+> **62-byte frames** that could be anything, and *"they appeared near a send"* is a correlation
+> argument wearing evidence's clothes.
+>
+> **The fix is to stop arguing from timing.** A prompt is **hundreds to thousands of bytes**.
+> **62 bytes cannot carry one, at any compression.** So the question is not *"did a socket carry bytes
+> near a send"* — it is:
+>
+> > 🔑 **Which transport shows a body the size of the prompt you just sent?**
+>
+> **That is a size argument, and it is decisive**, because it does not depend on how tightly two
+> clocks line up. The harness now records **`fetch`/XHR body sizes** as well as WS frame sizes.
 
-- **None** → ✅ the surface POSTs. ADR 0012's observer sees it. **U20 resolved for that surface.**
-- **Frames sent as you press Enter** → 🔴 **U20 is real for that surface** and it needs a MAIN-world
-  `WebSocket.send` patch *in addition* — the one thing ADR 0012 was trying to avoid.
+**Do:**
 
-*(Lengths and types only. Never payloads — I1/I3 apply to a spike too.)*
+1. **Reset.** Paste a **long, incompressible prompt** — ~2,000 characters of random-ish text (mash a
+   password generator, or paste a chunk of a UUID list). **Length matters more than content.**
+2. Send it.
+3. Read `analyse().u20`.
+
+| Result | Meaning |
+|---|---|
+| **`maxHttpBodyBytes` ≈ your prompt's length**, `maxWebSocketFrameBytes` small | ✅ **The prompt is on HTTP.** `webRequest` sees it → **ADR 0012's observer works** → **U20 RESOLVED for this surface.** |
+| **`maxWebSocketFrameBytes` ≈ your prompt's length** | 🔴 **U20 IS REAL for this surface.** `webRequest` sees the handshake, **never the frames** → the observer is **structurally blind** here → it needs a MAIN-world `WebSocket.send` patch **in addition** — the one thing ADR 0012 was avoiding. |
+| **Neither is large enough** | **INCONCLUSIVE.** Not a pass. The prompt went somewhere; find it. |
+
+> ⚠️ **The irony, stated rather than hidden:** resolving U20 — which exists *because* `webRequest`
+> cannot see WS frames — required patching **`fetch` in the MAIN world**, which is exactly what
+> **ADR 0012 rejected for the product.** That is not a contradiction: ADR 0012's reasons are
+> **(a)** enumeration blind spots and **(b)** it can break the provider's app across a force-installed
+> estate. **Neither applies to an instrument on two machines for a week.** But it is precisely the
+> thing that gets copy-pasted into a component later, so `main-probe.js`'s header says it twice:
+> **nothing in that file ships.**
+
+*(Lengths, methods and URL paths only. **Never bodies.** I1/I3 apply to a spike too.)*
 
 ---
 

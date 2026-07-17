@@ -108,17 +108,49 @@
 
   for (const [node, name] of [[window, 'window'], [document, 'document']]) {
     node.addEventListener('keydown', (ev) => record(node, name, ev), { capture: true });
+
+    // keyup — added 2026-07-17 after the first real run. NOT decoration.
+    //
+    // U12-b's ordering test needs to know whether a `compositionend` and an `Enter` are THE SAME
+    // PHYSICAL KEY PRESS. Without keyup there is no way to bracket a press, so the first version of
+    // analyse() fell back to "find the nearest Enter" — which is a PROXIMITY search, and proximity
+    // is not causation. See the correction block in analyseU12b().
+    if (name === 'window') {
+      node.addEventListener('keyup', (ev) => {
+        push({ kind: 'keyup', at: name, key: ev.key, isComposing: ev.isComposing, keyCode: ev.keyCode });
+      }, { capture: true });
+    }
     node.addEventListener('click', (ev) => {
       // doc 05 §2.3: "Every send path, and the ones that are not keystrokes." The Send BUTTON is a
       // send path and a gate that only watches Enter fails open on it — silently, which is doc 00
-      // §6's worst case. Recorded, never stopped: a click-stop would need its own protocol run.
+      // §6's worst case.
       const path = (typeof ev.composedPath === 'function') ? ev.composedPath() : [];
       const o = path[0];
       const looksLikeSend = o && o.closest && o.closest(
         'button[data-testid*="send" i], button[aria-label*="send" i], button[type="submit"]'
       );
-      if (looksLikeSend) {
-        push({ kind: 'click-send', at: name, phase: ev.eventPhase, pathOrigin: describe(o) });
+      if (!looksLikeSend) return;
+      const rec = push({ kind: 'click-send', at: name, phase: ev.eventPhase,
+                         pathOrigin: describe(o), armed: STATE.armed, stopped: false });
+
+      // 🔴 ARMING THE CLICK PATH — added 2026-07-17 after the first real run, and it is a REAL GAP
+      // the first version left, not a nicety.
+      //
+      // The first version recorded click-send and never stopped it, so an armed run still submitted
+      // on a mouse click. The founder read that correctly — harness behaviour, not a
+      // stopImmediatePropagation() failure. But the CONSEQUENCE is what matters: U12-a's claim is
+      // that "stopImmediatePropagation() from the isolated world crosses the world boundary", and
+      // the first run proved that for KEYDOWN DISPATCH ONLY. A click on the Send button is a
+      // different dispatch into a different React handler, and nothing had tested it.
+      //
+      // So U12-a was PASS-for-Enter and UNTESTED-for-click, and the harness was the reason. Doc 05
+      // §1.1 insists U12's sub-tests be reported separately because their blast radii differ; the
+      // same discipline applies one level down — "U12-a passes" must not mean "U12-a passes on the
+      // path we happened to arm."
+      if (STATE.armed && name === 'window' && ev.eventPhase === 1) {
+        ev.stopImmediatePropagation();
+        ev.preventDefault();
+        rec.stopped = true;
       }
     }, { capture: true });
   }
@@ -152,6 +184,141 @@
   // Every verdict below is derived from the log and is allowed to say "inconclusive". A harness that
   // cannot return "inconclusive" is a harness that will return a pass.
 
+  // ── U12-b ─────────────────────────────────────────────────────────────────────────────────────
+  //
+  // 🔴 REWRITTEN 2026-07-17, AFTER THE FIRST REAL RUN, BECAUSE THE FIRST VERSION WAS WRONG.
+  //
+  // What it did: for each `compositionend`, find the NEAREST `Enter` keydown anywhere in the log and
+  // call that pair an ordering. That is a PROXIMITY search, and proximity is not causation.
+  //
+  // Why it broke: MOST COMPOSITIONS DO NOT COMMIT WITH ENTER. Microsoft Pinyin commits on space, on
+  // a number key, on punctuation, or on a mouse click on a candidate. So most `compositionend`s have
+  // no commit-Enter at all — and the old code paired them with whatever Enter existed, which in a
+  // real session is a SEND Enter, seconds later. The founder's first run reported
+  // `compositionend_then_keydown` — the 🔴 dangerous verdict, the one that says isComposing is
+  // insufficient and a suppression window is required — with gaps of 3.6s to 40.8s.
+  //
+  // 🔴 AND THE LESSON IS BIGGER THAN THE BUG. It was caught because 40.8s is ABSURD. A version of the
+  // same bug that grabbed an Enter 80ms away — still not the commit — would have produced a
+  // perfectly plausible "dangerous ordering, window ~80ms" AND BEEN BELIEVED, and we would have built
+  // a product parameter out of noise. CLAUDE.md §9: "plausible numbers do not get checked.
+  // Implausible ones do." An analyser whose failure mode is mis-pairing produces its most dangerous
+  // output when it is only slightly wrong.
+  //
+  // 🔴 SO THE OBVIOUS FIX IS A TRAP. Bounding the search to a time window does not fix the
+  // mis-pairing — it converts an absurd number into a plausible one, i.e. it HIDES the bug. The fix
+  // has to be causal.
+  //
+  // The causal rule, which needs no threshold: a compositionend and its committing keydown are THE
+  // SAME PHYSICAL KEY PRESS. So the question is not "is there an Enter nearby?" but
+  //
+  //     "is the NEXT KEY EVENT OF ANY KIND after this compositionend a `keydown: Enter`?"
+  //
+  // That requires keyup, which the first version did not record. It falls out correctly:
+  //
+  //   committed by Enter (DANGEROUS):  compositionend → keydown(Enter) → keyup(Enter)
+  //                                    next key event IS keydown:Enter        → paired ✅
+  //   safe ordering:                   keydown(Enter) → compositionend → keyup(Enter)
+  //                                    next key event is keyUP:Enter          → not paired ✅
+  //                                    (counted directly via isComposing — no pairing needed)
+  //   committed by space:              keydown(Space) → compositionend → keyup(Space) → … Enter
+  //                                    next key event is keyup:Space          → not paired ✅
+  //   committed by mouse click:        compositionend → (no key events) → … keydown(Enter) later
+  //                                    next key event IS keydown:Enter        → paired ❌ WRONG
+  //
+  // That last row is why `focusedCapture` exists and why the verdict refuses to fire without it: a
+  // capture with exactly one composition and one Enter has no attribution ambiguity left to have.
+  // The protocol change (PROTOCOL.md step 6) is the real fix; this is the instrument that makes it
+  // unambiguous.
+  function analyseU12b() {
+    // window only — document sees the same events and would double-count the stream.
+    const stream = LOG.filter((r) =>
+      r.at === 'window' &&
+      ['keydown', 'keyup', 'compositionstart', 'compositionend'].includes(r.kind));
+
+    // The SAFE ordering is directly observable and needs no pairing at all: the committing Enter
+    // arrived while the IME was still composing, so we can read isComposing and pass it through.
+    const safe = stream
+      .filter((r) => r.kind === 'keydown' && r.key === 'Enter'
+                     && (r.isComposing === true || r.keyCode === 229))
+      .map((r) => ({ seq: r.seq, t: r.t, isComposing: r.isComposing, keyCode: r.keyCode }));
+
+    const candidates = [];   // compositionend whose next key event is keydown:Enter
+    const unpaired = [];     // compositionend committed some other way — THE EXPECTED MAJORITY
+    for (let i = 0; i < stream.length; i++) {
+      if (stream[i].kind !== 'compositionend') continue;
+      const next = stream.slice(i + 1).find((r) => r.kind === 'keydown' || r.kind === 'keyup');
+      if (next && next.kind === 'keydown' && next.key === 'Enter') {
+        candidates.push({
+          compositionEndSeq: stream[i].seq,
+          enterSeq: next.seq,
+          gapMs: +(next.t - stream[i].t).toFixed(3),
+          isComposing: next.isComposing,
+          keyCode: next.keyCode,
+        });
+      } else {
+        unpaired.push({
+          compositionEndSeq: stream[i].seq,
+          committedBy: next ? `${next.kind}:${next.key}` : 'no subsequent key event (mouse?)',
+        });
+      }
+    }
+
+    const compositions = stream.filter((r) => r.kind === 'compositionend').length;
+    const enters = stream.filter((r) => r.kind === 'keydown' && r.key === 'Enter').length;
+    // Attribution is only unambiguous when there is nothing to confuse. PROTOCOL.md step 6.
+    const focused = compositions === 1 && enters === 1;
+
+    let verdict;
+    if (compositions === 0) {
+      verdict = 'NOT TESTED — no composition observed. This is the HIGHEST-RISK sub-test and an '
+        + 'untested result is NOT a pass. Needs a real IME: Microsoft Pinyin on Windows (doc 05 §1.3 '
+        + 'ranks it highest — it is the beachhead\'s Chinese user).';
+    } else if (candidates.length === 0 && safe.length > 0) {
+      verdict = 'isComposing SUFFICIENT on this IME/platform — the committing Enter arrived with '
+        + 'isComposing true, so doc 05 §1.3\'s gate rule works AS WRITTEN and NO suppression window '
+        + 'is needed here.';
+    } else if (candidates.length === 0 && safe.length === 0) {
+      verdict = 'COMPOSITIONS OBSERVED BUT NONE COMMITTED WITH ENTER (' + compositions + ' commits, '
+        + 'all via ' + [...new Set(unpaired.map((u) => u.committedBy))].join(' / ') + '). '
+        + '🔴 THE CASE UNDER TEST WAS NOT EXERCISED. This is NOT a pass. Redo as a focused capture: '
+        + 'Reset → type pinyin → press ENTER to commit the candidate → stop. PROTOCOL.md step 6.';
+    } else if (!focused) {
+      verdict = '🔴 AMBIGUOUS CAPTURE — ' + candidates.length + ' candidate pairing(s), but this log '
+        + 'holds ' + compositions + ' compositions and ' + enters + ' Enters, so a compositionend '
+        + 'committed BY MOUSE cannot be distinguished from one committed by the Enter that follows '
+        + 'it. NO VERDICT AND NO WINDOW FROM THIS CAPTURE. Redo focused: Reset → ONE composition → '
+        + 'ONE Enter → stop. PROTOCOL.md step 6.';
+    } else {
+      verdict = '🔴 compositionend PRECEDES the committing keydown, in a FOCUSED capture → the '
+        + 'committing Enter arrives with isComposing=' + candidates[0].isComposing + ' → it is '
+        + 'INDISTINGUISHABLE from a send-intent Enter → doc 05 §1.3\'s post-compositionend '
+        + 'suppression window is REQUIRED, and its value comes from gapMs BELOW. Do not invent one.';
+    }
+
+    return {
+      compositionsObserved: compositions,
+      entersObserved: enters,
+      focusedCapture: focused,
+      // Directly observed, no pairing involved. This is the signal the gate rule actually reads.
+      enterWithIsComposingTrue: safe.length,
+      safeOrderings: safe,
+      // Adjacency-paired, NOT proximity-paired.
+      compositionEndFollowedByEnter: candidates.length,
+      candidates,
+      // 🔴 The number the old analyser silently ate. Most compositions commit via space / number key
+      // / mouse — they SHOULD be here, and their presence is not evidence of anything.
+      compositionEndsCommittedOtherwise: unpaired.length,
+      unpaired,
+      verdict,
+      gapDistributionMs: candidates.map((c) => c.gapMs).sort((a, b) => a - b),
+      note: 'Pairing is by CAUSAL ADJACENCY (next key event), never by proximity. The previous '
+          + 'version searched for the nearest Enter anywhere in the log and reported 3.6s–40.8s '
+          + '"orderings" that were send Enters, not commits. A time-bounded search would not have '
+          + 'fixed that — it would have made the same mis-pairing look plausible.',
+    };
+  }
+
   function analyse() {
     const out = { surface: STATE.surface, ua: navigator.userAgent, recorded: LOG.length };
 
@@ -160,10 +327,26 @@
     const isoWin = LOG.filter((r) => r.kind === 'keydown' && r.at === 'window' && r.phase === 1);
     const isoDoc = LOG.filter((r) => r.kind === 'keydown' && r.at === 'document' && r.phase === 1);
     const stops = LOG.filter((r) => r.stopped);
+    const clickSends = LOG.filter((r) => r.kind === 'click-send');
 
     out.u12a = {
       isolatedWindowCaptureFired: isoWin.length,
       isolatedDocumentCaptureFired: isoDoc.length,
+      // Per-path, because "U12-a passes" must not mean "passes on the path we happened to arm."
+      byPath: {
+        keydownEnter: {
+          observed: isoWin.filter((r) => r.key === 'Enter').length,
+          stoppedWhileArmed: stops.filter((r) => r.kind === 'keydown').length,
+        },
+        clickSendButton: {
+          observed: clickSends.length,
+          stoppedWhileArmed: stops.filter((r) => r.kind === 'click-send').length,
+          note: clickSends.length === 0
+            ? 'Send button never clicked in this capture — UNTESTED, not passed.'
+            : 'The Send button is a DIFFERENT dispatch from keydown. Doc 05 §2.3: an Enter-only gate '
+            + 'fails OPEN on it, silently — doc 00 §6\'s worst case.',
+        },
+      },
       // ADR 0010's premise, measured rather than assumed.
       windowFiresBeforeDocument: (isoWin.length && isoDoc.length)
         ? isoWin[0].seq < isoDoc[0].seq
@@ -184,44 +367,7 @@
           + 'claim while appearing to pass. A human must look at the page.',
     };
 
-    // U12-b — the ordering, which is the entire test.
-    const orderings = [];
-    for (let i = 0; i < LOG.length; i++) {
-      if (LOG[i].kind !== 'compositionend') continue;
-      // the nearest Enter keydown on either side of this commit
-      const before = [...LOG.slice(0, i)].reverse()
-        .find((r) => r.kind === 'keydown' && r.key === 'Enter' && r.at === 'window');
-      const after = LOG.slice(i)
-        .find((r) => r.kind === 'keydown' && r.key === 'Enter' && r.at === 'window');
-      const dBefore = before ? LOG[i].t - before.t : Infinity;
-      const dAfter = after ? after.t - LOG[i].t : Infinity;
-      if (dBefore === Infinity && dAfter === Infinity) continue;
-      orderings.push(dBefore <= dAfter
-        ? { order: 'keydown_then_compositionend', gapMs: +dBefore.toFixed(3), isComposing: before.isComposing, keyCode: before.keyCode }
-        : { order: 'compositionend_then_keydown', gapMs: +dAfter.toFixed(3), isComposing: after.isComposing, keyCode: after.keyCode });
-    }
-    const dangerous = orderings.filter((o) => o.order === 'compositionend_then_keydown');
-    out.u12b = {
-      compositionCommitsObserved: orderings.length,
-      orderings,
-      // The 🔴 case: the committing Enter arrives with isComposing === false, so it is
-      // indistinguishable from a send-intent Enter. This is the one that breaks Chinese input.
-      dangerousOrderings: dangerous.length,
-      anyCommitWithIsComposingFalse: orderings.some((o) => o.isComposing === false),
-      keyCode229SeenAsFallback: orderings.some((o) => o.keyCode === 229),
-      verdict: orderings.length === 0
-        ? 'NOT TESTED — no composition observed. This is the highest-risk sub-test and an untested '
-        + 'result is not a pass. You need a real IME (Microsoft Pinyin on Windows — doc 05 §1.3 '
-        + 'ranks it HIGHEST because it is the beachhead\'s Chinese user).'
-        : (dangerous.length === 0
-            ? 'isComposing SUFFICIENT so far on this IME/platform — the gate rule works as written'
-            : 'compositionend PRECEDES the committing keydown → isComposing is NOT sufficient here → '
-            + 'doc 05 §1.3\'s post-compositionend suppression window is REQUIRED, and its value comes '
-            + 'from THIS log (see gapMs). Do not invent one.'),
-      // Doc 05 §1.3 says the window value is derived from this measurement or does not exist.
-      // We report the distribution and refuse to pick.
-      gapDistributionMs: orderings.map((o) => o.gapMs).sort((a, b) => a - b),
-    };
+    out.u12b = analyseU12b();
 
     // U12-c — the inventory. Doc 05 §1.4 step 1: "This is data, not a pass/fail."
     const inv = LOG.filter((r) => r.kind === 'main:listener-registered');
@@ -236,6 +382,46 @@
         : 'See inventory. ADR 0010 puts us at window at document_start; a page script structurally '
         + 'cannot precede a document_start content script — [unverified] as an absolute, and this '
         + 'inventory is what measures it.',
+    };
+
+    // ── U20 — which transport carried the prompt's bytes? ─────────────────────────────────────
+    //
+    // Added 2026-07-17. The first run produced ChatGPT `websocket-send` records of 62 bytes and no
+    // way to attribute them — the founder correctly declined to close U20 on that. The fix is not a
+    // tighter timing correlation. It is to stop arguing from timing at all:
+    //
+    //   A prompt is hundreds to thousands of bytes. 62 bytes cannot carry one, at any compression.
+    //   So the question is which transport shows a body the size of the prompt you just sent.
+    //
+    // PROTOCOL.md step 7 pastes a LONG, INCOMPRESSIBLE prompt precisely so this is decisive rather
+    // than suggestive.
+    const ws = LOG.filter((r) => r.kind === 'main:websocket-send');
+    const http = LOG.filter((r) => r.kind === 'main:http-send');
+    const maxWs = ws.reduce((m, r) => Math.max(m, r.bytes || 0), 0);
+    const maxHttp = http.reduce((m, r) => Math.max(m, r.bodyBytes || 0), 0);
+    out.u20 = {
+      webSocketFrames: ws.length,
+      maxWebSocketFrameBytes: maxWs,
+      httpBodies: http.length,
+      maxHttpBodyBytes: maxHttp,
+      largestHttpSends: http.slice().sort((a, b) => (b.bodyBytes || 0) - (a.bodyBytes || 0)).slice(0, 5),
+      verdict: (ws.length === 0 && http.length === 0)
+        ? 'NOT TESTED — no outbound traffic recorded. Send a prompt with the harness loaded.'
+        : (maxHttp > maxWs && maxHttp > 200
+            ? 'PROMPT TRANSPORT LOOKS LIKE HTTP → ADR 0012\'s webRequest observer SEES it → U20 '
+            + 'RESOLVED for this surface. Confirm maxHttpBodyBytes is ≈ the length of the long '
+            + 'prompt you pasted (PROTOCOL.md step 7).'
+            : (maxWs > 200
+                ? '🔴 A WebSocket frame is large enough to carry a prompt → U20 MAY BE REAL for this '
+                + 'surface → webRequest sees the handshake, NEVER the frames → the observer would be '
+                + 'STRUCTURALLY BLIND here and would need a MAIN-world WebSocket.send patch IN '
+                + 'ADDITION — the one thing ADR 0012 was avoiding. Confirm against the long prompt.'
+                : 'INCONCLUSIVE — no body large enough to be a prompt was seen on either transport '
+                + '(max WS ' + maxWs + 'B, max HTTP ' + maxHttp + 'B). Small WS frames are almost '
+                + 'certainly telemetry, and "almost certainly" is not this package\'s standard. '
+                + 'Redo with PROTOCOL.md step 7\'s long prompt.')),
+      note: 'Argue from SIZE, not from timing. 62-byte frames cannot carry a prompt at any '
+          + 'compression; a body ≈ the prompt\'s length can only be the prompt.',
     };
 
     out.log = LOG;

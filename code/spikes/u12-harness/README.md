@@ -38,6 +38,7 @@ worth building.
 | `main-probe.js` | **MAIN world** — U12-c's listener inventory + a React stand-in + U20, free. ⚠️ **Read its header before copying anything from it.** |
 | `hud.js` | Shadow-DOM HUD. Live counters, ARM toggle, **Copy JSON**. |
 | `PROTOCOL.md` | 🔴 **The actual protocol. Steps 0–7.** |
+| `analyse.test.mjs` | **Tests for the U12-b analyser** — `node analyse.test.mjs`, no deps. **It exists because the first analyser shipped a false 🔴 verdict** (see below). Case 1 is the founder's actual capture. |
 
 ## MAIN-world code is in here and does not ship
 
@@ -71,3 +72,49 @@ but doc 05 §1.2's pass criterion is **stricter than "the event stopped"**:
 > but leaves a spinner turning has **falsified the actual claim while appearing to pass.**"*
 
 **No log can see a stuck spinner. PROTOCOL.md step 5 is you, looking at the page.**
+
+---
+
+## 🔴 The analyser shipped a false verdict on the first real run. Read this before trusting it.
+
+**2026-07-17.** The first version reported `compositionend_then_keydown` on **both** surfaces — the
+🔴 verdict meaning *"`isComposing` is insufficient; doc 05 §1.3's suppression window is REQUIRED,
+and its value comes from these gaps."*
+
+**It was wrong.** The founder rejected it on the **magnitudes**: gaps of **3.6–40.8 s** (ChatGPT) and
+**0.22–5.44 s** (Claude). **A composition commit and its keydown are one physical key press.** 40
+seconds is a *send* Enter.
+
+**The bug:** the analyser searched for the **nearest `Enter` anywhere in the log** — proximity, not
+causation — on a premise that was simply false: **most compositions never commit with `Enter` at
+all.** Microsoft Pinyin commits on **space**, a **number key**, **punctuation**, or a **mouse click**
+on a candidate. So most `compositionend`s have no commit-Enter, and the analyser paired them with
+whatever it could find.
+
+> 🔴 **The lesson is bigger than the bug, and it is why the obvious fix is a trap.** It was caught
+> **because 40.8 s is absurd.** The same mis-pairing grabbing an Enter **80 ms away** would have
+> produced a **plausible** *"window ≈ 80 ms"* — **and been believed.** We would have built the number
+> that decides whether Chinese input works **out of noise**, in the wedge's own language.
+>
+> **CLAUDE.md §9: plausible numbers do not get checked. Implausible ones do.** So **an instrument's
+> most dangerous output is when it is only slightly wrong** — and **bounding the search by time does
+> not fix a mis-attribution. It converts an absurd number into a plausible one.**
+>
+> **Fix the attribution, or fix the capture. Never the tolerance.**
+
+**Both were fixed:**
+
+- **Attribution** — pair only when the **next key event of any kind** after a `compositionend` is a
+  `keydown: Enter`, because a commit and its keydown are the same press. That needs `keyup`, which
+  the first version never recorded. Space-, number- and mouse-committed candidates now fall out
+  correctly instead of being mis-paired.
+- **Capture** — the protocol was the other half of the bug. It said *"do this ~10 times, **mixed with
+  real sends**"*, which is the instruction that made the log unattributable. **PROTOCOL.md §6a is now
+  a focused capture: one composition, one Enter, stop** — and the analyser **refuses to emit a verdict
+  or a window without one**, because a mouse-committed candidate is otherwise indistinguishable.
+
+**This is CLAUDE.md §2's ledger #10, and it is the first instance that is *code* rather than prose.**
+**An instrument has connectives too:** every `if` that turns data into a verdict is a *therefore*, and
+**nobody audits a function the way they audit a sentence.** The most dangerous lines in this directory
+are the `verdict:` strings — they are the only place a measurement becomes a claim with no human in
+between. **Hence `analyse.test.mjs`.**

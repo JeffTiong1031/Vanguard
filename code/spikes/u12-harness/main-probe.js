@@ -126,7 +126,82 @@
     });
   }, 100);
 
-  // ── U20, free ─────────────────────────────────────────────────────────────────────────────────
+  // ── U20, the decisive half — fetch / XHR ──────────────────────────────────────────────────────
+  //
+  // Added 2026-07-17 after the first real run. The first version recorded WebSocket frames only, and
+  // that CANNOT close U20: ChatGPT emitted 62-byte frames, which are almost certainly telemetry —
+  // but "almost certainly" is not the standard here, and arguing from frame size alone is a
+  // correlation argument dressed as evidence.
+  //
+  // 🔴 The decisive test is not "did a socket carry bytes near a send." It is:
+  //
+  //       WHICH TRANSPORT CARRIED THE PROMPT'S BYTES?
+  //
+  // A prompt is hundreds to thousands of bytes. If a POST goes out carrying ~the prompt's length at
+  // the moment of send, the prompt is on HTTP, `webRequest` sees it, and ADR 0012's observer works
+  // for that surface. That is a SIZE argument, and it beats a timing argument because it does not
+  // depend on how tightly two clocks line up.
+  //
+  // ⚠️ THE IRONY, STATED RATHER THAN HIDDEN: to resolve U20 — which exists because `webRequest`
+  // cannot see WebSocket frames — this patches `fetch` in the MAIN world, which is exactly what
+  // ADR 0012 REJECTED for the product. That is fine and it is not a contradiction: ADR 0012's two
+  // reasons are (a) enumeration blind spots and (b) it can break the provider's app across a
+  // force-installed estate. Neither applies to an instrument on two machines for a week. But it is
+  // precisely the kind of thing that gets copy-pasted into a component later, so: NOTHING HERE
+  // SHIPS. See this file's header.
+  //
+  // Lengths, methods and URL paths ONLY. Never bodies. I1/I3 apply to a spike too.
+  const bodyLen = (b) => {
+    try {
+      if (b == null) return 0;
+      if (typeof b === 'string') return b.length;
+      if (b.byteLength != null) return b.byteLength;
+      if (b.size != null) return b.size;                 // Blob
+      if (typeof b.get === 'function') return -1;         // FormData — opaque, don't enumerate
+      return -1;
+    } catch (_) { return -1; }
+  };
+
+  const realFetch = window.fetch;
+  if (realFetch) {
+    window.fetch = function (input, init) {
+      try {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        const method = (init && init.method) || (input && input.method) || 'GET';
+        const n = bodyLen(init && init.body);
+        if (method !== 'GET' && n !== 0) {
+          send('http-send', {
+            transport: 'fetch', method, t: now(),
+            path: String(url).split('?')[0].replace(/^https?:\/\/[^/]+/, ''),
+            bodyBytes: n,
+          });
+        }
+      } catch (_) { /* never throw into the page */ }
+      return realFetch.apply(this, arguments);
+    };
+  }
+
+  const realOpen = XMLHttpRequest.prototype.open;
+  const realSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function (method, url) {
+    try { this.__vg = { method, url: String(url) }; } catch (_) { /* ignore */ }
+    return realOpen.apply(this, arguments);
+  };
+  XMLHttpRequest.prototype.send = function (body) {
+    try {
+      const n = bodyLen(body);
+      if (this.__vg && this.__vg.method !== 'GET' && n !== 0) {
+        send('http-send', {
+          transport: 'xhr', method: this.__vg.method, t: now(),
+          path: this.__vg.url.split('?')[0].replace(/^https?:\/\/[^/]+/, ''),
+          bodyBytes: n,
+        });
+      }
+    } catch (_) { /* never throw into the page */ }
+    return realSend.apply(this, arguments);
+  };
+
+  // ── U20, the WebSocket half ───────────────────────────────────────────────────────────────────
   // ASSUMPTIONS U20 / ADR 0012: `webRequest` sees the WebSocket HANDSHAKE, never the FRAMES — so a
   // surface that moved prompt submission onto an open socket is INVISIBLE to the observer. Doc 05
   // §10 says this is "observable during the U12 spike at zero marginal cost". Collecting it here is

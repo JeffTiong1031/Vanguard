@@ -46,8 +46,9 @@
       <div class="r"><span class="k">events</span><span class="v" id="n">0</span></div>
       <div class="r"><span class="k">iso@window cap</span><span class="v" id="a">0</span></div>
       <div class="r"><span class="k">react stand-in</span><span class="v" id="b">–</span></div>
-      <div class="r"><span class="k">compositions</span><span class="v" id="c">0</span></div>
+      <div class="r"><span class="k">U12-b c·✓·?</span><span class="v" id="c">0</span></div>
       <div class="r"><span class="k">page win-cap</span><span class="v" id="d">0</span></div>
+      <div class="r"><span class="k">U20 max WS/HTTP</span><span class="v" id="e">–</span></div>
       <div class="row">
         <button class="arm" id="arm" data-on="false">ARM</button>
         <button id="copy">Copy JSON</button>
@@ -69,13 +70,26 @@
                     : (beats === null ? '?' : (beats ? 'we fire first' : 'THEY FIRE FIRST'));
     bEl.className = 'v ' + (a.u12a.reactStandinObserved === 0 ? 'warn'
                           : (beats === true ? 'ok' : beats === false ? 'bad' : ''));
+    // U12-b: show the three counts that matter, never a single number. The middle one is the
+    // candidates; the last is the EXPECTED majority (commits via space / number key / mouse) that
+    // the first analyser silently ate and turned into a false 🔴 verdict.
+    const b = a.u12b;
     const cEl = $('c');
-    cEl.textContent = a.u12b.compositionCommitsObserved
-      + (a.u12b.dangerousOrderings ? ` (${a.u12b.dangerousOrderings} 🔴)` : '');
-    cEl.className = 'v ' + (a.u12b.dangerousOrderings ? 'bad'
-                           : a.u12b.compositionCommitsObserved ? 'ok' : '');
+    cEl.textContent = b.compositionsObserved === 0 ? '0 — NOT TESTED'
+      : `${b.compositionsObserved}c · ${b.enterWithIsComposingTrue}✓ · ${b.compositionEndFollowedByEnter}?`
+        + (b.focusedCapture ? ' [focused]' : '');
+    cEl.className = 'v ' + (b.compositionsObserved === 0 ? 'warn'
+      : (b.compositionEndFollowedByEnter && b.focusedCapture) ? 'bad'
+      : b.compositionEndFollowedByEnter ? 'warn'
+      : b.enterWithIsComposingTrue ? 'ok' : 'warn');
     $('d').textContent = a.u12c.pageListenersAtWindowCapture;
     $('d').className = 'v ' + (a.u12c.pageListenersAtWindowCapture ? 'warn' : '');
+
+    // U20 by SIZE, not timing: a prompt is hundreds of bytes; 62-byte frames are telemetry.
+    const eEl = $('e');
+    eEl.textContent = `${a.u20.maxWebSocketFrameBytes}B / ${a.u20.maxHttpBodyBytes}B`;
+    eEl.className = 'v ' + (a.u20.maxWebSocketFrameBytes > 200 ? 'bad'
+                          : a.u20.maxHttpBodyBytes > 200 ? 'ok' : 'warn');
   };
 
   $('arm').addEventListener('click', () => {
