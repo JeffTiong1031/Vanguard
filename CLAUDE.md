@@ -1,7 +1,7 @@
 # CLAUDE.md — Session Briefing
 
 > **Read this first, before touching any deliverable.** This is a briefing for a future session, not
-> prose for the founder. Last updated: 2026-07-17, after doc 05 committed (`c084f0d`).
+> prose for the founder. Last updated: 2026-07-17, after doc 06 committed (`50037b8`).
 
 ---
 
@@ -60,9 +60,32 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 > **So the failure mode has a second form: not a stale pointer, but sound reasoning wrapped around a
 > true fact, never re-examined because the fact checked out.** Look for **"therefore," "dispositive,"
 > "must," and "so"** in our own prior text. **The nouns are usually right. The connectives are where
-> the errors live.** *(It held twice more after being written: the founder broke **ADR 0012's** argument
-> while its decision survived, and **doc 03 §6's** trimming prediction turned out true-per-token and
-> silent-on-token-count. **Three for three: conclusion right, connective wrong.**)*
+> the errors live.**
+>
+> **The ledger, because a count is a number and numbers get checked here.** *(Rewritten 2026-07-17.
+> This read **"Three for three: conclusion right, connective wrong"** — a slogan whose arithmetic does
+> not resolve: it named **two** instances after the words *"twice more,"* and the ledger it was
+> summarizing has **five**, one of which contradicts it. **A tidy phrase about unaudited reasoning,
+> with an unaudited number in it.** The founder asked for it to be recorded; recording it required
+> checking it, and it did not survive the check. **It is a better entry as a list than as a slogan** —
+> a list gets appended to, a slogan gets repeated.)*
+>
+> | # | Where | The fact | The connective bolted to it | Did the conclusion survive? |
+> |---|---|---|---|---|
+> | 1 | **U11** | ✅ TRUE — `declarativeNetRequest` cannot inspect bodies | *"**Dispositive**: therefore the observer **must** be a MAIN-world patch"* — **non-sequitur; it had driven the design for three docs** | ❌ **No.** Inference struck **and** the mechanism reversed (ADR 0012) |
+> | 2 | **doc 01 §6** | ✅ The storage split is right | A reason that **could not have distinguished the options** | ✅ Yes — re-justified |
+> | 3 | **doc 04 §8** | ✅ The token must bind to the rewrite | Asked for **determinism** when the property it needed was **idempotency** | ✅ Yes — property renamed (doc 05 §6.2) |
+> | 4 | **ADR 0012** | ✅ `webRequest` is the right mechanism | *"A second opinion from the same doctor"* — **the founder broke it** | ✅ Yes — re-argued on **enumeration** + **provider-app integrity** |
+> | 5 | **doc 03 §6** | ✅ Trimming cuts memory ~50%, latency flat | **True *per token*, silent on *token count*** — trimming moves fertility, and fertility adds chunks (doc 06 §4.4) | ✅ Yes — **scope narrowed**, not reversed |
+>
+> > **What the ledger actually says — and it is more useful than the slogan was.** **Five instances.
+> > In four, the conclusion survived and the reasoning did not.** **In one — U11, the earliest and the
+> > most expensive — the conclusion fell with it.** So the honest rule is **not** *"the conclusion is
+> > always right"*: that is the comfortable read, it is 4-for-5, and **the exception is the instance
+> > that cost the most.** The rule is: **a true fact confers nothing on the sentence attached to it.
+> > Audit the therefore on its own evidence** — sometimes the decision survives, sometimes it is
+> > U11 and three docs were built on a non-sequitur. **You cannot tell which until you check, and the
+> > ✅ on the fact is precisely what stops people checking.**
 >
 > 🔴 **And then a third form, which is the worst one, because it is the thing the package promised
 > never to do.** **Doc 03 §4.1 published `Total | 280M | Model card`.** **86 + 190 = 276** — and **the
@@ -91,7 +114,7 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 | 5 | `docs/03-ai-ml-architecture.md` | ✅ **done, committed** (`d740a68`) |
 | 6 | `docs/04-redaction-and-context-preservation.md` | ✅ **done, committed** (`4026bff`) |
 | 7 | `docs/05-lld.md` | ✅ **done, committed** (`c084f0d`) |
-| 8 | `docs/06-performance-and-scale.md` | ✅ **done, committed** |
+| 8 | `docs/06-performance-and-scale.md` | ✅ **done, committed** (`50037b8`) |
 | 9 | `docs/07-ml-training-and-data-strategy.md` | ⬜ **not started ← NEXT** |
 | 10 | `code/` scaffold | ⬜ not started |
 | 11 | `docs/08-roadmap-and-risks.md` | ⬜ not started — **written LAST** so it inherits real risks |
@@ -236,7 +259,12 @@ to his GitHub account. `git config user.name/user.email` is already `JeffTiong10
 later in history than doc 01 and also carries it. The trailer stopped at `ae7d831`, not at `c7de4e8`.
 Caught while verifying the push. A claim about our own git history is still a claim.)*
 
-### 6.2 Doc 06 — the L2 backbone is a cost shift, not an architecture swap
+### 6.2 The model numbers — canonical, and the fertility finding doc 07 inherits
+> **Retitled 2026-07-17.** This was *"Doc 06 — the L2 backbone is a cost shift, not an architecture
+> swap"*, a founder flag aimed at a doc that had not been written. **Doc 06 is written (`50037b8`) and
+> consumed it.** The section stays because it is **the canonical parameter block for the whole
+> package** — and because doc 06 handed it back a finding that now binds **doc 07**.
+
 Founder flag, accepted. **✅ Doc 03 did the real math (`d740a68`); U4 and U5 are RESOLVED** — **and its
 headline total was wrong until 2026-07-17. Read the correction before quoting any number here.**
 - **Cited (model card), and this is ALL the card says:** **86M backbone** · **190M embedding** ·
@@ -265,12 +293,35 @@ headline total was wrong until 2026-07-17. Read the correction before quoting an
   weights, distillation moves from a risk to a Phase 0 requirement** — and its fallback depends on
   **C3**, the least-confident assumption in the package.
 - **Consequence surfaced, not absorbed:** → **doc 08 ranked risk**, not a silent doc 06 line item.
-- **Still open for doc 06:** the runtime multiple (§4.4 — weights ≠ RAM; ~1.5–2× is a rule of thumb
-  doc 03 refuses to assert), the int8 path (**it degrades BM/ZH accuracy first — the wedge is what
-  quantization eats**), and **U15**.
-- **No tokens/sec figures until measured or cited.** Doc 03 held this line and produced **none**;
-  doc 06 must not break it. Doc 03 §6 does leave a **falsifiable prediction**: trimming should cut
-  **memory ~50%, latency barely at all** (embedding is lookup, backbone is compute).
+  **✅ Doc 06 §6.2 did that, and found the risk has a *second entrance* — see §7.3.**
+- ~~**Still open for doc 06:**~~ **✅ CLOSED by doc 06** — the runtime multiple (§6.1: **measure it, do
+  not inherit it**; doc 03's refusal to assert ~1.5–2× stands), the int8 path (§6.3), and **U15**
+  (§6.4, still open as a *claim* but no longer blocking a doc). **Do not re-derive; read doc 06.**
+- **No tokens/sec figures until measured or cited.** Doc 03 held this line and produced **none**, and
+  **doc 06 held it too** — the doc whose whole subject is numbers produced no tokens/sec. **Doc 07
+  inherits the same line.**
+
+> 🔴 **Doc 03 §6's falsifiable prediction — falsified in scope, not in fact, and this is the entry to
+> read before doc 07 touches the tokenizer.** The prediction: trimming cuts **memory ~50%, latency
+> barely at all** (embedding is lookup, backbone is compute).
+>
+> **Doc 06 §4.4's verdict: it is true *per token* and silent on *token count*.** Trimming changes the
+> tokenizer. Drop vocabulary rows that BM/ZH text was using and those words fall back to shorter
+> sub-word pieces or bytes — **fertility rises, the sequence lengthens, and the backbone runs on more
+> tokens.** Per-token latency is flat; **per-*scan* latency is not.** And per doc 06 §4.2, longer
+> sequences cross the **512** boundary sooner — **so fertility does not merely lengthen the sequence,
+> it adds whole forward passes.**
+>
+> **The consequence that binds doc 07: fertility is simultaneously the accuracy metric, the latency
+> metric, and the chunk-count metric.** Doc 03 §4.2 already named the mechanism *as an accuracy risk*
+> and called size *"the easy metric and the wrong one to optimize alone"* — **it was more right than it
+> knew.** **One measurement settles three budgets** (§8 scope item 3; **U21** is the same
+> measurement), **and it is blocked on the corpus (U14/C2 → C3).** **C3 now blocks the latency budget,
+> not just accuracy — that raises its blast radius rather than changing it.**
+>
+> ⚠️ **The trap for doc 07: the memory win and the latency cost are the same lever.** A trim that looks
+> free on the memory budget is not free on the paste path, **in the wedge's languages, on the dominant
+> threat.** Do not quote the ~50% memory saving without the fertility caveat attached.
 
 ### 6.3 WebGPU — the offscreen-document choice does NOT block it
 **Correction recorded 2026-07-16.** An **offscreen document is a Window context, so WebGPU is
@@ -409,7 +460,7 @@ and fails a first-year crypto exercise.*
 
 ## 7. Open items carried forward
 
-### The three week-1 validation spikes
+### 7.1 The three week-1 validation spikes
 Between them, these decide whether the design survives contact. All three are cheap.
 
 > ⚠️ **Updated 2026-07-17: it is `U6-b`, not `U6`, and the table below is unchanged only because the
@@ -451,8 +502,8 @@ buyer (doc 00 §6). Test:
   node and phase, **first-registered wins**, so `document_start` timing is the lever.
 - This is precisely the class of silent miss the **log-only fetch observer** exists to detect (§6.4).
 
-### Other unverified claims blocking downstream docs
-Full register is `ASSUMPTIONS.md` §3 (**U1–U20**). Blocking ones by doc:
+### 7.2 Other unverified claims blocking downstream docs
+Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 
 - **doc 06:** ~~U4/U5~~ ✅ (doc 03, §6.2) · ~~U6~~ **re-specified → U6-a / U6-b** (doc 06 §3) ·
   **`max_position_embeddings` = 512** ✅ cited. **U15 remains** (WebGPU under enterprise Chrome policy —
@@ -529,12 +580,84 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U20**). Blocking ones by doc:
 
 ---
 
+### 7.3 The doc 08 queue — what committed docs have already handed it
+
+> **Added 2026-07-17.** Doc 08 is **written LAST so it inherits real risks** (§2), which means its
+> input accumulates for six documents and **lives nowhere until it is needed.** That is exactly the
+> condition under which things get lost. **This is the index, not the content.**
+>
+> 🔴 **Every row below is a cross-reference, so §5's rule applies to this table itself: re-read the
+> source section before ranking from it.** The **Source** column exists so a fresh session can audit
+> each line against its origin rather than trusting this transcription.
+>
+> ⚠️ **And the rule bit this table on its first pass, which is the argument for the column.** Six of
+> the Source cells were **wrong when written** — doc 05's handoff block cited as **§9** when §9 is
+> *Invariant conformance* and the block is **§10** (×3) · doc 04's cited as **§9** when it is **§8** ·
+> B3's argument cited to **doc 00 §1.4**, which is *the desktop-app hole* — a real section, load-
+> bearing for **ADR 0014**, and **nothing to do with B3**; the argument is **doc 00 §3**. **Every one
+> was off by a plausible amount, in the right document, in a direction nobody would question.** Caught
+> by listing the target docs' headings — **two commands.** *(Fixed 2026-07-17, before commit.)* **Six docs carry explicit
+> `To doc 08` blocks** — `docs/02` §8 · `docs/03` §7 · `docs/04` §8 · `docs/05` §10 · `docs/06` §9 ·
+> plus `docs/00` §3 and ADRs 0001/0012/0014. **Those blocks are canonical. This is a pointer to
+> them.**
+
+**Ranked items** (the ranking is doc 08's to make; this is the ordering the source docs argued for):
+
+| Rank | Item | Source |
+|---|---|---|
+| 🔴 **1** | **B3 primary research** — 5–10 IT-lead interviews. Above both engineering spikes: they ask *"can we build it?"*, B3 asks *"will anyone deploy it?"* — **cheaper to answer and likelier to be fatal.** **Now first for two independent reasons** (below). | doc 00 §3 · ADR 0001 · §6.4 |
+| 🔴 **2** | **U12-a is the package's single rework trigger, and the cheapest test in it. Rank by blast radius, not cost.** | doc 05 §10 |
+| 🔴 **3** | **U6-b's pass criterion is B3-blocked** — the deadline is the measured `Ctrl+V`→`Enter` interval, which needs a design partner on real work. **This couples the #1 engineering number to the #1 validation item.** | doc 06 §3.3, §9 |
+| 🔴 **4** | **The distillation risk has TWO entrances, not one** — the memory budget landing under ~140 MB **or** fertility forcing a larger vocabulary. **Same risk; the second entrance never involves a memory decision.** Depends on **C3**. | doc 06 §6.2 · doc 03 §4.3 |
+| 🟠 **5** | **PDPA DPO + breach-notification readiness — in-force dates already past** (2025-06-01). **First invoice against A3.** We may already be non-compliant. | doc 02 §6.1 · **U18** |
+| 🟠 **6** | **U12-b breaks the wedge's language** if the naive gate ships. **Windows + Microsoft Pinyin is the test that matters.** | doc 05 §1.3, §10 |
+| 🟠 **7** | **The beachhead's language is the slowest on the critical path** (~3× chunks, **estimate**, U21). **Second instance of the pattern** after U12-b. **Rank it as the wedge's engineering cost, honestly, rather than discover it.** | doc 06 §4.3 |
+| 🟠 **8** | **§2.3's NRIC/SSM collision** — systematic FP source on **~86%** of 2001–2012 incorporations, in the layer whose precision is **quasi-contractual**. **Structure cannot fix it.** | doc 03 §2.3 |
+| 🟠 **9** | **I4's Phase 0 gap** — **the weakest privacy claim in the package, in the most valuable feature.** Contractual now; mathematical at Phase 1. | doc 02 §5.4, §7 · ADR 0009 |
+| 🟠 **10** | **Two adapters, not one** — the DOM adapter and the request-schema adapter break **independently** on the same D4 clock, **and the self-test covers only the first.** | doc 05 §4.4 · ADR 0012 |
+| 🟠 **11** | **U15** (WebGPU under enterprise policy) — **the pessimistic case is the likely one**, on the same machine-policy channel as B3. | doc 06 §6.4 |
+| 🟠 **12** | **U17** — `ap-southeast-5` per-service availability. **Verify BEFORE sizing Phase 1**; the residency decision assumes the stack runs there. | doc 02 §6.2 |
+| 🟠 **13** | **SOC 2 has a lead time nobody has started.** It gates deals we cannot yet see. | doc 02 §6.4 |
+| 🟠 **14** | **Old-format IC is unverified and not shipping.** **A coverage gap to state, not hide.** | doc 03 §2.4 |
+| 🟠 **15** | **§4.3's honorific/register loss** — accepted with a decision rule, **in the beachhead's primary language.** Cheap to carry; **expensive to discover in a pilot.** | doc 04 §4.3, §8 |
+| 🟡 **16** | **Engine-liveness rate — a metric we will be asked for and do not have.** A device with a dead engine is a **compliance event**. | ADR 0014 |
+| 🟡 **17** | **Multi-region ops at A1** — bounded, but real. | doc 02 §6.2 |
+| 🟡 **18** | **The adapter self-test measures D4 for free.** After one quarter of Phase 0 an assumption becomes a number — **the cheapest open item in the package to close, and doc 08 should say so.** | doc 05 §3.4, §10 |
+| 🟡 **19** | **U16 is scoped to macOS** and resolves when a design partner has Macs. **Windows HKLM is unaffected** and B2 puts the beachhead there. | doc 05 §8.1 |
+
+**Binding constraints on doc 08 itself** (agreed, do **not** re-derive from a different number):
+- **Scope phases to A1/A2 — 2–3 engineers, 18 months.** Founder-confirmed as a **deliberate
+  constraint, not a compromise**: solo collapses the multilingual ML edge into regex-chasing; more
+  headcount lets the performance budget go soft. *(§6.4)*
+- **B3 ranks above the engineering spikes.** *(§6.4, and now doubly — see rank 3.)*
+
+> 🔴 **The through-line doc 08 should name rather than bury: three of the top eight are the wedge's own
+> cost.** U12-b (the naive gate breaks Chinese input), §4.3 (the wedge's language is the slowest on the
+> critical path), and §6.3's three taxes (**trimming, quantization and distillation all degrade BM/ZH
+> first — three taxes on one asset**). **Decision #4 chose EN/BM/ZH as the beachhead, and the wedge
+> keeps turning out to be where the engineering is hardest.** **That is coherent for a moat** — the
+> hard thing is the defensible thing, and per ADR 0003 the wedge was never claimed as one anyway —
+> **but it must be ranked, not discovered.** An investor who spots the pattern before we state it will
+> conclude we did not.
+
+---
+
 ## 8. Immediate next action
 
 **Write `docs/07-ml-training-and-data-strategy.md`.**
 
 > **Docs 05 and 06 are committed. Read both — doc 06 hands doc 07 the thing that makes it harder than
-> it looks.** §8.0 is doc 07's scope. §8.1/§8.2 record what docs 05–06 settled, so it is not re-derived.
+> it looks.** **Doc 07's scope is the numbered list immediately below.** **§8.1/§8.2 record what docs
+> 05–06 settled**, so it is not re-derived; **§8.3/§8.4 are superseded briefs, kept for reasoning only
+> — do not write doc 07 against either.**
+>
+> *(Corrected 2026-07-17: this line read **"§8.0 is doc 07's scope"**. It was not — §8.0 was doc 06's
+> **superseded** brief, and a fresh session following the pointer would have written doc 07 against the
+> scope of a doc already committed. **The pointer in the line that tells you where the scope lives was
+> itself the stale reference.** §8's subsections were also numbered `8.0, 8.2, 8.1, 8.2` — **two
+> different sections both called §8.2** — so the pointer had no unambiguous target even had it aimed
+> at the right one. Renumbered `8.1 → 8.4` in reading order. **Found by listing the file's own
+> headings, which took one command and should be routine.*)
 
 **Scope:**
 1. 🔴 **Precision over recall — explicitly targeted and justified. Per ADR 0001 this is a
@@ -576,7 +699,50 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U20**). Blocking ones by doc:
     budget that spends all three lands a model that is small, fast, and **bad at the languages the
     company exists to be good at.**
 
-### 8.0 Superseded scope — doc 06 (kept for the reasoning, not the task)
+### 8.1 What doc 05 settled — do NOT re-derive
+
+- **U10 ✅ 30 s**, cited. **Offscreen→SW messages reset the timer**, so the engine keeps the SW alive
+  when there is work.
+- **U11 ✅ TRUE, inference struck.** **U19 ✅.** **U20 raised** (prompt submission is HTTP, not a WS
+  frame — observable during the U12 spike at zero marginal cost).
+- **The observer is `webRequest` in the SW (B3), not a MAIN-world patch** (ADR 0012). **Doc 01 §2/§5
+  corrected.** **Phase 0 injects nothing into the MAIN world.**
+- **The gate registers at `window`** (ADR 0010), not `document`.
+- **Token needs idempotency, not determinism** (doc 05 §6.2) — and the L1 placeholder-grammar mask that
+  delivers it is **doc 07's**, as a detection requirement.
+
+### 8.2 What doc 06 settled — do NOT re-derive
+
+- 🔴 **The budget is TWO deadlines, not one number.** **Hard** = dirty/clean at Send (cannot slip).
+  **Soft** = full findings while the user reads the modal (hundreds of ms, free). **Gating is the
+  deadline. Completing is not.**
+- 🔴 **U6 was specified against the workload with slack** and is **split**: **U6-a** (typing ·
+  CPU/battery · deprioritized — the user's own keystroke gaps hide the scan) · **U6-b** (paste · the
+  number the gate lives on). **U6-b's curve is ours; its threshold is B3-blocked.**
+- **ADR 0013 — L1 may decide DIRTY alone.** The dangerous paste is gated **sub-ms**; **the full L2 wait
+  is only ever paid to say *"clean."*** 🔴 **The rule that keeps it honest: the verdict cache is
+  monotonic toward dirty — L1 may write DIRTY, only a completed L1+L2 scan may write CLEAN.**
+- **ADR 0014 — degrade to advisory, never fail-closed.** **A dead engine that blocks ChatGPT sends the
+  user to the ChatGPT desktop app** (doc 00 §1.4). **Fail-closed relocates the leak to the channel we
+  cannot audit, at the moment our telemetry is already broken.**
+- **`max_position_embeddings` = 512** (cited). **Paste latency = `ceil(tokens/512) × per-chunk`.**
+- **Paste bypasses the debounce and preempts the queue.** Typing scans are droppable; paste scans never.
+- **The timeout cannot be a constant** — latency is a function of chunk count, so a fixed timeout
+  declares the engine dead on a long Chinese paste.
+- 🔴 **The memory fix taxes the latency budget, and the two budgets are ONE lever** (§4.4). **Doc 03
+  §6's prediction — *"trimming cuts memory ~50%, latency barely at all"* — is true *per token* and
+  silent on *token count*.** Trimming changes the tokenizer → **BM/ZH fertility rises → the sequence
+  lengthens → it crosses 512 sooner → whole extra forward passes.** **Per-token latency is flat.
+  Per-*scan* latency is not.** **Full reasoning and the trap it sets for doc 07: §6.2.**
+- 🔴 **So fertility is the accuracy metric, the latency metric AND the chunk-count metric — one
+  measurement, three budgets** (§4.4; **U21** is the same measurement). **It is blocked on the corpus
+  (U14/C2 → C3)**, which means **C3 now blocks the latency budget too, not just accuracy.**
+- 🟠 **The wedge's languages are the slowest on the critical path** (§4.3) — chunk count is set by
+  *tokens*, users paste *characters*, and CJK yields far more tokens per character (**~3×, estimate,
+  U21**). **Second instance of the beachhead being the hard case**, after doc 05 §1.3's IME finding.
+  **→ §7.3 rank 7.**
+
+### 8.3 Superseded — the doc 06 brief (kept for the reasoning, not the task)
 
 **Doc 06 is done.** Retained because its framing binds doc 07 and doc 08:
 1. 🔴 **Size the latency budget against the PASTE case, not the typing case** (doc 05 §6.3). Doc 01 §4
@@ -604,46 +770,15 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U20**). Blocking ones by doc:
 6. **U6 must include the content-script → offscreen hop** (ADR 0006 — *inside* the budget, not beside
    it). Worst case: **a cold offscreen document during a send-gate cache miss** (doc 05 §5.2).
 7. **Doc 03 §6's falsifiable prediction:** trimming should cut **memory ~50%, latency barely at all**
-   (embedding is lookup, backbone is compute). **Doc 06 is where it gets falsified.**
+   (embedding is lookup, backbone is compute). ~~**Doc 06 is where it gets falsified.**~~
+   ✅ **ANSWERED — doc 06 §4.4: true *per token*, silent on *token count*. Falsified in scope, not in
+   fact.** **Do not read this line as still open. → §6.2 and §8.2.**
 8. **No tokens/sec until measured or cited.** Docs 03 and 05 both held this line and produced none.
-   **Doc 06 is where the pressure to break it is highest, because it is the doc whose whole subject is
-   numbers.**
+   ~~**Doc 06 is where the pressure to break it is highest**~~ — ✅ **and it held.** **Doc 07 inherits
+   the line.**
 9. **Vault TTL × token TTL interact** (doc 05 §5.3, §6.4) and neither has a value.
 
-### 8.2 What doc 06 settled — do NOT re-derive
-
-- 🔴 **The budget is TWO deadlines, not one number.** **Hard** = dirty/clean at Send (cannot slip).
-  **Soft** = full findings while the user reads the modal (hundreds of ms, free). **Gating is the
-  deadline. Completing is not.**
-- 🔴 **U6 was specified against the workload with slack** and is **split**: **U6-a** (typing ·
-  CPU/battery · deprioritized — the user's own keystroke gaps hide the scan) · **U6-b** (paste · the
-  number the gate lives on). **U6-b's curve is ours; its threshold is B3-blocked.**
-- **ADR 0013 — L1 may decide DIRTY alone.** The dangerous paste is gated **sub-ms**; **the full L2 wait
-  is only ever paid to say *"clean."*** 🔴 **The rule that keeps it honest: the verdict cache is
-  monotonic toward dirty — L1 may write DIRTY, only a completed L1+L2 scan may write CLEAN.**
-- **ADR 0014 — degrade to advisory, never fail-closed.** **A dead engine that blocks ChatGPT sends the
-  user to the ChatGPT desktop app** (doc 00 §1.4). **Fail-closed relocates the leak to the channel we
-  cannot audit, at the moment our telemetry is already broken.**
-- **`max_position_embeddings` = 512** (cited). **Paste latency = `ceil(tokens/512) × per-chunk`.**
-- **Paste bypasses the debounce and preempts the queue.** Typing scans are droppable; paste scans never.
-- **The timeout cannot be a constant** — latency is a function of chunk count, so a fixed timeout
-  declares the engine dead on a long Chinese paste.
-
-### 8.1 What doc 05 settled — do NOT re-derive
-
-- **U10 ✅ 30 s**, cited. **Offscreen→SW messages reset the timer**, so the engine keeps the SW alive
-  when there is work.
-- **U11 ✅ TRUE, inference struck.** **U19 ✅.** **U20 raised** (prompt submission is HTTP, not a WS
-  frame — observable during the U12 spike at zero marginal cost).
-- **The observer is `webRequest` in the SW (B3), not a MAIN-world patch** (ADR 0012). **Doc 01 §2/§5
-  corrected.** **Phase 0 injects nothing into the MAIN world.**
-- **The gate registers at `window`** (ADR 0010), not `document`.
-- **Token needs idempotency, not determinism** (doc 05 §6.2) — and the L1 placeholder-grammar mask that
-  delivers it is **doc 07's**, as a detection requirement.
-
----
-
-## 8.2 Superseded — the doc 05 brief (kept for the reasoning, not the task)
+### 8.4 Superseded — the doc 05 brief (kept for the reasoning, not the task)
 
 **Doc 05 is done. This section is retained only because its framing of U12 survived and is binding on
 the spike.**
@@ -681,6 +816,8 @@ only a browser can reveal.** Docs 00–04 can be argued. **This one gets falsifi
    because shadow DOM retargets) · decision #8 · I2/I5.
 
 **Then:** 3-line summary in chat → wait for go-ahead → commit (no `Co-Authored-By`).
+
+---
 
 ## 9. Verification tooling (works, use it)
 
