@@ -1,9 +1,4 @@
 {
   "extends": "./.wxt/tsconfig.json",
-  "compilerOptions": {
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "preact"
-  }
+  "compilerOptions": { "strict": true, "noUncheckedIndexedAccess": true }
 }
