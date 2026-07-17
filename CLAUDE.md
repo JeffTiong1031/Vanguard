@@ -379,7 +379,7 @@ buyer (doc 00 §6). Test:
 - This is precisely the class of silent miss the **log-only fetch observer** exists to detect (§6.4).
 
 ### Other unverified claims blocking downstream docs
-Full register is `ASSUMPTIONS.md` §3 (U1–U16). Blocking ones by doc:
+Full register is `ASSUMPTIONS.md` §3 (**U1–U19**). Blocking ones by doc:
 
 - **doc 06:** ~~U4/U5~~ ✅ resolved by doc 03 — see §6.2. **U15** remains.
 - **doc 06:** U15 (WebGPU availability under enterprise Chrome policy) — materially affects the budget.

@@ -315,7 +315,10 @@ already shipping GenAI controls `[verify]`.
 
 **Why they don't kill you:** a proxy sees the request **after** the user committed to sending it. It
 can block, or it can mangle. It cannot have a conversation with the user in the composer, it cannot
-pseudonymize-and-rehydrate, and it cannot do typing-time anything. Its UX ceiling is a 403 page.
+pseudonymize **before the request exists**, and it cannot do typing-time anything. Its UX ceiling is a
+403 page. *(Corrected 2026-07-17 with §3 — this read "it cannot pseudonymize-and-rehydrate," arguing
+against Layer 2 on a capability doc 01 §5 killed. The distinction that actually separates us from a
+proxy is **when** we act, not what we do on the return path.)*
 **Why they might:** they don't need to be good. They need to be *already bought*. "Good enough and
 free with your existing Netskope licence" beats "excellent and a new procurement" more often than
 founders like to admit.
@@ -344,9 +347,9 @@ desk. Different deal size, different sales cycle, different buyer seniority. Not
 
 ## 3. Is "extension" even the right form factor?
 
-| | Sees typing | Removable | Covers desktop apps | Can pseudonymize **+ rehydrate** | Deploy cost |
+| | Sees typing | Removable | Covers desktop apps | Can pseudonymize **in the composer, pre-send** | Deploy cost |
 |---|---|---|---|---|---|
-| **Extension** | ✅ | ⚠️ until force-installed | ❌ | ✅ **only option** | Low |
+| **Extension** | ✅ | ⚠️ until force-installed | ❌ | ✅ | **Low** |
 | Forward proxy (TLS intercept) | ❌ send-time only | ✅ | ✅ | ❌ block/mangle only | High |
 | CASB / SWG | ❌ | ✅ | ~ | ❌ | High (but often already paid) |
 | Enterprise browser | ✅ | ✅ | ❌ | ✅ | Very high — replace the browser |
@@ -356,11 +359,38 @@ desk. Different deal size, different sales cycle, different buyer seniority. Not
 
 The reason is *not* that it's cheap or easy to ship. It's that **the pseudonymize-and-preserve-context
 UX is only possible from inside the DOM.** A proxy sees a committed request; it can refuse or corrupt
-it, but it cannot negotiate with the user, cannot offer `John Tan → PERSON_1`, and cannot rehydrate
-the model's reply on the way back. If your differentiation is *"don't block — pseudonymize"* (and per
-doc 04, it is), then the extension isn't a compromise you settled for. **It's a requirement the
-product's core mechanic imposes.** That's a principled defense that survives the question *"why not
-just build a proxy?"*
+it, but it cannot negotiate with the user and cannot offer `John Tan → PERSON_1` **in the composer,
+before the request exists.** If your differentiation is *"don't block — pseudonymize"* (and per doc
+04, it is), then the extension isn't a compromise you settled for. **It's a requirement the product's
+core mechanic imposes.** That's a principled defense that survives the question *"why not just build a
+proxy?"*
+
+**But read the table honestly: the DOM requirement does not single out the extension. It singles out
+two form factors, and the second loses on price.** An enterprise browser has the same DOM access and
+could do the same thing — §2.5 — but it asks the customer to replace the browser on every desk, which
+is a different deal size, sales cycle, and buyer seniority, and is not viable at 150 seats. **So the
+claim is "DOM access, cheaply," not "DOM access, uniquely."** The weaker claim is the true one, and it
+is still sufficient: nothing else in the table can do the mechanic at a price the beachhead will pay.
+
+> **Corrected 2026-07-17 — this table argued the form factor on a capability we killed.** The fourth
+> column previously read **"Can pseudonymize + rehydrate"** with the extension marked **"✅ only
+> option"**, and the verdict argued that a proxy *"cannot rehydrate the model's reply on the way
+> back."* **Two defects, and the first is the substantive one.**
+>
+> 1. **Rehydration is killed** (doc 01 §5, founder-closed 2026-07-16) — and **not because the extension
+>    can't do it.** It's killed because it writes plaintext back into the provider's persisted,
+>    server-synced DOM, where their legitimate features re-serialize it. **So the column credited the
+>    extension with a capability this package concluded is a liability, and then used it as a reason to
+>    choose the extension.** §6 already carried the kill; nobody came back to §3. The differentiator
+>    that survives is pseudonymizing **in the composer, before the request exists** — which is what
+>    actually ships.
+> 2. **"Only option" was contradicted by this table's own enterprise-browser row**, which scores ✅ in
+>    the same column. The prose always knew this; the cell didn't. **The extension's advantage over an
+>    enterprise browser is deploy cost, never capability.**
+>
+> **ADR 0002 carried both defects almost verbatim and is corrected in the same commit.** The verdict is
+> unchanged: **the argument loses a limb it was never entitled to and stands on the capabilities we
+> actually ship.**
 
 The honest caveat, and it's the whole of B3:
 
