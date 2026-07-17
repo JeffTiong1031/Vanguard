@@ -34,14 +34,15 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 
 ## 2. Deliverable checklist
 
-> **Session ended 2026-07-17.** ✅ **Working tree clean · everything committed.** Local `main` =
-> **`c084f0d`** at `github.com/JeffTiong1031/Vanguard`. ⚠️ **NOT PUSHED — `3a0d738` and `c084f0d` are
-> local-only. Confirm with the founder before pushing; he did not ask for it.** **Nothing is
-> mid-write.** A fresh session starts consistent — **read §4, then go to §8.**
+> **Session ended 2026-07-17.** ✅ **Working tree clean · everything committed · everything pushed.**
+> `origin/main` = local `main` at `github.com/JeffTiong1031/Vanguard`. **Nothing is mid-write.** A fresh
+> session starts consistent — **read §4, then go to §8.**
 >
-> **This session shipped:** doc **05** · ADRs **0010**, **0011**, **0012** · **U10/U11/U19 resolved by
-> citation**, **U20** raised · **two correction passes** (the rehydrate column in doc 00 §3 + ADR 0002
-> `3a0d738` · doc 01 §2/§5/§6 + doc 04 §8 + ADR 0009 `c084f0d`).
+> **This session shipped:** docs **05** and **06** · ADRs **0010**–**0014** · **U10/U11/U19 resolved by
+> citation** · **`max_position_embeddings` = 512 resolved** · **U6 re-specified → U6-a/U6-b** ·
+> **U20/U21/U22 raised** · **four correction passes** (the rehydrate column in doc 00 §3 + ADR 0002 ·
+> doc 01 §2/§5/§6 + doc 04 §8 + ADR 0009 · **doc 03 §4.1's fabricated total** · ADR 0012's reasoning +
+> doc 05 §4.4's misattributed cost).
 >
 > 🔴 **The pattern sharpened, and a fresh session should know how it changed.** The prior session's
 > lesson was that **internal references drift** — corrections land in one place and not another. **That
@@ -59,7 +60,22 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 > **So the failure mode has a second form: not a stale pointer, but sound reasoning wrapped around a
 > true fact, never re-examined because the fact checked out.** Look for **"therefore," "dispositive,"
 > "must," and "so"** in our own prior text. **The nouns are usually right. The connectives are where
-> the errors live.**
+> the errors live.** *(It held twice more after being written: the founder broke **ADR 0012's** argument
+> while its decision survived, and **doc 03 §6's** trimming prediction turned out true-per-token and
+> silent-on-token-count. **Three for three: conclusion right, connective wrong.**)*
+>
+> 🔴 **And then a third form, which is the worst one, because it is the thing the package promised
+> never to do.** **Doc 03 §4.1 published `Total | 280M | Model card`.** **86 + 190 = 276** — and **the
+> card states no total at all.** Neither the sum nor the citation it claimed. **That is the confident
+> fabrication `ASSUMPTIONS.md` exists to prevent, and it shipped for three commits** against an
+> **external** source, after four instances of the same defect had been caught against internal ones.
+> **It survived because ~279M is within 0.5% of 280M.**
+>
+> > **The lesson generalizes and it inverts where you look: plausible numbers do not get checked.
+> > Implausible ones do.** So **the numbers most likely to be wrong in this package are the ones that
+> > look fine.** CLAUDE.md §9 *asserted* this arithmetic had been *"re-derived from scratch and
+> > matched."* **The assertion was the only evidence, and it was false. A claimed check is not a
+> > check.** Recompute it yourself, in a shell, now.
 >
 > **The consolation is unchanged and it keeps being earned:** every correction across both sessions
 > made a claim **narrower and more true**, and **none lost anything real** — the wedge, the posture,
@@ -75,8 +91,8 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 | 5 | `docs/03-ai-ml-architecture.md` | ✅ **done, committed** (`d740a68`) |
 | 6 | `docs/04-redaction-and-context-preservation.md` | ✅ **done, committed** (`4026bff`) |
 | 7 | `docs/05-lld.md` | ✅ **done, committed** (`c084f0d`) |
-| 8 | `docs/06-performance-and-scale.md` | ⬜ **not started ← NEXT** |
-| 9 | `docs/07-ml-training-and-data-strategy.md` | ⬜ not started |
+| 8 | `docs/06-performance-and-scale.md` | ✅ **done, committed** |
+| 9 | `docs/07-ml-training-and-data-strategy.md` | ⬜ **not started ← NEXT** |
 | 10 | `code/` scaffold | ⬜ not started |
 | 11 | `docs/08-roadmap-and-risks.md` | ⬜ not started — **written LAST** so it inherits real risks |
 
@@ -84,7 +100,8 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 0005 gate in isolated world · 0006 offscreen document · 0007 Python backend · 0008 hybrid split by
 workload · 0009 org-dictionary key custody · **0010 gate registers at `window`** (refines 0005) ·
 **0011 monotonic placeholder numbering** · **0012 observer uses `webRequest`** (reverses the plan's
-mechanism). New ADRs continue from **0013**.
+mechanism) · **0013 two-stage verdict** (L1 may decide DIRTY alone) · **0014 degrade to advisory, never
+fail-closed**. New ADRs continue from **0015**.
 
 ---
 
@@ -116,11 +133,13 @@ mechanism). New ADRs continue from **0013**.
 **Actually read these files. Do not assume you know their contents.** They contain reversals of
 earlier positions, and acting on a remembered version will reintroduce errors already corrected.
 
-1. **`ASSUMPTIONS.md`** — assumptions A1–F4 with confidence + blast radius; the **U1–U20 unverified
-   claims register** (**U1–U5, U10, U11, U13, U19 now resolved**; **E2 and F3 are closed/corrected, not
-   open**); §4 deliberate non-assumptions; **§5 correction log — read it, it is where the reversals
-   live.** ⚠️ **Read U11's entry specifically, whatever you are working on** — the claim is ✅ and its
-   *inference* is struck, and that split is the session's main lesson.
+1. **`ASSUMPTIONS.md`** — assumptions A1–F4 with confidence + blast radius; the **U1–U22 unverified
+   claims register** (**U1–U5, U10, U11, U13, U19 resolved**; **U6 re-specified → U6-a/U6-b, not
+   resolved**; **E2 and F3 are closed/corrected, not open**); §4 deliberate non-assumptions; **§5
+   correction log — read it, it is where the reversals live.** ⚠️ **Read two entries specifically,
+   whatever you are working on: U11** (the claim is ✅ and its *inference* is struck) and **U4** (the
+   claim is ✅ and the number attached to it was **fabricated**). **Those two are the session's whole
+   lesson: a ✅ covers the claim, never the reasoning or the figure bolted to it.**
 2. **`docs/00-critique-and-positioning.md`** — the critique, competitive landscape, buyer argument,
    wedge-vs-moat split, threat model.
 3. **`docs/01-hld.md`** — the architecture. §0 (the one architectural idea) and §5 (trust boundary
@@ -145,7 +164,13 @@ earlier positions, and acting on a remembered version will reintroduce errors al
    moved the observer, **and note its own amendment: the first version of it was overstated and the
    founder broke it**), **§5.3** (conflation vs. splitting), **§6.2** (idempotency, not determinism),
    **§7** (the RCE answer: *"you control when our code changes, not us"*).
-8. **Everything in `docs/adr/`** — **all twelve.** **0003, 0005 and 0012 record reversed positions**;
+8. **`docs/06-performance-and-scale.md`** — the budget. **§1** (**two deadlines, not one number** — the
+   reframe everything else hangs on), **§2.3** (**the L1 short-circuit**: the dangerous paste is gated
+   sub-ms, **the L2 wait is only paid to say "clean"**), **§2.4** (**monotonic toward dirty** — the rule
+   that stops the short-circuit becoming a silent fail-open), **§4.3** (**the wedge's language is the
+   slowest**), **§4.4** (**the memory fix taxes the latency budget** — one spike settles three budgets),
+   **§7.2** (**fail-closed rejected on doc 00 §1.4's own argument**).
+9. **Everything in `docs/adr/`** — **all fourteen.** **0003, 0005 and 0012 record reversed positions**;
    reading a summary instead of the ADR will lose the reversal. **0009 now carries U19's resolution and
    the `setAccessLevel()` finding.** **Doc 04 mints none, deliberately** — its decisions all follow from
    decisions already recorded, and an ADR per section devalues the ones recording real forks. **Doc 05
@@ -387,11 +412,16 @@ and fails a first-year crypto exercise.*
 ### The three week-1 validation spikes
 Between them, these decide whether the design survives contact. All three are cheap.
 
+> ⚠️ **Updated 2026-07-17: it is `U6-b`, not `U6`, and the table below is unchanged only because the
+> priority didn't move — the *input* did.** Doc 06 §3 found U6 was specified against **typing**, where
+> the user's own keystroke gaps hide the scan. **The critical path is paste.** And **U6-b's threshold
+> is B3-blocked**, so the two rows below are no longer independent.
+
 | Item | Claim | Why it's blocking | Owner doc |
 |---|---|---|---|
 | **B3** 🔴 | Target segment will actually force-install | **#1 priority — ranked above the two engineering spikes.** Asks *"will anyone deploy it?"* Deployment hurdle is low (one HKLM registry key on Windows; no Chrome Enterprise Core needed) but the **sales** hurdle is unmeasured. Requires **phone calls, not code.** | doc 08 |
 | **U12** 🔴 | From the **isolated world**, a capture-phase `document` listener preempts React AND `stopImmediatePropagation()` crosses the world boundary | **The gate mechanism itself.** If false, the architecture needs rework, not tuning. Must be proven **empirically, per surface** — not reasoned about. **Has 3 sub-tests — see below.** | doc 05 / code |
-| **U6** 🔴 | On-device L2 inference = 30–100 ms on D2 hardware | **The zero-friction path.** If it's ~500 ms the cache is cold too often, the miss path dominates, and the product degrades to *"press Send twice, always."* **Highest-priority number to measure.** Currently an estimate with **no measurement behind it.** | doc 03 / doc 06 |
+| **U6-b** 🔴 | **Time from `paste` to a gate-usable verdict**, P50/P95 paste length, D2 | **The zero-friction path — and the input is paste, not typing.** *(Was "U6 / a few hundred tokens" until doc 06 §3: **typing is not on the critical path**, because keystroke gaps warm the cache for free. **Paste is one event then Enter**, and per doc 00 §6 it is the **dominant** leak case — **so the cache is cold by construction on the threat we exist for.**)* If it's slow the miss path dominates and the product becomes *"press Send twice on every paste."* **Mitigated but not removed by ADR 0013:** L1 gates the *dangerous* paste sub-ms; **U6-b governs the wait to say *"clean."*** ⚠️ **Curve is ours (week 1, no human needed). Threshold is B3-blocked** — it is the measured `Ctrl+V` → `Enter` interval. **No number invented.** | doc 06 / code |
 
 #### U12 sub-tests — all three must pass, against **real ChatGPT and Claude**, not a test page
 
@@ -424,8 +454,15 @@ buyer (doc 00 §6). Test:
 ### Other unverified claims blocking downstream docs
 Full register is `ASSUMPTIONS.md` §3 (**U1–U20**). Blocking ones by doc:
 
-- **doc 06:** ~~U4/U5~~ ✅ resolved by doc 03 — see §6.2. **U15** remains.
-- **doc 06:** U15 (WebGPU availability under enterprise Chrome policy) — materially affects the budget.
+- **doc 06:** ~~U4/U5~~ ✅ (doc 03, §6.2) · ~~U6~~ **re-specified → U6-a / U6-b** (doc 06 §3) ·
+  **`max_position_embeddings` = 512** ✅ cited. **U15 remains** (WebGPU under enterprise Chrome policy —
+  **the pessimistic case is the likely one**, on the same machine-policy channel as B3). **New: U21**
+  (tokens-per-char BM/ZH — sets chunk count in the wedge's language) · **U22** (COOP/COEP →
+  `SharedArrayBuffer` → ORT threads — **ours, not the fleet's**, unlike WebGPU).
+  > 🔴 **U6-b is now the package's highest-priority number, and its pass criterion is B3-blocked** —
+  > the deadline is the user's measured `Ctrl+V` → `Enter` interval, which needs a design partner on
+  > real work. **The #1 engineering number is coupled to the #1 validation item.** B3 was already
+  > ranked first; **it is now first for two independent reasons.**
 - **doc 05:** ~~U10~~ ✅ · ~~U11~~ ✅ · ~~U19~~ ✅ — **all three resolved by citation** (`c084f0d`).
   **U16 remains, deliberately:** macOS `.mobileconfig` signing. **Windows HKLM is High confidence and
   unaffected**, and B2 puts the beachhead on Windows — U16 touches **the secondary platform only** and
@@ -494,13 +531,54 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U20**). Blocking ones by doc:
 
 ## 8. Immediate next action
 
-**Write `docs/06-performance-and-scale.md`.**
+**Write `docs/07-ml-training-and-data-strategy.md`.**
 
-> **Doc 05 is committed (`c084f0d`). Read it before doc 06 — it hands doc 06 four things and one of
-> them changes the budget's shape.** The scope below is doc 06's; §8.1 records what doc 05 settled so
-> it is not re-derived.
+> **Docs 05 and 06 are committed. Read both — doc 06 hands doc 07 the thing that makes it harder than
+> it looks.** §8.0 is doc 07's scope. §8.1/§8.2 record what docs 05–06 settled, so it is not re-derived.
 
 **Scope:**
+1. 🔴 **Precision over recall — explicitly targeted and justified. Per ADR 0001 this is a
+   *quasi-contractual commitment*, not an ML preference:** every FP is a ticket **the admin** eats, and
+   the admin is the buyer. **A blocking tool that cries wolf gets uninstalled and then detects
+   nothing** — and per `ASSUMPTIONS.md` §4, *"the extension can't be removed"* is a **deliberate
+   non-assumption**: in Phase 0 it is one click.
+2. 🔴 **But doc 04 §8 complicates the asymmetry and doc 07 must say so:** a **recall** miss isn't just
+   an unmasked entity — **it breaks coreference for the entities we did catch**, because the model sees
+   half-anonymized text. **Recall failures degrade output more than the precision framing implies.**
+3. 🔴 **The fertility spike settles THREE budgets at once** (doc 06 §4.4): **accuracy, latency, and
+   chunk count.** It is **one experiment** — token frequency over an EN/BM/ZH corpus, keep ~99.9%
+   coverage, **measure fertility before/after.** **Blocked on the corpus (U14/C2 → C3).** **U21** is
+   the same measurement.
+4. **The cold start:** public corpora + synthetic + LLM-as-labeler + human audit (C1/C3). **C3 is the
+   package's least-confident, highest-blast-radius assumption** and it now blocks the **latency**
+   budget too, not just accuracy.
+5. ⚠️ **Doc 02 §4.7 is NOT evidence synthetic data is good** — only that it's privacy-clean. **An LLM
+   generating Malay PII generates the *stereotypical* distribution**: too-regular NRICs, skewed name
+   distributions, textbook code-switching. **Train on that and you are excellent on synthetic Malay and
+   mediocre on Malaysia.**
+6. **U14** (no usable public EN/BM/ZH code-switched PII corpus) — flagged as **an assumption
+   masquerading as a fact. Treat with suspicion; it is a research task, not a finding.**
+7. **Adversarial-Ignore poisoning defenses.** Per doc 00 §1.6 the Ignore+reason loop is **a compliance
+   artifact, not a label** — its consumer is the admin console. **Doc 02 §4.6: local labeling only, and
+   it costs a slower, noisier loop. Say so rather than pretending the loop is as good either way.**
+8. **DP-SGD's revisit trigger is the first real prompt in the training set, not a date** (doc 02 §4.5).
+   Its Phase 0 rejection is **structural**: DP protects *training-set members*, and a synthetic corpus
+   has none — *"a rigorous guarantee about nobody."*
+9. **Inherited requirements:** doc 05 §6.2's **L1 placeholder-grammar mask** (a *detection* requirement
+   — without it L2 tags its own `PERSON_1` output and the pipeline is non-idempotent) · doc 06 §4.2's
+   **512-token chunk boundaries** (an entity straddling a boundary is split — **the stride/overlap
+   trades latency against recall, and doc 07 owns which side to err on**) · doc 03 §2.3's
+   **`NRIC_OR_SSM_AMBIGUOUS`** class needs a precision target for a case **undecidable from the digits
+   alone** · doc 04 §4.2/§4.3's **gender and register losses** belong in the eval — *"the wedge's
+   quality story, in the wedge's languages."*
+10. 🔴 **The eval is the only thing that catches over-spending the wedge** (doc 06 §6.3): **trimming,
+    quantization and distillation all degrade BM/ZH first. They are three taxes on one asset.** A
+    budget that spends all three lands a model that is small, fast, and **bad at the languages the
+    company exists to be good at.**
+
+### 8.0 Superseded scope — doc 06 (kept for the reasoning, not the task)
+
+**Doc 06 is done.** Retained because its framing binds doc 07 and doc 08:
 1. 🔴 **Size the latency budget against the PASTE case, not the typing case** (doc 05 §6.3). Doc 01 §4
    annotates the cache-miss branch *"rare path"* — **it is rare across all sends and universal on the
    sends that matter.** Every typed prompt is debounce-scanned, so the cache is warm by construction.
@@ -531,6 +609,25 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U20**). Blocking ones by doc:
    **Doc 06 is where the pressure to break it is highest, because it is the doc whose whole subject is
    numbers.**
 9. **Vault TTL × token TTL interact** (doc 05 §5.3, §6.4) and neither has a value.
+
+### 8.2 What doc 06 settled — do NOT re-derive
+
+- 🔴 **The budget is TWO deadlines, not one number.** **Hard** = dirty/clean at Send (cannot slip).
+  **Soft** = full findings while the user reads the modal (hundreds of ms, free). **Gating is the
+  deadline. Completing is not.**
+- 🔴 **U6 was specified against the workload with slack** and is **split**: **U6-a** (typing ·
+  CPU/battery · deprioritized — the user's own keystroke gaps hide the scan) · **U6-b** (paste · the
+  number the gate lives on). **U6-b's curve is ours; its threshold is B3-blocked.**
+- **ADR 0013 — L1 may decide DIRTY alone.** The dangerous paste is gated **sub-ms**; **the full L2 wait
+  is only ever paid to say *"clean."*** 🔴 **The rule that keeps it honest: the verdict cache is
+  monotonic toward dirty — L1 may write DIRTY, only a completed L1+L2 scan may write CLEAN.**
+- **ADR 0014 — degrade to advisory, never fail-closed.** **A dead engine that blocks ChatGPT sends the
+  user to the ChatGPT desktop app** (doc 00 §1.4). **Fail-closed relocates the leak to the channel we
+  cannot audit, at the moment our telemetry is already broken.**
+- **`max_position_embeddings` = 512** (cited). **Paste latency = `ceil(tokens/512) × per-chunk`.**
+- **Paste bypasses the debounce and preempts the queue.** Typing scans are droppable; paste scans never.
+- **The timeout cannot be a constant** — latency is a function of chunk count, so a fixed timeout
+  declares the engine dead on a long Chinese paste.
 
 ### 8.1 What doc 05 settled — do NOT re-derive
 
