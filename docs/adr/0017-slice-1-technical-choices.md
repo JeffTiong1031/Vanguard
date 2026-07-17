@@ -77,6 +77,33 @@ rate per class, not the pass/fail.**
 ⚠️ **Honour doc 02 §4.6: local labelling only**, and **I3**: the reason is a **class + count + salted
 hash**, never the typed value (**U26** is the review gate).
 
+## 5. Masking and modal policy for Slice 1 — the hanging question, resolved
+
+**Decision (founder, 2026-07-17).** In Slice 1, **three detector outputs may mask a span AND open the
+modal**: **L1 structured numerics · stock-NER PERSON · stock-NER ORG.** **LOC is off** (§8.1 of
+CLAUDE.md). There is **no sensitive-vs-not layer** — that is deliberately deferred past Slice 2.
+
+**This is the pipeline, not the wedge, and the noise is accepted on purpose.** A stock model tags
+*"explain Einstein's theory"* (PERSON) and *"summarise Apple's earnings"* (ORG). **Slice 1 will open
+the modal on both.** That is a false positive, and **Ignore-with-reason is the accepted escape** — the
+team test measures whether the *pipeline* works, and per §4 the **Ignore rate per class is the
+instrument** that prices this exact noise for the trained model that replaces the stand-in.
+
+🔴 **The one hard guardrail on L1, stated because a naive implementation violates it: ordinary
+arithmetic is not sensitive.** *"1+1"*, a lone number, a year, a quantity — **none of these may fire
+L1.** L1's numeric detectors match **structured identifiers** — the NRIC `YYMMDD-PB-###G` shape, the
+12-digit SSM, the TIN prefixes, card PANs — **not the presence of digits.** This falls out of the
+detector *specification* correctly (a bare `2` matches no identifier grammar), but it is a **review
+gate on Slice 1**, not an assumption: *"detect numbers"* is the wrong implementation and it is the
+easy one to reach for. **A tool that flags `1+1` as a leak is uninstalled by lunchtime** (ADR 0001's
+ticket economics; doc 07 §1.2).
+
+**Why PERSON and ORG mask AND open the modal, rather than mask silently:** decision #8 forbids
+auto-submit and the whole product is *"the user presses Send."* A silent mask would rewrite the user's
+text without telling them — **that is the surprise-edit failure the modal exists to prevent.** The
+modal is how the user *sees* the rewrite and consents to it. So "may mask" and "opens the modal" are
+one action, not two.
+
 ---
 
 ## Consequences

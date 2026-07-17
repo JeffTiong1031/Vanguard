@@ -174,7 +174,8 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 | 10 | `code/` scaffold | ✅ **done, committed.** 🔴 **Two artifacts, deliberately:** `code/spikes/` is **LIVE** (U12 harness · U21-a fertility) · `code/extension/` + `code/backend/` are **STUBS** — doc 01 §2's shape only. **The spike is raw MV3, NOT WXT** (doc 01 §6's own eject rule: U12 *is* the MAIN-world work, and a build step makes a rework-trigger test ambiguous). **Read [`code/README.md`](code/README.md) §Order of operations before building anything.** |
 | 11 | `code/` **Slice 1** — chat text, **L1 + L2** | 🔴 **NEXT. Founder decision 2026-07-17, [ADR 0016](docs/adr/0016-mvp-first-sequencing.md).** The smallest extension the founder's **team** can load unpacked from the repo: ChatGPT + Claude · typing **and** paste · Enter **and** mouse Send · **L1 deterministic + L2 on-device model TOGETHER** · block/modal → rewrite → **the user presses Send** · on-device (decision #2) · **no rehydration** (E2). 🔴 **An L1-only build is NOT an acceptable Slice 1 target** (founder, explicit) — **and he is right on the merits, for a sharper reason than "a weak demo": per doc 00 §1.3 L1 is the *highest-value* feature — so an L1-only build would demo WELL — but per doc 00 §5 and doc 03 §3.3 *"a regex catches the IC number in any language; nobody needs a model for that"*. **L1-only demos the part that is not ours.** It would answer a question nobody is asking, convincingly.** **Accepted when the team can clone → load unpacked → use it on both surfaces → verify the whole experience.** |
 | 12 | `code/` **Slice 2** — **file-content checking** | ⬜ **After the team accepts Slice 1. B3 does NOT go between the slices** (founder, explicit). **Must inspect file CONTENT — a permanent "uploads forbidden" message is not sufficient.** **Scope is proposed and argued BEFORE implementation**: PDF-only vs more · text PDF vs scanned/OCR · scanning vs blocking · on-device vs cloud under **ADR 0008** · **security limits: malformed PDFs, oversized files, ZIP bombs, timeouts, retention.** ⚠️ **Push back hard on feasibility and timeline — broad PDF/DOCX/image/ZIP support is not a small feature.** |
-| 13 | `docs/08-roadmap-and-risks.md` | ⬜ **PARKED — written only after BOTH slices are implemented and tested** ([ADR 0016](docs/adr/0016-mvp-first-sequencing.md)). **It inherits evidence from the real chat and file builds instead of ranking guesses.** ⚠️ **This strengthens the original *"written LAST"* rule rather than replacing it — the risks it ranks now include the ones only a team test and a file pipeline can surface.** |
+| 13 | `ml/` **sensitive-vs-not** — **PARALLEL team track** | 🟢 **Runs alongside Slices 1–2, does NOT block them** ([ADR 0018](docs/adr/0018-sensitive-vs-not-parallel-track.md)). **Separate team, `ml/` sibling of `code/`.** Brief: [`docs/team/sensitive-vs-not-parallel-track.md`](docs/team/sensitive-vs-not-parallel-track.md); task-by-task plan (founder-written): [`docs/superpowers/plans/2026-07-17-sensitive-vs-not-parallel-track.md`](docs/superpowers/plans/2026-07-17-sensitive-vs-not-parallel-track.md). **Integrates into the extension AFTER Slice 2.** **L1 keeps sole ownership of NRIC/SSM/TIN digits; real-substrate eval or NOT_SHIPPED.** ⚠️ **Not the CTO's deliverable — this row tracks a track the founder owns and staffs.** |
+| 14 | `docs/08-roadmap-and-risks.md` | ⬜ **PARKED — written only after BOTH slices are implemented and tested** ([ADR 0016](docs/adr/0016-mvp-first-sequencing.md)). **It inherits evidence from the real chat and file builds instead of ranking guesses.** ⚠️ **This strengthens the original *"written LAST"* rule rather than replacing it — the risks it ranks now include the ones only a team test and a file pipeline can surface.** |
 
 **ADRs committed so far:** 0001 buyer · 0002 form factor · 0003 wedge-vs-moat · 0004 org dictionary ·
 0005 gate in isolated world · 0006 offscreen document · 0007 Python backend · 0008 hybrid split by
@@ -182,7 +183,7 @@ workload · 0009 org-dictionary key custody · **0010 gate registers at `window`
 **0011 monotonic placeholder numbering** · **0012 observer uses `webRequest`** (reverses the plan's
 mechanism) · **0013 two-stage verdict** (L1 may decide DIRTY alone) · **0014 degrade to advisory, never
 fail-closed** · **0015 the eval corpus's text substrate is REAL** (training may stay synthetic — the
-decision that puts real personal data in the company) · 🔴 **0016 MVP-first sequencing** (**reverses *"B3 above the engineering spikes"*** — the team test is the next learning loop; B3, force-install, U6-b's threshold, marketing and **doc 08** are **parked** until Slices 1 and 2 land). · **0017 Slice 1's four technical choices** (stock L2 · CDN weights · WXT with committed dist · block+Ignore). New ADRs continue from **0018**.
+decision that puts real personal data in the company) · 🔴 **0016 MVP-first sequencing** (**reverses *"B3 above the engineering spikes"*** — the team test is the next learning loop; B3, force-install, U6-b's threshold, marketing and **doc 08** are **parked** until Slices 1 and 2 land). · **0017 Slice 1's four technical choices** (stock L2 · CDN weights · WXT with committed dist · block+Ignore) · 🔴 **0018 sensitive-vs-not is a PARALLEL track** (in , integrated AFTER Slice 2; sensitivity does NOT gate files; L1 keeps sole ownership of identifier digits). New ADRs continue from **0019**.
 
 ---
 
@@ -866,8 +867,27 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 > | **Build** | **WXT** (doc 01 §6's stack) **with `dist/` committed**, so the team clones → Load unpacked with no toolchain. | ⚠️ **A committed build artifact is a second source of truth and it drifts SILENTLY.** **Slice 1 needs a `dist/`-matches-`src/` check** or the team reports on code that no longer exists. **Doc 01 §6's eject-to-CRXJS rule still stands** — Slice 1 has no MAIN-world work but **all** the offscreen work. |
 > | **Gate** | **Block + modal + Ignore-with-reason.** | 🟢 **This turns Slice 1's weakness into its best output: the Ignore rate PER CLASS on real work** is doc 07's detector-prioritization signal — *"it ranks our bugs; it does not label them."* **Doc 02 §4.6: local labelling only. I3/U26: class + count + salted hash, never the typed value.** |
 >
-> **Masking policy (founder):** **L1 hits + L2 PERSON + ORG** are mask targets. **LOC is OFF** — see
-> the recommendation in §8.1. **The org dictionary (ADR 0004) follows and must NOT block Slice 1.**
+> **Masking / modal policy (founder, 2026-07-17 — resolves the PERSON/ORG modal question):**
+> **L1 structured numerics + L2 PERSON + L2 ORG may mask AND open the modal.** **LOC is OFF** (§8.1).
+> **A silent mask is forbidden** — decision #8 means the user sees the rewrite and presses Send, so
+> "may mask" and "opens the modal" are one action. **Einstein/Apple-class noise is ACCEPTED for the
+> team test; Ignore-with-reason is the escape.** [ADR 0017](docs/adr/0017-slice-1-technical-choices.md)
+> §5 carries this. 🔴 **The one hard L1 guardrail: ordinary arithmetic is NOT sensitive** — `1+1`, a
+> lone number, a year must not fire L1. L1 matches **identifier grammars**, never the presence of
+> digits. *"Detect numbers"* is the wrong implementation and the easy one to reach for — **review gate,
+> not assumption.**
+>
+> **Sequencing (founder, [ADR 0018](docs/adr/0018-sensitive-vs-not-parallel-track.md)):** **Slice 1 →
+> team test → Slice 2 (file CONTENT) → THEN integrate sensitive-vs-not.** \U0001f534 **Sensitivity does NOT
+> gate files** — Slice 2 scans for the same entities Slice 1 does; the sensitive-vs-not model is a
+> later *quality* upgrade to both paths, never a precondition for either.
+>
+> **Parallel ML track (founder, ADR 0018):** while Slices 1–2 are built, **a separate team may build
+> sensitive-vs-not in `ml/`** (a sibling of `code/`, never inside it), briefed in
+> [`docs/team/sensitive-vs-not-parallel-track.md`](docs/team/sensitive-vs-not-parallel-track.md) with a
+> task-by-task plan the **founder wrote**. **It must not block the extension.** **L1 stays the sole
+> owner of NRIC/SSM/TIN-shaped digits** — the model never adjudicates one. **Eval on the real substrate
+> (ADR 0015); a synthetic-only eval is not a ship signal.**
 >
 > ### 🔴 Slice 1 is NOT days. ~3–5 weeks, one engineer. The founder asked for this pushback explicitly.
 >
