@@ -37,27 +37,37 @@ the rest is worth building.
 
 ---
 
-## Order of operations, and it is not the order you'd guess
+## Order of operations — REWRITTEN 2026-07-17. The ordering reversed.
 
-**Per `../CLAUDE.md` §7.3 — rank by blast radius, not by cost:**
+> 🔴 **Read [`../docs/adr/0016-mvp-first-sequencing.md`](../docs/adr/0016-mvp-first-sequencing.md)
+> first.** This section used to open with *"B3 — 5–10 phone calls. **Not code.**"* and rank the spikes
+> by blast radius. **All four spikes have now RUN and HELD** (U12-a ✅ Enter **and** click · U12-b ✅ ·
+> U12-c ✅ · U20 ✅ — evidence in [`spikes/u12-harness/captures/`](spikes/u12-harness/captures/)), **and
+> the founder has parked B3 in favour of a team test of a working MVP.**
+>
+> ⚠️ **The old ordering's argument was never refuted — it was overruled.** Do not re-derive it from
+> doc 00 §3 and mistake that for diligence. **ADR 0016 records the dissent so it does not have to be
+> re-argued.**
 
-1. 🔴 **B3 — 5–10 phone calls.** *Not code.* Doc 00 §7: *"**Go make ten phone calls before you write a
-   line of the detection engine.**"* It asks *"will anyone deploy it?"* while U12 asks *"can we build
-   it?"* — and the first is cheaper to answer and likelier to be fatal. **Doc 07 §1.5 adds one
-   question to that script and closes the precision floor for free.**
-2. 🔴 **U12-a** — [`spikes/u12-harness/PROTOCOL.md`](spikes/u12-harness/PROTOCOL.md). **The package's
-   single rework trigger, and the cheapest test in it.** *"If U12-a fails, no part of doc 05
-   survives"* (doc 05 §1.2). **Nothing below is worth building until this passes.**
-3. 🟢 **U21-a** — [`spikes/u21a-fertility/`](spikes/u21a-fertility/). Free, an afternoon, **and
-   one-sided: a fail is final.**
-4. 🟠 **U12-b** — the IME test. **Needs Microsoft Pinyin on Windows.** Highest-risk of the three, and
-   **"not tested" is a real result, not a pass.**
-5. Everything in [`extension/`](extension/).
+| | | |
+|---|---|---|
+| ~~1~~ ✅ | **U12-a / U12-b / U12-c / U20** | **All PASS, 2026-07-17, real ChatGPT + Claude.** The rework trigger did not fire. 🔴 **Four harness bugs produced three wrong answers along the way and a human caught every one by reading raw logs** — see [`spikes/u12-harness/README.md`](spikes/u12-harness/README.md). |
+| 🔴 **1** | **Slice 1 — the chat-text extension, L1 + L2** | **The next action.** The smallest extension the founder's team can **clone → Developer mode → Load unpacked**. **L1-only is NOT an acceptable target.** |
+| **2** | **Team test** | Not a public release. |
+| 🟢 **2′** | **U21-a** — [`spikes/u21a-fertility/`](spikes/u21a-fertility/) | **May run in parallel, ONLY if it does not delay Slice 1** (founder). Free, an afternoon, **one-sided: a fail is final.** |
+| **3** | **Slice 2 — file CONTENT checking** | Only after the team accepts Slice 1. **B3 does not go between the slices.** **Scope argued before implementation.** |
+| **4** | **Doc 08** | Only after both slices. |
+| 🟠 **PARKED** | **B3** · force-install · **U6-b's threshold** · marketing/GTM · doc 08 | Everything that needs a design partner. |
 
-> **Steps 1–4 cost about a week and no engineering.** Step 5 costs 18 months (A1/A2). **The scaffold
-> is deliberately stubs until 1–4 report**, and that is the ordering doc 05 §1.1 argues for: *"Read
-> the failure column top to bottom — it is a ranking, and **it inverts the effort you'd naively
-> spend.**"*
+> 🟢 **Slice 1 produces U6-b's CURVE for free** — the curve was always ours (doc 06 §3.3); only the
+> **threshold** is design-partner-blocked. **A working extension on the team's machines measures
+> paste → verdict on real hardware, on real prompts.**
+>
+> 🔴 **`spikes/` is now HISTORY, not a queue.** It stays because the captures are the evidence behind
+> U12/U20 in `../ASSUMPTIONS.md`, and because its README carries the four instrument bugs — **the most
+> transferable thing in this directory.** **Nothing in `spikes/` ships** (ADR 0012; and **U26**: the
+> harness logs raw `key` values, which the production extension must not inherit).
+
 
 ---
 

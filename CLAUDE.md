@@ -172,7 +172,9 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 | 8 | `docs/06-performance-and-scale.md` | ✅ **done, committed** (`50037b8`) |
 | 9 | `docs/07-ml-training-and-data-strategy.md` | ✅ **done, committed** |
 | 10 | `code/` scaffold | ✅ **done, committed.** 🔴 **Two artifacts, deliberately:** `code/spikes/` is **LIVE** (U12 harness · U21-a fertility) · `code/extension/` + `code/backend/` are **STUBS** — doc 01 §2's shape only. **The spike is raw MV3, NOT WXT** (doc 01 §6's own eject rule: U12 *is* the MAIN-world work, and a build step makes a rework-trigger test ambiguous). **Read [`code/README.md`](code/README.md) §Order of operations before building anything.** |
-| 11 | `docs/08-roadmap-and-risks.md` | ⬜ not started — **written LAST** so it inherits real risks |
+| 11 | `code/` **Slice 1** — chat text, **L1 + L2** | 🔴 **NEXT. Founder decision 2026-07-17, [ADR 0016](docs/adr/0016-mvp-first-sequencing.md).** The smallest extension the founder's **team** can load unpacked from the repo: ChatGPT + Claude · typing **and** paste · Enter **and** mouse Send · **L1 deterministic + L2 on-device model TOGETHER** · block/modal → rewrite → **the user presses Send** · on-device (decision #2) · **no rehydration** (E2). 🔴 **An L1-only build is NOT an acceptable Slice 1 target** (founder, explicit) — **and he is right on the merits, for a sharper reason than "a weak demo": per doc 00 §1.3 L1 is the *highest-value* feature — so an L1-only build would demo WELL — but per doc 00 §5 and doc 03 §3.3 *"a regex catches the IC number in any language; nobody needs a model for that"*. **L1-only demos the part that is not ours.** It would answer a question nobody is asking, convincingly.** **Accepted when the team can clone → load unpacked → use it on both surfaces → verify the whole experience.** |
+| 12 | `code/` **Slice 2** — **file-content checking** | ⬜ **After the team accepts Slice 1. B3 does NOT go between the slices** (founder, explicit). **Must inspect file CONTENT — a permanent "uploads forbidden" message is not sufficient.** **Scope is proposed and argued BEFORE implementation**: PDF-only vs more · text PDF vs scanned/OCR · scanning vs blocking · on-device vs cloud under **ADR 0008** · **security limits: malformed PDFs, oversized files, ZIP bombs, timeouts, retention.** ⚠️ **Push back hard on feasibility and timeline — broad PDF/DOCX/image/ZIP support is not a small feature.** |
+| 13 | `docs/08-roadmap-and-risks.md` | ⬜ **PARKED — written only after BOTH slices are implemented and tested** ([ADR 0016](docs/adr/0016-mvp-first-sequencing.md)). **It inherits evidence from the real chat and file builds instead of ranking guesses.** ⚠️ **This strengthens the original *"written LAST"* rule rather than replacing it — the risks it ranks now include the ones only a team test and a file pipeline can surface.** |
 
 **ADRs committed so far:** 0001 buyer · 0002 form factor · 0003 wedge-vs-moat · 0004 org dictionary ·
 0005 gate in isolated world · 0006 offscreen document · 0007 Python backend · 0008 hybrid split by
@@ -180,7 +182,7 @@ workload · 0009 org-dictionary key custody · **0010 gate registers at `window`
 **0011 monotonic placeholder numbering** · **0012 observer uses `webRequest`** (reverses the plan's
 mechanism) · **0013 two-stage verdict** (L1 may decide DIRTY alone) · **0014 degrade to advisory, never
 fail-closed** · **0015 the eval corpus's text substrate is REAL** (training may stay synthetic — the
-decision that puts real personal data in the company). New ADRs continue from **0016**.
+decision that puts real personal data in the company) · 🔴 **0016 MVP-first sequencing** (**reverses *"B3 above the engineering spikes"*** — the team test is the next learning loop; B3, force-install, U6-b's threshold, marketing and **doc 08** are **parked** until Slices 1 and 2 land). New ADRs continue from **0017**.
 
 ---
 
@@ -196,7 +198,7 @@ decision that puts real personal data in the company). New ADRs continue from **
 4. **Beachhead = EN/BM/ZH code-switching (Malaysia/SEA).** The *wedge*, not the moat.
 5. **Audit log = redacted finding + salted-hash reference.** Raw value never leaves the device.
 6. **Deployment = self-install now, managed force-install later.**
-7. **Phase 0 = text prompt only; files Phase 1.** *(Amended by ADR 0004 — see §6.)*
+7. **Phase 0 = text prompt only; files Phase 1.** *(Amended by ADR 0004 — see §6.)* ⚠️ **SEQUENCING amended 2026-07-17 by [ADR 0016](docs/adr/0016-mvp-first-sequencing.md) — the decision is INTACT (text first, files second); the GAP SHRANK.** Files are **Slice 2, immediately after the team test**, not *"a later commercial phase"*. **Slice 2 must inspect file CONTENT — a permanent "uploads forbidden" message is not sufficient** (founder, explicit).
 8. **No auto-submit, ever.** The user always presses Send.
 
 > ⚠️ **#2 and #8 are ONE decision and cannot be revisited separately.** The gate must decide
@@ -435,12 +437,17 @@ Approved during planning; transcribed here so they survive.
   eats. Include adversarial-Ignore poisoning defenses.
 
 **Doc 08:**
-- **#1 pre-Phase-0 validation item = B3 primary research** (5–10 IT-lead interviews in the target
+- ~~**#1 pre-Phase-0 validation item = B3 primary research**~~ 🟠 **PARKED — see the OVERRULED note above ([ADR 0016](docs/adr/0016-mvp-first-sequencing.md)).** Still 5–10 IT-lead interviews in the target segment when it unparks, and **still first among what remains unasked** —
   segment). **Ranked ABOVE the U6/U12 engineering spikes** — those ask *"can we build it?"*, B3 asks
   *"will anyone deploy it?"*, and the second is cheaper to answer and likelier to be fatal.
 - Scope phases to **A1/A2 (2–3 engineers, 18 months)**. **Do not re-derive from a different number** —
   the founder confirmed this is a deliberate constraint, not a compromise: solo would collapse the
   multilingual ML edge into regex-chasing, and more headcount would let the performance budget go soft.
+- 🔴 **OVERRULED 2026-07-17 — *"B3 ranks above the engineering spikes"* is NO LONGER THE
+  SEQUENCE.** [ADR 0016](docs/adr/0016-mvp-first-sequencing.md): **Slice 1 → team test → Slice 2 →
+  doc 08**, with **B3 parked** until both slices land. **The argument below was never refuted — it
+  was overruled — so do not "restore" it by re-deriving it from doc 00 §3.** The bullet stays
+  because **doc 08 still has to rank B3 first among what remains unasked.**
 - 🔴 **DOC 08 OPENS WITH THE WEDGE'S COST — founder decision, 2026-07-17.** Three of the top eight
   ranked items are the wedge's own price. **Lead with it; do not bury it in a risk table** — the facts
   are the same either way and **only the ordering decides whether they read as *priced* or as *didn't
@@ -542,9 +549,9 @@ Between them, these decide whether the design survives contact. All three are ch
 > 🔴 **Updated 2026-07-17 (second pass): U12 IS FULLY RESOLVED — U12-a ✅ (Enter **and** click) · U12-b ✅ ·
 > U12-c ✅ — and **U20 ✅** fell out of the same run at zero marginal cost, as doc 05 predicted it would.
 > **The rework trigger did not fire. Every engineering spike that could have killed the design has now
-> run and held.** **What remains is not engineering: it is B3, and it always was.** Doc 00 §7: *"Go make
-> ten phone calls before you write a line of the detection engine."* **That sentence is now the whole
-> critical path.**
+> run and held.** 🔴 **What remains is not engineering — but the next action is NOT B3 either.**
+> **The founder has parked B3 and chosen a TEAM TEST of a working MVP as the next learning loop** ([ADR 0016](docs/adr/0016-mvp-first-sequencing.md)).
+> **Doc 00 §7's *"go make ten phone calls before you write a line of the detection engine"* was overruled, not refuted — see §8.**
 >
 > ⚠️ **Updated 2026-07-17: it is `U6-b`, not `U6`, and the table below is unchanged only because the
 > priority didn't move — the *input* did.** Doc 06 §3 found U6 was specified against **typing**, where
@@ -553,7 +560,7 @@ Between them, these decide whether the design survives contact. All three are ch
 
 | Item | Claim | Why it's blocking | Owner doc |
 |---|---|---|---|
-| **B3** 🔴 | Target segment will actually force-install | **#1 priority — ranked above the two engineering spikes.** Asks *"will anyone deploy it?"* Deployment hurdle is low (one HKLM registry key on Windows; no Chrome Enterprise Core needed) but the **sales** hurdle is unmeasured. Requires **phone calls, not code.** | doc 08 |
+| **B3** 🟠 **PARKED** | Target segment will actually force-install | 🔴 **PARKED 2026-07-17 until Slices 1 and 2 land — founder decision, [ADR 0016](docs/adr/0016-mvp-first-sequencing.md). This row was *"#1 priority, ranked above the two engineering spikes"* and IT IS NO LONGER THE NEXT ACTION.** **The argument that put it first is unchanged and nothing has refuted it** — it asks *"will anyone deploy it?"*, it is cheaper than the slices, and it is likelier to be fatal. **The founder has read it and chosen a team test as the next learning loop instead.** ⚠️ **A fresh session must not "restore" this row's ranking on the strength of the old argument: the argument was never beaten, it was OVERRULED, and re-deriving it will look like diligence while contradicting a live decision. Read ADR 0016.** **Deployment hurdle stays low (one HKLM key); the SALES hurdle stays unmeasured.** | doc 08 |
 | ~~**U12**~~ ✅ | **FULLY RESOLVED 2026-07-17 against real ChatGPT + Claude on Windows.** **U12-a ✅ (Enter **and** click) · U12-b ✅ · U12-c ✅ · and U20 ✅ free.** | 🔴 **THE REWORK TRIGGER DID NOT FIRE.** ADR 0005/0010, doc 01 §0's coupling and decisions #2/#8 now rest on a **measurement**. `windowFiresBeforeDocument: true`; armed Enter suppressed across the world boundary; **doc 05 §1.2's visual criterion held** (no spinner, no wedge). **U12-c: 20 page `window`-capture listeners on ChatGPT, 4 on Claude — all registered after ours. ADR 0010 was load-bearing, not theoretical.** ⚠️ **Three narrowings, all real:** **(1)** the **click** PASS is the **founder's observation, not a saved capture** — every attached JSON has `armedStops: 0` (correctly: U20 needs an *unarmed* run). **~30 s to close.** **(2)** U12-b is **one IME, one platform, one date** — evidence about Pinyin, not about IMEs. **(3)** U12-c and U20 are **properties of two websites** and move on the **D4** clock. 🔴 **And the run's real lesson is not in this row: FOUR harness bugs produced three wrong answers, and the founder caught every one by reading raw logs instead of verdicts** (§2 ledgers #10, #11). | ✅ **done** |
 | ~~**U12-b**~~ ✅ | **RESOLVED 2026-07-17 — PASS, both surfaces, focused capture.** `keydown(code:"Enter", key:"Process", isComposing:true)` → `compositionend` → `keyup`. **The committing Enter arrives WHILE composing → `isComposing` is SUFFICIENT → NO suppression window.** | ✅ **The wedge's language is not broken by the gate — on Microsoft Pinyin / Windows / these two surfaces / this date.** **Doc 05 §1.3 named the ordering as the whole test and refused to invent the window: the doc was right THREE times while the instrument was wrong three times** (ledgers #10, #11). ⚠️ **SCOPE IS NARROW AND IS THE ONLY THING TO CARRY FORWARD: one IME, not IMEs.** Sogou/Google Pinyin, macOS, JP/KR **untested**. 🔴 **Do not promote *"Pinyin never reports `key:'Enter'` while composing"* into *"a naive gate cannot break Chinese input"* — the fact is real, the therefore is unearned and per-IME.** | ✅ **done** |
 | **U6-b** 🔴 | **Time from `paste` to a gate-usable verdict**, P50/P95 paste length, D2 | **The zero-friction path — and the input is paste, not typing.** *(Was "U6 / a few hundred tokens" until doc 06 §3: **typing is not on the critical path**, because keystroke gaps warm the cache for free. **Paste is one event then Enter**, and per doc 00 §6 it is the **dominant** leak case — **so the cache is cold by construction on the threat we exist for.**)* If it's slow the miss path dominates and the product becomes *"press Send twice on every paste."* **Mitigated but not removed by ADR 0013:** L1 gates the *dangerous* paste sub-ms; **U6-b governs the wait to say *"clean."*** ⚠️ **Curve is ours (week 1, no human needed). Threshold is B3-blocked** — it is the measured `Ctrl+V` → `Enter` interval. **No number invented.** | doc 06 / code |
@@ -594,7 +601,11 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
   **the pessimistic case is the likely one**, on the same machine-policy channel as B3). **New: U21**
   (tokens-per-char BM/ZH — sets chunk count in the wedge's language) · **U22** (COOP/COEP →
   `SharedArrayBuffer` → ORT threads — **ours, not the fleet's**, unlike WebGPU).
-  > 🔴 **U6-b is now the package's highest-priority number, and its pass criterion is B3-blocked** —
+  > 🟢 **Updated 2026-07-17: Slice 1 produces U6-b's CURVE for free, and only its THRESHOLD is parked** ([ADR 0016](docs/adr/0016-mvp-first-sequencing.md)). **Doc 06 §3.3, verbatim: *"The curve is ours. The threshold on it is the design partner's."*** A working extension on the team's machines measures **paste → verdict** on real hardware — a machine measurement, no human needed. **So the #1 engineering number advances during Slice 1; it just cannot be marked PASS or FAIL until B3 supplies the deadline.**
+  >
+  > 🔴 **And do NOT expect the team test to supply the threshold as a side effect — doc 06 §3.3 rules it out by name.** Its step 2 says measure the `Ctrl+V`→`Enter` interval *"with the **first design partner**, on real work, for a week. **Not on us — we know the tool is watching, which is exactly the bias**."* **The founder's team IS "us".** They know what the extension is, they know it is being evaluated, and their paste-to-Send timing is therefore **the biased sample the doc already rejected**. **The team test gives the curve and cannot give the threshold. Reporting a threshold from it would be the package's own §9 error: a plausible number nobody checks.**
+  >
+  > 🔴 **U6-b's pass criterion is B3-blocked** —
   > the deadline is the user's measured `Ctrl+V` → `Enter` interval, which needs a design partner on
   > real work. **The #1 engineering number is coupled to the #1 validation item.** B3 was already
   > ranked first; **it is now first for two independent reasons.**
@@ -666,6 +677,16 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 
 ### 7.3 The doc 08 queue — what committed docs have already handed it
 
+> 🔴 **PARKED 2026-07-17 — doc 08 is written only AFTER both MVP slices are implemented and
+> tested** ([ADR 0016](docs/adr/0016-mvp-first-sequencing.md)). **This STRENGTHENS the *written LAST*
+> rule rather than replacing it:** the queue below currently ranks **B3, U6-b's threshold and the
+> distillation entrances as GUESSES**, and Slice 1 + Slice 2 turn several of them into
+> measurements. 🔴 **But note what the parking does to rank 1: B3 is deferred, so doc 08 will be
+> written with its #1 validation item still UNASKED.** **That is the bet ADR 0016 records — doc 08
+> must state it as the top risk, not rank it away.** ⚠️ **Ranks 1, 3, 3a and 4a are all
+> design-partner-dependent and therefore all parked together; the queue's shape changes when they
+> unpark, so re-rank against ADR 0016 rather than against this table's current order.**
+>
 > **Added 2026-07-17.** Doc 08 is **written LAST so it inherits real risks** (§2), which means its
 > input accumulates for six documents and **lives nowhere until it is needed.** That is exactly the
 > condition under which things get lost. **This is the index, not the content.**
@@ -689,7 +710,7 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 
 | Rank | Item | Source |
 |---|---|---|
-| 🔴 **1** | **B3 primary research** — 5–10 IT-lead interviews. Above both engineering spikes: they ask *"can we build it?"*, B3 asks *"will anyone deploy it?"* — **cheaper to answer and likelier to be fatal.** **Now first for THREE independent reasons** (below + rank 3 + rank 3a). 🔴 **Doc 07 §1.5 adds ONE QUESTION to the script and it closes the precision floor for free:** *"You already run some control that flags things. **How many false flags a week, per hundred staff, does your team absorb before you loosen it or turn it off?**"* — **about their present, not our hypothetical.** | doc 00 §3 · ADR 0001 · §6.4 · **doc 07 §1.5** |
+| 🟠 **1 — PARKED** | **B3 primary research** — 5–10 IT-lead interviews. 🔴 **PARKED until both MVP slices land** ([ADR 0016](docs/adr/0016-mvp-first-sequencing.md)) — **the founder chose a team test as the next learning loop.** **The ranking argument is UNREFUTED and stays here for when it unparks:** the spikes ask *"can we build it?"* and **U12 answered that**; B3 asks *"will anyone deploy it?"* — **cheaper to answer and likelier to be fatal.** 🔴 **Doc 08 is therefore written with its #1 validation item still unasked. That is ADR 0016's bet and doc 08 states it as the top risk rather than ranking it away.** 🔴 **Doc 07 §1.5's ONE QUESTION rides along when it happens and closes the precision floor for free:** *"You already run some control that flags things. **How many false flags a week, per hundred staff, does your team absorb before you loosen it or turn it off?**"* — **about their present, not our hypothetical.** | doc 00 §3 · ADR 0001 · §6.4 · **doc 07 §1.5** · **ADR 0016** |
 | ~~🔴 **2**~~ ✅ | ~~U12-a is the package's single rework trigger~~ → **ANSWERED 2026-07-17. It did not fire.** PASS on both surfaces for the **Enter path**, including doc 05 §1.2's visual criterion. **Doc 08 reports this as a resolved risk with a measurement behind it, not an open spike** — and per doc 00 §7's underclaiming argument, *"we tested the thing that could kill it, first, and it held"* is a better diligence line than a green risk table. ⚠️ **Two live remainders: the CLICK path is untested** (harness gap; **doc 05 §2.3's Enter-only-fails-open is now empirically confirmed**) **and U12-c is a property of two websites that changes when they deploy.** | doc 05 §10 · **U12-a** |
 | ~~🔴 **2a**~~ ✅ | **U12-b — the wedge's language — RESOLVED 2026-07-17: PASS.** `isComposing` is **sufficient** on Microsoft Pinyin / Windows; **no suppression window exists or is needed.** **Doc 08 reports a resolved risk with a measurement behind it.** 🔴 **Report the SCOPE with it, always: one IME, not IMEs** — and **do not carry the first run's 3.6–40.8 s gaps as data; they were a broken analyser** (ledger #10). | **U12-b** · §2 ledgers #10, #11 |
 | 🔴 **3** | **U6-b's pass criterion is B3-blocked** — the deadline is the measured `Ctrl+V`→`Enter` interval, which needs a design partner on real work. **This couples the #1 engineering number to the #1 validation item.** | doc 06 §3.3, §9 |
@@ -773,65 +794,87 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 
 ## 8. Immediate next action
 
-> ## ✅ DOC 07, THE SCAFFOLD, **AND ALL FOUR U12/U20 SPIKES ARE DONE.** **Next: B3. Then doc 08 LAST.**
+> ## 🔴 **SLICE 1 — a working chat-text extension, L1 + L2, that the founder's TEAM loads unpacked.**
 >
-> 🔴 **THE CRITICAL PATH CHANGED SHAPE ON 2026-07-17 AND A FRESH SESSION MUST NOT MISS IT.** **Every
-> engineering spike that could have killed the design has now RUN and HELD** — U12-a ✅ (Enter **and**
-> click) · U12-b ✅ · U12-c ✅ · U20 ✅. **The rework trigger did not fire.** **So there is no engineering
-> question left that gates anything.** **What remains is B3, and it always was** — doc 00 §7: *"Go make
-> ten phone calls before you write a line of the detection engine."* **That sentence is now the entire
-> critical path, and it is the founder's, not yours.**
+> **Founder decision, 2026-07-17. [ADR 0016](docs/adr/0016-mvp-first-sequencing.md). Read it before
+> anything else in this section, because it REVERSES the instruction this section carried for two
+> sessions.**
 >
-> ⚠️ **The temptation this creates is the one to name: four green spikes make it FEEL like the right
-> move is to build.** **It is not.** U12 asked *"can we build it?"* and the answer is yes. **B3 asks
-> *"will anyone deploy it?"* — still unasked, still cheaper, still likelier to be fatal** (doc 00 §3,
-> ADR 0001). **Nothing in the spike results touches it.** **And U6-b — the #1 engineering number — is
-> B3-BLOCKED by construction**, since its pass criterion is a measured `Ctrl+V`→`Enter` interval that
-> only a design partner on real work can produce. **Green spikes did not unblock a single thing that
-> was blocked.**
+> 🔴 **THE ORDERING CHANGED AND A FRESH SESSION WILL GET THIS WRONG IF IT TRUSTS ITS MEMORY.** This
+> section used to say *"the next action is NOT code"* and *"go make ten phone calls before you write a
+> line of the detection engine."* **That is no longer the next action.** **B3, force-install work,
+> U6-b's threshold, marketing/GTM, doc 08, and anything else needing a design partner are PARKED until
+> both MVP slices land.**
 >
-> 🔴 **The next action is NOT code. It is the founder's, and doc 00 §7 says so: *"Go make ten phone
-> calls before you write a line of the detection engine."*** See [`code/README.md`](code/README.md)
-> §Order of operations — **B3 (calls) → ~~U12-a~~ ✅ → U21-a (an afternoon, FREE, one-sided) →
-> ~~U12-b~~ ✅ → everything else.** **Steps 1–4 cost a week and no engineering. Step 5 costs 18
-> months.** **Two of the four are now struck, and the two that remain are the two nobody has started.**
+> ⚠️ **And the trap is specific, because the old argument is still good.** **B3 was never refuted — it
+> was OVERRULED.** Doc 00 §3, doc 00 §7 and ADR 0001 still argue it should come first, and **nothing in
+> the spike results touched that argument.** So a fresh session re-reading those docs will "discover"
+> the B3-first case and mistake re-deriving it for diligence. **It is a live decision, not an
+> oversight. ADR 0016 records the dissent so it does not have to be re-argued — read it there.**
 >
-> 🟢 **U21-a is the only thing left that is BOTH yours and unblocked** — public raw text, an afternoon,
-> **one-sided** (trimming only raises fertility, so a fail is FINAL and fires doc 06 §6.2's
-> distillation trigger without a memory decision ever being made). `code/spikes/u21a-fertility/` is
-> live and verified end-to-end. **It needs a corpus, not a decision.**
+> ### The locked sequence
 >
-> **The scaffold is deliberately stubs until those report.** Doc 05 §1.1: *"Read the failure column
-> top to bottom — it is a ranking, and **it inverts the effort you'd naively spend.**"*
+> | | | |
+> |---|---|---|
+> | **1** | 🔴 **Slice 1 — chat text, L1 + L2** | ChatGPT + Claude · typing **and** paste · Enter **and** mouse Send · **L1 deterministic + L2 on-device model TOGETHER** · block/modal → rewrite → **the user presses Send** · scanning on the user's machine, **raw prompts never reach our server** · **no rehydration**. **Accepted when the team can clone → Developer mode → Load unpacked → use it on both surfaces → verify the whole experience.** |
+> | **2** | **Team test** | **Not a public release.** The founder sends them the repo; they load unpacked. |
+> | **3** | **Slice 2 — file CONTENT checking** | **Only after the team accepts Slice 1.** 🔴 **B3 does NOT go between the slices** (founder, explicit). **Propose the thinnest honest scope BEFORE implementing** — see the checklist row. |
+> | **4** | **Doc 08** | **Only after both slices are implemented and tested.** |
 >
-> **Founder has the open action on U25** (lawful basis for ADR 0015's eval corpus) **and on B3's
-> interviews** — including doc 07 §1.5's one added question, which closes the precision floor free.
+> 🔴 **AN L1-ONLY BUILD IS NOT AN ACCEPTABLE SLICE 1 TARGET.** Founder, explicit: *"If L1+L2 cannot
+> realistically work in days, push back with a concrete timeline and the exact blockers. Do not replace
+> it with an L1-only 'MVP'."* **He is right on the merits, and the reason is sharper than *"a weak demo"* —
+> re-read doc 00 §1.3 before repeating it.** 🔴 **L1 is the package's *highest-value* feature**
+> (doc 00 §1.3's title is *"The highest-value feature needs no ML, and you deferred it"*), **so an
+> L1-only build would demo WELL.** That is the danger, not the objection. **The objection is that per
+> doc 00 §5 and doc 03 §3.3 — *"a regex catches the IC number in any language; nobody needs a model
+> for that"* — L1 is the part that is NOT ours.** **An L1-only Slice 1 would demo the highest-value
+> feature and none of the differentiated one**, impressively enough to be believed, and the team
+> would validate a product we do not have.
 >
-> ⚠️ **Do not write doc 08 before the spikes report.** It is *"written LAST so it inherits real
-> risks"* (§2) — and U12-a, U21-a and B3 are exactly the risks it is supposed to inherit. **Doc 08
-> written now would rank three guesses it could have ranked as measurements.**
+> 🟢 **U21-a may run in parallel — but ONLY if it does not delay Slice 1** (founder). It is still
+> free, still an afternoon, still one-sided.
 >
-> **Read doc 07 before either.** It **re-specified three register entries** (C3, U21, U14), **corrected
-> doc 02 §4.7 and doc 06 §4.4/§9 upstream**, and **minted ADR 0015** — the decision that puts real
-> personal data in the company. **§8.5 below records what doc 07 settled, so it is not re-derived.**
+> 🟢 **Slice 1 pays a debt nobody expected it to: it produces U6-b's CURVE for free.** The curve was
+> always ours (doc 06 §3.3); only the **threshold** needs a design partner. **A working extension on the
+> team's machines measures paste → verdict on real hardware.**
 >
-> 🔴 **The three things a fresh session will get wrong if it skips doc 07:**
-> 1. **It will rank U21/the fertility spike as blocked.** **It is not** — U21-a is free, public-text,
->    week 1, **and one-sided (a fail is final).** doc 07 §3.
-> 2. **It will read C3 as "can an LLM write good Malay PII?"** **Wrong noun.** **No model ever learns
->    from a synthetic NRIC** — L1 is *written, not trained*, and L2 never sees one. **C3-b (text) is the
->    whole risk.** doc 07 §2.3.
-> 3. **It will reopen DP-SGD** on seeing real data enter via ADR 0015. **No** — eval data never enters a
->    gradient, so there are **no training-set members**; doc 02 §4.5 is unchanged. **The obligations are
->    PDPA's (U25), and they have a lawyer's answer, not a gradient's.** doc 07 §8.
+> ### What Slice 1 must honour — these are not negotiable and the founder restated all three unprompted
 >
-> **Scope for the `code/` scaffold** — doc 07 §9 hands it three things, and **§8.4 below (this file's,
-> not doc 05's — doc 05 has no §8.4) carries the older brief:** L1's placeholder mask is
-> **`\b…\b`, not `^…$`**, and **its type list is generated from
-> doc 04's minter, not typed twice** (doc 07 §6.1) · **chunk with leading-biased overlap**, sized from
-> our own detector list — **the one number we own both sides of** (doc 07 §6.2) · **identifier fixtures
-> are generated from the grammar, never from an LLM** (doc 07 §4.2/§4.3). **And per ADR 0009: per-tenant
-> DEKs from day one.**
+> - **Decision #2 + #8 (coupled):** on-device scanning, synchronous gate, **the user presses Send**.
+>   **No auto-submit, ever.** The post-modal flow is §6.4's: modal → adapter writes the rewrite →
+>   focus + caret restored → **single-use approval token bound to `hash(rewritten)`** → the user presses
+>   Send → the gate matches and does not stop the event.
+> - **E2 — the rehydration kill.** Once a value is replaced, **the extension never writes the original
+>   back into the provider's page.** §6.5 is the reasoning; **the demo is where the pressure to reopen
+>   comes from, and that pressure is not a reason.**
+> - **Decision #5 + I3 — and this is now a REVIEW GATE, not a hope.** **U26: the spike harness logs raw
+>   `key` values.** That is fine for an instrument on two machines for a week; **the production
+>   extension must not inherit it.** **Classes, counts and salted-hash references. Check it; do not
+>   assume it.**
+> - **ADR 0009 — per-tenant DEKs from day one**, even with one tenant. Cheap now, flag-day migration
+>   later.
+> - **ADR 0013's monotonic rule** — L1 may write DIRTY; **only a completed L1+L2 scan may write CLEAN.**
+> - **ADR 0014** — a dead engine degrades to **advisory**, never fail-closed.
+>
+> 🔴 **Open blockers to resolve WITH THE FOUNDER before writing the Slice 1 brief** — these are
+> questions, not tasks, and the answers change what gets built:
+>
+> 1. **Which L2 model?** 🔴 **There is no trained model and there is no corpus.** C3-b is the
+>    package's least-confident assumption; U14-a is an unrun search; U25 (lawful basis) is with counsel.
+>    **So Slice 1's L2 is a STOCK public multilingual NER model or it does not exist in days.** That is
+>    honest and useful — it makes the pipeline, the offscreen lifecycle, the latency and the memory all
+>    **real** — but it is **generic PERSON/ORG/LOC, not the Malaysian wedge**, and **the team must be
+>    told that** or the test measures the wrong thing.
+> 2. **How do the weights reach the team?** ~140 MB+ int8. **In the repo (Git LFS, a heavy clone) or
+>    downloaded on first run (a network fetch, which is NOT a prompt leaving the device but IS a new
+>    thing to explain)?**
+> 3. **Build step or not?** Doc 01 §6 chose **WXT**; the spike is raw MV3 deliberately. **"Clone and
+>    Load unpacked" is friction-free only if the loadable output is committed or there is no build.**
+> 4. **Gate mode for the team test?** Decision #3 has two modes. The team has no admin/policy channel —
+>    **advisory, or block-with-Ignore?** The **Ignore + reason** loop is doc 00 §1.6's compliance
+>    artifact and it changes what the test measures.
+
 
 <details>
 <summary><b>Superseded — the doc 07 brief (kept for the reasoning, not the task)</b></summary>
