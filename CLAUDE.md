@@ -182,7 +182,7 @@ workload · 0009 org-dictionary key custody · **0010 gate registers at `window`
 **0011 monotonic placeholder numbering** · **0012 observer uses `webRequest`** (reverses the plan's
 mechanism) · **0013 two-stage verdict** (L1 may decide DIRTY alone) · **0014 degrade to advisory, never
 fail-closed** · **0015 the eval corpus's text substrate is REAL** (training may stay synthetic — the
-decision that puts real personal data in the company) · 🔴 **0016 MVP-first sequencing** (**reverses *"B3 above the engineering spikes"*** — the team test is the next learning loop; B3, force-install, U6-b's threshold, marketing and **doc 08** are **parked** until Slices 1 and 2 land). New ADRs continue from **0017**.
+decision that puts real personal data in the company) · 🔴 **0016 MVP-first sequencing** (**reverses *"B3 above the engineering spikes"*** — the team test is the next learning loop; B3, force-install, U6-b's threshold, marketing and **doc 08** are **parked** until Slices 1 and 2 land). · **0017 Slice 1's four technical choices** (stock L2 · CDN weights · WXT with committed dist · block+Ignore). New ADRs continue from **0018**.
 
 ---
 
@@ -857,23 +857,42 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 > - **ADR 0013's monotonic rule** — L1 may write DIRTY; **only a completed L1+L2 scan may write CLEAN.**
 > - **ADR 0014** — a dead engine degrades to **advisory**, never fail-closed.
 >
-> 🔴 **Open blockers to resolve WITH THE FOUNDER before writing the Slice 1 brief** — these are
-> questions, not tasks, and the answers change what gets built:
+> ### ✅ The four blockers are ANSWERED — [ADR 0017](docs/adr/0017-slice-1-technical-choices.md)
 >
-> 1. **Which L2 model?** 🔴 **There is no trained model and there is no corpus.** C3-b is the
->    package's least-confident assumption; U14-a is an unrun search; U25 (lawful basis) is with counsel.
->    **So Slice 1's L2 is a STOCK public multilingual NER model or it does not exist in days.** That is
->    honest and useful — it makes the pipeline, the offscreen lifecycle, the latency and the memory all
->    **real** — but it is **generic PERSON/ORG/LOC, not the Malaysian wedge**, and **the team must be
->    told that** or the test measures the wrong thing.
-> 2. **How do the weights reach the team?** ~140 MB+ int8. **In the repo (Git LFS, a heavy clone) or
->    downloaded on first run (a network fetch, which is NOT a prompt leaving the device but IS a new
->    thing to explain)?**
-> 3. **Build step or not?** Doc 01 §6 chose **WXT**; the spike is raw MV3 deliberately. **"Clone and
->    Load unpacked" is friction-free only if the loadable output is committed or there is no build.**
-> 4. **Gate mode for the team test?** Decision #3 has two modes. The team has no admin/policy channel —
->    **advisory, or block-with-Ignore?** The **Ignore + reason** loop is doc 00 §1.6's compliance
->    artifact and it changes what the test measures.
+> | | Decision (founder, 2026-07-17) | The part that will get forgotten |
+> |---|---|---|
+> | **L2** | **A stock public multilingual NER checkpoint**, int8, in the offscreen doc. **No trained model. No in-product placeholder banner** — the founder tells the team verbally. **Do NOT switch to a custom L2 or an LLM sensitive-classifier for Slice 1.** | 🔴 **It is PERSON/ORG/LOC tagging, NOT a sensitive-vs-not classifier.** *"Explain Einstein's theory"* has a PERSON; *"summarise Apple's earnings"* has an ORG; **neither is a leak.** **The gap between *is an entity* and *is sensitive* is the product, and Slice 1 does not have it.** |
+> | **Weights** | **First-run download from a public CDN.** | **Decision #2 is about what we SEND, not what we download — a weights fetch carries no user data and does not touch it.** 🔴 **But pin the hash and verify before load** (doc 02 §6.4's un-N/A-able row, doc 05 §7's *"you control when our code changes"*), **and note it fails on a locked-down network — exactly the fleet B3 targets.** Fine for the team; **not the shipping answer.** |
+> | **Build** | **WXT** (doc 01 §6's stack) **with `dist/` committed**, so the team clones → Load unpacked with no toolchain. | ⚠️ **A committed build artifact is a second source of truth and it drifts SILENTLY.** **Slice 1 needs a `dist/`-matches-`src/` check** or the team reports on code that no longer exists. **Doc 01 §6's eject-to-CRXJS rule still stands** — Slice 1 has no MAIN-world work but **all** the offscreen work. |
+> | **Gate** | **Block + modal + Ignore-with-reason.** | 🟢 **This turns Slice 1's weakness into its best output: the Ignore rate PER CLASS on real work** is doc 07's detector-prioritization signal — *"it ranks our bugs; it does not label them."* **Doc 02 §4.6: local labelling only. I3/U26: class + count + salted hash, never the typed value.** |
+>
+> **Masking policy (founder):** **L1 hits + L2 PERSON + ORG** are mask targets. **LOC is OFF** — see
+> the recommendation in §8.1. **The org dictionary (ADR 0004) follows and must NOT block Slice 1.**
+>
+> ### 🔴 Slice 1 is NOT days. ~3–5 weeks, one engineer. The founder asked for this pushback explicitly.
+>
+> *"If L1+L2 cannot realistically work in days, push back with a concrete timeline and the exact
+> blockers. Do not replace it with an L1-only 'MVP'."* — founder. **It cannot, and here is why.** **The
+> gate is the ONLY part U12 de-risked**; everything below is unbuilt.
+>
+> | Work | Est. | Why it is not free |
+> |---|---|---|
+> | WXT scaffold + committed `dist/` + drift check | **~1 d** | |
+> | **ONNX Runtime Web in the offscreen doc: model load, int8, WASM** | **~3–5 d** | 🔴 **U22 is on the critical path now** (COOP/COEP → `SharedArrayBuffer` → ORT threads). **Ours, not the fleet's** — unlike U15. It is the difference between a usable and an unusable L2. |
+> | **Tokenizer in the browser** (SentencePiece) | **~1–3 d** | **Not a detail.** Doc 06 §4.2's 512-chunking and doc 07 §6.2's overlap floor are both defined in TOKENS. |
+> | ChatGPT + Claude adapters (composer, send button, paste) | **~3–4 d** | **U12 proved the GATE, not the adapters.** Doc 05 §4.4: two adapters, breaking independently on the D4 clock. |
+> | Gate: `window` capture, `composedPath()`, `isComposing`, verdict cache | **~1–2 d** | **The one part U12 de-risked.** |
+> | L1 detectors + placeholder-grammar mask (doc 05 §6.2) | **~2 d** | **The mask is a DETECTION requirement** — without it L2 tags its own `PERSON_1` output. |
+> | Vault, monotonic numbering (ADR 0011), IndexedDB | **~2 d** | Doc 04 §8: a dead vault mid-thread makes `PERSON_1` mean two people. |
+> | Modal (Preact, shadow root) + rewrite + focus/caret + approval token | **~3–4 d** | Token is hash-bound, single-use, **idempotent** (doc 05 §6.2). |
+> | Paste path: preempt the queue, no debounce (doc 06) + Ignore loop + local audit | **~2–3 d** | |
+> | **Total** | **~18–26 engineer-days ≈ 3.5–5 weeks** | **(estimate)** — no comparable build to cite. |
+>
+> 🔴 **The number is an ESTIMATE and is tagged as one.** **The two that could blow it: U22** (if ORT
+> threads are unavailable, L2 latency may miss the gate entirely and the answer is ADR 0013's L1
+> short-circuit plus a slower "clean") **and the ADAPTERS** (a D4 event during Slice 1 costs days and
+> is outside our control). **Both are measurements, not guesses — and neither is discoverable without
+> building.**
 
 
 <details>
@@ -882,8 +901,8 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 **Write `docs/07-ml-training-and-data-strategy.md`.** ✅ **DONE.**
 
 > **Docs 05 and 06 are committed. Read both — doc 06 hands doc 07 the thing that makes it harder than
-> it looks.** **Doc 07's scope is the numbered list immediately below.** **§8.1/§8.2 record what docs
-> 05–06 settled**, so it is not re-derived; **§8.3/§8.4 are superseded briefs, kept for reasoning only
+> it looks.** **Doc 07's scope is the numbered list immediately below.** **§8.3/§8.4 record what docs
+> 05–06 settled**, so it is not re-derived; **§8.5/§8.6 are superseded briefs, kept for reasoning only
 > — do not write doc 07 against either.**
 >
 > *(Corrected 2026-07-17: this line read **"§8.0 is doc 07's scope"**. It was not — §8.0 was doc 06's
@@ -936,7 +955,42 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 
 </details>
 
-### 8.5 What doc 07 settled — do NOT re-derive
+### 8.1 LOC — the recommendation the founder asked for: **OFF for Slice 1**
+
+**The founder's masking policy is L1 hits + L2 PERSON + ORG, *"(and LOC if you recommend)"*.
+Recommendation: 🔴 LOC OFF. Every fork resolves to a decision, so here it is with its reason.**
+
+**Stock NER's `LOC` class conflates two things that are not alike:**
+
+| | Example | Is it a leak? |
+|---|---|---|
+| **Public geography** | *"flights from Kuala Lumpur to Tokyo"* · *"how's the weather in Penang"* | 🔴 **No.** Masking it is a **pure false positive.** |
+| **A personal address** | *"12 Jalan Ampang, 50450 KL"* | ✅ **Yes** — and **stock NER tags it with the SAME label.** |
+
+**So `LOC` cannot separate the case we care about from the case that is 95% of its firings**, and per
+doc 07 §1.2 / ADR 0001 **precision is a quasi-contractual commitment: every FP is a ticket the admin
+eats.** Turning LOC on buys a small amount of address recall and pays for it with **a constant
+interruption on ordinary prompts**, in the one layer whose value is precision.
+
+⚠️ **And note the honest asymmetry rather than hiding it: an address IS sensitive and Slice 1 will
+miss it.** **That is a stated gap, not a silent one** — and it is **L1's** job (structural/postcode
+patterns) or a later fine-tune with a real `ADDRESS` class, **not stock `LOC`'s.**
+
+> 🟠 **ORG has the same disease and is IN anyway — say so plainly.** *"Summarise Apple's earnings"*
+> tags an ORG. **ORG will over-fire on public companies exactly as LOC over-fires on public places.**
+> It is in because **the org dictionary (ADR 0004) is the precise instrument for the ORG case** and
+> the founder has (correctly) refused to block Slice 1 on it — **so ORG is the placeholder for a
+> feature we have already designed**, whereas LOC is a placeholder for nothing.
+>
+> 🟢 **The Ignore rate per class settles this empirically, which is why the argument does not have
+> to be won now.** Doc 07: *"it ranks our bugs; it does not label them."* **If ORG's Ignore rate comes
+> back high on the team's real work, that is the measured case for the org dictionary — and if
+> someone wants LOC back, the same instrument prices it.** **Do not tune this by intuition; the whole
+> point of shipping Ignore+reason is that it is an instrument.**
+
+---
+
+### 8.2 What doc 07 settled — do NOT re-derive
 
 - 🔴 **C3 → C3-a / C3-b.** *"PII"* was the **identifier** framing and **doc 03 §3 moved the wedge on
   2026-07-16 without moving C3.** **C3-a** (identifiers · **published grammar** · High · near-zero blast
@@ -983,7 +1037,7 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
   quasi-contractual one** — **with no personal data in it at all.** Cheapest real-data eval row; build
   it first.
 
-### 8.1 What doc 05 settled — do NOT re-derive
+### 8.3 What doc 05 settled — do NOT re-derive
 
 - **U10 ✅ 30 s**, cited. **Offscreen→SW messages reset the timer**, so the engine keeps the SW alive
   when there is work.
@@ -995,7 +1049,7 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 - **Token needs idempotency, not determinism** (doc 05 §6.2) — and the L1 placeholder-grammar mask that
   delivers it is **doc 07's**, as a detection requirement.
 
-### 8.2 What doc 06 settled — do NOT re-derive
+### 8.4 What doc 06 settled — do NOT re-derive
 
 - 🔴 **The budget is TWO deadlines, not one number.** **Hard** = dirty/clean at Send (cannot slip).
   **Soft** = full findings while the user reads the modal (hundreds of ms, free). **Gating is the
@@ -1026,7 +1080,7 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
   U21**). **Second instance of the beachhead being the hard case**, after doc 05 §1.3's IME finding.
   **→ §7.3 rank 7.**
 
-### 8.3 Superseded — the doc 06 brief (kept for the reasoning, not the task)
+### 8.5 Superseded — the doc 06 brief (kept for the reasoning, not the task)
 
 **Doc 06 is done.** Retained because its framing binds doc 07 and doc 08:
 1. 🔴 **Size the latency budget against the PASTE case, not the typing case** (doc 05 §6.3). Doc 01 §4
@@ -1056,13 +1110,13 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 7. **Doc 03 §6's falsifiable prediction:** trimming should cut **memory ~50%, latency barely at all**
    (embedding is lookup, backbone is compute). ~~**Doc 06 is where it gets falsified.**~~
    ✅ **ANSWERED — doc 06 §4.4: true *per token*, silent on *token count*. Falsified in scope, not in
-   fact.** **Do not read this line as still open. → §6.2 and §8.2.**
+   fact.** **Do not read this line as still open. → §6.2 and §8.4.**
 8. **No tokens/sec until measured or cited.** Docs 03 and 05 both held this line and produced none.
    ~~**Doc 06 is where the pressure to break it is highest**~~ — ✅ **and it held.** **Doc 07 inherits
    the line.**
 9. **Vault TTL × token TTL interact** (doc 05 §5.3, §6.4) and neither has a value.
 
-### 8.4 Superseded — the doc 05 brief (kept for the reasoning, not the task)
+### 8.6 Superseded — the doc 05 brief (kept for the reasoning, not the task)
 
 **Doc 05 is done. This section is retained only because its framing of U12 survived and is binding on
 the spike.**
