@@ -208,11 +208,41 @@ support I happen to need. *(→ `ASSUMPTIONS.md` **U23**.)*
 
 **The one real consequence, and it is a spec, not a slogan:**
 
-> 🔴 **Recall is scored per *mention*, and reported per *entity*.** An entity whose mentions are caught
-> **90%** is worse *on the utility axis* than one caught **0%**: at 0% it leaks and stays coherent, at
-> 90% it leaks **and** splits. **Mention-level F1 hides this — it is an average over exactly the
-> variable that matters.** The eval reports **the fraction of entities with 100% mention coverage**,
-> alongside F1. *(§5.5.)*
+> 🔴 **Recall is MONOTONE ON PRIVACY and NON-MONOTONE ON UTILITY. Both halves, always, in that
+> order.**
+>
+> | Mentions of `John Tan` caught | What the provider's server gets | What the model reads |
+> |---|---|---|
+> | **0%** | 🔴 `John Tan` — **the full name** | 🟢 Coherent. One person |
+> | **90%** | 🟠 `Tan` — **strictly less** | 🔴 `PERSON_1` **and** `Tan`. **May split one person into two** |
+> | **100%** | 🟢 Nothing | 🟢 Coherent. One person |
+>
+> **So: 90% beats 0% on privacy and loses to it on utility.** **Consequence, and it is the only one:
+> the eval reports the fraction of entities with 100% mention coverage, alongside F1 — because F1 is
+> an average over exactly the variable that matters.** *(§5.5.)*
+
+> 🔴 **Read the two halves together or not at all, and here is the receipt.** This finding was first
+> written as the phrase ***"90%-caught is worse than 0%-caught (on utility)."*** **The founder repeated
+> it back within one turn as *"perfectly captures the threat model: partial redaction leaves the data
+> exposed while giving the user a false sense of security"* — the qualifier gone, the axis inverted.**
+> **He reads this package more carefully than anyone. The phrase was simply built to shed its
+> qualifier**, and *"worse"* with no axis attached reads as *"worse for the buyer,"* which is the one
+> thing it is not.
+>
+> **The rejected reading, written out rather than omitted, because it has a bad instruction inside it:**
+> **if 90% were worse than 0% *on the threat model*, partial redaction would be a harm, and the correct
+> design would be *mask everything or mask nothing*.** **That deletes privacy we actually achieved to
+> avoid a coherence artifact — and it does it in the wedge's languages first, where recall is worst.**
+> **And *"false sense of security"* cuts the other way: doc 04 §3.2 makes the placeholder
+> *"unmistakably artificial"* precisely as a *"visible marker that the system acted"*, and its named
+> fear is the user **not realising redaction happened** — at 90% the leftover `Tan` sits visibly beside
+> `PERSON_1`, at 0% there is no marker at all.** *(A false sense of security at <100% recall is the
+> **general** recall problem, not this one — and doc 00 §6 settled it: **seatbelt, not vault.**)*
+>
+> **CLAUDE.md §2, about the last slogan: *"a list gets appended to, a slogan gets repeated."* This one
+> was repeated in one turn, minus the half that made it true.** **The fix is not to re-attach the
+> qualifier — it is to write a sentence that cannot shed it.** Hence the two-axis form above: **drop
+> either half and it stops parsing as a claim.**
 
 ### 1.5 The operating point is not ours to pick — and it costs one interview question
 
@@ -764,7 +794,7 @@ four documents have been handing it rows:**
 | Row | Owner | Why it is in the eval and not a note |
 |---|---|---|
 | 🔴 **BM/ZH accuracy at every trim / quant / distill setting** | doc 06 §6.3 | **The three taxes. The eval's reason to exist** (§5.1) |
-| 🔴 **Entities with 100% mention coverage** — *not just mention-F1* | §1.4 | **F1 averages over exactly the variable that matters.** 90%-caught is worse than 0%-caught on utility |
+| 🔴 **Entities with 100% mention coverage** — *not just mention-F1* | §1.4 | **Recall is monotone on privacy, non-monotone on utility.** **F1 averages over exactly the variable that matters** |
 | 🔴 **`NRIC_OR_SSM_AMBIGUOUS` — the over-firing rate** | doc 03 §2.3, §6.3 below | **~86% of 2001–2012 incorporations.** The systematic FP source, in the layer whose precision is quasi-contractual |
 | 🟠 **Malay honorific spans** — `Dato' Seri` masked **with** the name | doc 04 §4.3 | A **re-identification** vector. Masking the name and leaving the pointer is a **compliance** failure, not a cosmetic one |
 | 🟠 **Register loss on masked honorifics** | doc 04 §8 | doc 04 accepted it **with a revisit rule**. An accepted cost you cannot measure is an **unaccepted** cost |

@@ -845,8 +845,15 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
   script.**
 - **Recall's unit is the *mention*, reported per *entity*.** Doc 04 §8's *"breaks coreference for the
   entities we did catch"* is **intra-entity, not inter-entity**, and the damage is **ADR 0011's benign
-  split.** **90%-caught is worse than 0%-caught on utility; mention-F1 averages over the variable that
-  matters.**
+  split.** 🔴 **Recall is MONOTONE ON PRIVACY and NON-MONOTONE ON UTILITY — both halves, in that
+  order.** At 0% the provider gets `John Tan`; at 90% it gets `Tan`, **strictly less** — **90% beats 0%
+  on privacy and loses to it on utility.** **Consequence: report the fraction of entities with 100%
+  mention coverage alongside F1**, because F1 averages over the variable that matters. ⚠️ **This was
+  first written as the slogan *"90%-caught is worse than 0%-caught (on utility)"* and the founder
+  repeated it back within one turn with the qualifier gone and the axis inverted** (*"captures the
+  threat model… false sense of security"*). **The rejected reading has a bad instruction in it —
+  *"mask everything or mask nothing"*, which deletes achieved privacy to avoid a coherence artifact,
+  in the wedge's languages first.** **Do not re-compress this into a comparison. Doc 07 §1.4.**
 - **The Ignore *rate per class* is a detector-prioritization signal and doc 00 §1.6's poisoning
   argument does not reach it** — the poisoner is **indiscriminate**, so they move the mean and not the
   ranking. **Never a label. It ranks our bugs; it does not label them.** **Already I3-shaped** (class +
