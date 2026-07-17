@@ -1,7 +1,7 @@
 # CLAUDE.md — Session Briefing
 
 > **Read this first, before touching any deliverable.** This is a briefing for a future session, not
-> prose for the founder. Last updated: 2026-07-17, after doc 06 committed (`50037b8`).
+> prose for the founder. Last updated: 2026-07-17, after **doc 07** committed.
 
 ---
 
@@ -78,15 +78,40 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 > | 4 | **ADR 0012** | ✅ `webRequest` is the right mechanism | *"A second opinion from the same doctor"* — **the founder broke it** | ✅ Yes — re-argued on **enumeration** + **provider-app integrity** |
 > | 5 | **doc 03 §6** | ✅ Trimming cuts memory ~50%, latency flat | **True *per token*, silent on *token count*** — trimming moves fertility, and fertility adds chunks (doc 06 §4.4) | ✅ Yes — **scope narrowed**, not reversed |
 > | 6 | **§7.3's own through-line** | ✅ The wedge really is where the cost lands | *"**Coherent for a moat** — the hard thing is the defensible thing, and per ADR 0003 the wedge was never claimed as one anyway"* — **asserts the framing, asserts a false general rule, refutes itself, all in one sentence.** The founder built on it and reached *"friction is the price of the moat"* — **decision #4's exact prohibition** | ✅ Yes — **lead with it** (founder, 2026-07-17); **framing reversed to *"the wedge is where we spend, the moat is where we don't"*** |
+> | 7 | **Precision over recall** (doc 07 §1.2) | ✅ TRUE, and quasi-contractual per ADR 0001 | *"because a blocking tool that cries wolf **gets uninstalled** and then detects nothing"* — 🔴 **depends on the user being ABLE to uninstall. B3 is force-install, whose whole purpose is that they cannot.** **The justification is anti-correlated with our own success** — it dies at the moment the enterprise story becomes real | ✅ Yes — **re-justified on ADR 0001's ticket economics + channel defection (doc 00 §1.4 = ADR 0014's argument).** Both **strengthen** under force-install. ***"Over-blocking is fail-closed, delivered gradually"*** |
+> | 8 | **doc 06 §4.4** (doc 07 §3) | ✅ Fertility is one measurement settling three budgets — doc 06's best finding | *"therefore **blocked on the corpus (U14/C2 → C3)**"* — 🔴 **a false dependency. U14 is a *PII* corpus; fertility is unsupervised and needs only raw text.** **Doc 03 sized the blocker for the *vocabulary pick*, correctly; doc 06 copied it onto *latency*, which needs less** | ✅ Yes — **conclusion survives, blocker dies.** **U21-a is free, now, and one-sided.** The package's highest-value measurement had a lower bound nobody took |
+> | 9 | **doc 04 §8** (doc 07 §1.4) | ✅ Recall matters, and mention-level recall is the unit | *"a missed entity **breaks coreference for the entities we did catch**"* — **inter-entity, and the case could not be constructed.** True form is **intra-entity**: a miss on a *mention* of A splits A | ✅ Yes — **but it deflates rather than escalates.** The damage is **ADR 0011's *split*, already ruled the benign failure.** **The asymmetry is *less* complicated than the brief said** |
 >
-> > **What the ledger actually says — and it is more useful than the slogan was.** **Five instances.
-> > In four, the conclusion survived and the reasoning did not.** **In one — U11, the earliest and the
+> > **What the ledger actually says — and it is more useful than the slogan was.** **Nine instances.
+> > In eight, the conclusion survived and the reasoning did not.** **In one — U11, the earliest and the
 > > most expensive — the conclusion fell with it.** So the honest rule is **not** *"the conclusion is
-> > always right"*: that is the comfortable read, it is 4-for-5, and **the exception is the instance
+> > always right"*: that is the comfortable read, it is 8-for-9, and **the exception is the instance
 > > that cost the most.** The rule is: **a true fact confers nothing on the sentence attached to it.
 > > Audit the therefore on its own evidence** — sometimes the decision survives, sometimes it is
 > > U11 and three docs were built on a non-sequitur. **You cannot tell which until you check, and the
 > > ✅ on the fact is precisely what stops people checking.**
+> >
+> > 🔴 **Doc 07 added a refinement worth having: #7 and #8 are not random.** **#7's bad connective
+> > dies when B3 *succeeds*; #8's dies because a blocker was *inherited* rather than re-derived.**
+> > **Both are connectives that were true when written and were never re-checked against a moved
+> > premise.** **So the therefores to audit first are the ones whose premise has changed since** —
+> > and in this package the premise that moves most is **the wedge** (doc 03 §3) and **B3**.
+
+> 🔴 **A FOURTH failure mode, found by doc 07, and it does not fit the ledger's shape.** The ledger is
+> *true fact + wrong connective*. This one is **a claim whose *form* prevents the register from ever
+> resolving it** — nothing is wrong with the reasoning, because no reasoning was reachable.
+>
+> | Entry | The defect in its shape | Fixed by |
+> |---|---|---|
+> | **U6** (doc 06 §3) | Specified against the workload **with slack** — measured completion, gate needs a boolean | **Split → U6-a / U6-b** |
+> | **C3** (doc 07 §2.3) | **Bundled a near-certainty with a coin flip and rated the bundle Low** — *"PII"* is the identifier framing, and **L1 is written, not trained** | **Split → C3-a / C3-b** |
+> | **U21** (doc 07 §3.3) | Bundled a **free** measurement with a **blocked** one | **Split → U21-a / U21-b** |
+> | **U14** (doc 07 §3.4) | 🔴 **A universal negative.** *"No corpus **exists**."* **There is no citation for an absence** — a search returns FALSE or *unresolved-forever*. **It can never be marked ✅ and never could have been** | **Re-specified → U14-a**, a timeboxed search with a bar **declared before looking**, whose output is **a decision, not a verdict** |
+>
+> > **Four for four, and the tell is the same each time: an entry that has sat open for several
+> > documents while everything around it resolved.** **That is not diligence failing. It is the entry's
+> > shape refusing the register's only method** — *go and read the source*. **When an entry will not
+> > close, stop trying to resolve it and ask whether it *can* be. Re-specify, then resolve the halves.**
 >
 > 🔴 **And then a third form, which is the worst one, because it is the thing the package promised
 > never to do.** **Doc 03 §4.1 published `Total | 280M | Model card`.** **86 + 190 = 276** — and **the
@@ -116,8 +141,8 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 | 6 | `docs/04-redaction-and-context-preservation.md` | ✅ **done, committed** (`4026bff`) |
 | 7 | `docs/05-lld.md` | ✅ **done, committed** (`c084f0d`) |
 | 8 | `docs/06-performance-and-scale.md` | ✅ **done, committed** (`50037b8`) |
-| 9 | `docs/07-ml-training-and-data-strategy.md` | ⬜ **not started ← NEXT** |
-| 10 | `code/` scaffold | ⬜ not started |
+| 9 | `docs/07-ml-training-and-data-strategy.md` | ✅ **done, committed** |
+| 10 | `code/` scaffold | ⬜ **not started ← NEXT** |
 | 11 | `docs/08-roadmap-and-risks.md` | ⬜ not started — **written LAST** so it inherits real risks |
 
 **ADRs committed so far:** 0001 buyer · 0002 form factor · 0003 wedge-vs-moat · 0004 org dictionary ·
@@ -125,7 +150,8 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 workload · 0009 org-dictionary key custody · **0010 gate registers at `window`** (refines 0005) ·
 **0011 monotonic placeholder numbering** · **0012 observer uses `webRequest`** (reverses the plan's
 mechanism) · **0013 two-stage verdict** (L1 may decide DIRTY alone) · **0014 degrade to advisory, never
-fail-closed**. New ADRs continue from **0015**.
+fail-closed** · **0015 the eval corpus's text substrate is REAL** (training may stay synthetic — the
+decision that puts real personal data in the company). New ADRs continue from **0016**.
 
 ---
 
@@ -316,9 +342,18 @@ headline total was wrong until 2026-07-17. Read the correction before quoting an
 > **The consequence that binds doc 07: fertility is simultaneously the accuracy metric, the latency
 > metric, and the chunk-count metric.** Doc 03 §4.2 already named the mechanism *as an accuracy risk*
 > and called size *"the easy metric and the wrong one to optimize alone"* — **it was more right than it
-> knew.** **One measurement settles three budgets** (§8 scope item 3; **U21** is the same
-> measurement), **and it is blocked on the corpus (U14/C2 → C3).** **C3 now blocks the latency budget,
-> not just accuracy — that raises its blast radius rather than changing it.**
+> knew.** **One measurement settles three budgets** (**U21** is the same measurement).
+>
+> > 🔴 **CORRECTED 2026-07-17 by doc 07 §3 — this paragraph ended: *"and it is blocked on the corpus
+> > (U14/C2 → C3). C3 now blocks the latency budget, not just accuracy."* **The blocker is a false
+> > dependency and the conclusion above is untouched.** **U14 is a *PII* corpus. Token frequency and
+> > fertility are UNSUPERVISED — no labels, no PII, only raw EN/BM/ZH text**, which demonstrably exists
+> > (doc 03 §3.3 cites **CC100 Malay** as mDeBERTa's own training data without noticing what that
+> > proves). **Doc 03 §4.2 blocked the *vocabulary pick*, correctly; doc 06 §4.4 copied it onto
+> > *latency*, which needs strictly less.** **→ U21-a (stock vocab · FREE · week 1 · one-sided, a fail
+> > is FINAL because trimming only raises fertility) and U21-b (trimmed · genuinely blocked).**
+> > **C3-b's blast radius is unchanged — it owns the *accuracy* budget. What moved is the schedule.**
+> > **Ledger #8.**
 >
 > ⚠️ **The trap for doc 07: the memory win and the latency cost are the same lever.** A trim that looks
 > free on the memory budget is not free on the paste path, **in the wedge's languages, on the dominant
@@ -617,10 +652,13 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 
 | Rank | Item | Source |
 |---|---|---|
-| 🔴 **1** | **B3 primary research** — 5–10 IT-lead interviews. Above both engineering spikes: they ask *"can we build it?"*, B3 asks *"will anyone deploy it?"* — **cheaper to answer and likelier to be fatal.** **Now first for two independent reasons** (below). | doc 00 §3 · ADR 0001 · §6.4 |
+| 🔴 **1** | **B3 primary research** — 5–10 IT-lead interviews. Above both engineering spikes: they ask *"can we build it?"*, B3 asks *"will anyone deploy it?"* — **cheaper to answer and likelier to be fatal.** **Now first for THREE independent reasons** (below + rank 3 + rank 3a). 🔴 **Doc 07 §1.5 adds ONE QUESTION to the script and it closes the precision floor for free:** *"You already run some control that flags things. **How many false flags a week, per hundred staff, does your team absorb before you loosen it or turn it off?**"* — **about their present, not our hypothetical.** | doc 00 §3 · ADR 0001 · §6.4 · **doc 07 §1.5** |
 | 🔴 **2** | **U12-a is the package's single rework trigger, and the cheapest test in it. Rank by blast radius, not cost.** | doc 05 §10 |
 | 🔴 **3** | **U6-b's pass criterion is B3-blocked** — the deadline is the measured `Ctrl+V`→`Enter` interval, which needs a design partner on real work. **This couples the #1 engineering number to the #1 validation item.** | doc 06 §3.3, §9 |
-| 🔴 **4** | **The distillation risk has TWO entrances, not one** — the memory budget landing under ~140 MB **or** fertility forcing a larger vocabulary. **Same risk; the second entrance never involves a memory decision.** Depends on **C3**. | doc 06 §6.2 · doc 03 §4.3 |
+| 🔴 **3a** | **The precision floor's operating point is the admin's, not ours — B3's THIRD reason.** 🟢 **But unlike U6-b it is *askable*: U6-b needs instrumentation on real work (nobody knows their own paste-to-Enter interval); the ticket tolerance is a number the admin has lived.** **One line on a script that is already happening.** 🔴 **And the standing justification for the floor is wrong: *"cries wolf → gets uninstalled"* dies when B3 succeeds** (**ledger #7**). **It is ADR 0001's ticket economics + ADR 0014's channel defection — *over-blocking is fail-closed, delivered gradually*.** | doc 07 §1.2, §1.5 · ADR 0014 |
+| 🔴 **4** | **The distillation risk has TWO entrances, not one** — the memory budget landing under ~140 MB **or** fertility forcing a larger vocabulary. **Same risk; the second entrance never involves a memory decision.** Depends on **C3-b**. ⚠️ **And U21-a can fire the second entrance in week 1, from public text** — doc 07 §3.3. | doc 06 §6.2 · doc 03 §4.3 |
+| 🔴 **4a** | 🔴 **The eval corpus is a LEGAL event, not a data task** — **ADR 0015 puts real personal data in the company before there is a product.** **Lawful basis is `[verify]` (U25) and is counsel's call — A3's first real invoice.** **Not optional: the eval is the only detector C3-b will ever have**, and a risk with no experiment is not managed (ADR 0009's standard). ⚠️ **Do NOT reopen DP-SGD** — eval data never enters a gradient. | doc 07 §5.4 · **ADR 0015** · **U25** |
+| 🔴 **4b** | 🟢 **U21-a is FREE and must not be ranked as blocked** — *"blocked on the corpus"* was a false dependency (**ledger #8**). **Public raw text, week 1, an afternoon, and one-sided: a fail is FINAL.** **The package's highest-value measurement has a lower bound nobody took.** | doc 07 §3 · **U21-a** |
 | 🟠 **5** | **PDPA DPO + breach-notification readiness — in-force dates already past** (2025-06-01). **First invoice against A3.** We may already be non-compliant. | doc 02 §6.1 · **U18** |
 | 🟠 **6** | **U12-b breaks the wedge's language** if the naive gate ships. **Windows + Microsoft Pinyin is the test that matters.** | doc 05 §1.3, §10 |
 | 🟠 **7** | **The beachhead's language is the slowest on the critical path** (~3× chunks, **estimate**, U21). **Second instance of the pattern** after U12-b. **Rank it as the wedge's engineering cost, honestly, rather than discover it.** | doc 06 §4.3 |
@@ -697,7 +735,34 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 
 ## 8. Immediate next action
 
-**Write `docs/07-ml-training-and-data-strategy.md`.**
+> ## ✅ DOC 07 IS DONE. **Next: the `code/` scaffold** (deliverable 10), **then doc 08 LAST.**
+>
+> **Read doc 07 before either.** It **re-specified three register entries** (C3, U21, U14), **corrected
+> doc 02 §4.7 and doc 06 §4.4/§9 upstream**, and **minted ADR 0015** — the decision that puts real
+> personal data in the company. **§8.5 below records what doc 07 settled, so it is not re-derived.**
+>
+> 🔴 **The three things a fresh session will get wrong if it skips doc 07:**
+> 1. **It will rank U21/the fertility spike as blocked.** **It is not** — U21-a is free, public-text,
+>    week 1, **and one-sided (a fail is final).** doc 07 §3.
+> 2. **It will read C3 as "can an LLM write good Malay PII?"** **Wrong noun.** **No model ever learns
+>    from a synthetic NRIC** — L1 is *written, not trained*, and L2 never sees one. **C3-b (text) is the
+>    whole risk.** doc 07 §2.3.
+> 3. **It will reopen DP-SGD** on seeing real data enter via ADR 0015. **No** — eval data never enters a
+>    gradient, so there are **no training-set members**; doc 02 §4.5 is unchanged. **The obligations are
+>    PDPA's (U25), and they have a lawyer's answer, not a gradient's.** doc 07 §8.
+>
+> **Scope for the `code/` scaffold** — doc 07 §9 hands it three things, and **§8.4 below (this file's,
+> not doc 05's — doc 05 has no §8.4) carries the older brief:** L1's placeholder mask is
+> **`\b…\b`, not `^…$`**, and **its type list is generated from
+> doc 04's minter, not typed twice** (doc 07 §6.1) · **chunk with leading-biased overlap**, sized from
+> our own detector list — **the one number we own both sides of** (doc 07 §6.2) · **identifier fixtures
+> are generated from the grammar, never from an LLM** (doc 07 §4.2/§4.3). **And per ADR 0009: per-tenant
+> DEKs from day one.**
+
+<details>
+<summary><b>Superseded — the doc 07 brief (kept for the reasoning, not the task)</b></summary>
+
+**Write `docs/07-ml-training-and-data-strategy.md`.** ✅ **DONE.**
 
 > **Docs 05 and 06 are committed. Read both — doc 06 hands doc 07 the thing that makes it harder than
 > it looks.** **Doc 07's scope is the numbered list immediately below.** **§8.1/§8.2 record what docs
@@ -751,6 +816,48 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
     quantization and distillation all degrade BM/ZH first. They are three taxes on one asset.** A
     budget that spends all three lands a model that is small, fast, and **bad at the languages the
     company exists to be good at.**
+
+</details>
+
+### 8.5 What doc 07 settled — do NOT re-derive
+
+- 🔴 **C3 → C3-a / C3-b.** *"PII"* was the **identifier** framing and **doc 03 §3 moved the wedge on
+  2026-07-16 without moving C3.** **C3-a** (identifiers · **published grammar** · High · near-zero blast
+  radius): **no model ever learns from a synthetic NRIC** — **L1 is written, not trained** (fixtures,
+  not data) **and L2 never sees one** (doc 03 §3.2 masks it). **C3-b** (BM/ZH text, register, name
+  distribution, **and the context tokens around every identifier**) is **Low and carries all the blast
+  radius.** **The rule: synthesize what has a specification; sample what you can only observe** — **it
+  cuts *through* the NRIC**, since doc 03 §2.3's *"highest-value L1 rule"* reads the sentence.
+- 🔴 **U21 → U21-a (free, now, one-sided) / U21-b (blocked).** *"Blocked on the corpus"* was a **false
+  dependency.** **U21-a is the FLOOR** — trimming only raises fertility — so **a fail is final and fires
+  doc 06 §6.2's distillation trigger without a memory decision ever being made.**
+- 🔴 **U14 → U14-a.** **A universal negative cannot be resolved**; the search's **bar is declared before
+  looking**, output is **a decision, not a verdict.** **Do not carry U14 as open forever — it cannot
+  close.**
+- 🔴 **ADR 0015 — the eval's text substrate is REAL; training may stay synthetic.** **A synthetic eval
+  is BLIND to doc 06 §6.3's three taxes**: the trim keeps the **~99.9%-coverage** tokens and synthetic
+  Malay is **made of** those tokens. **It also makes C3-b unfalsifiable — testing the claim against
+  itself.** **Fourth instance of the letter-vs-purpose trap, and the first living in a *metric*.**
+- **Precision over recall ✅ — re-justified.** **Not** *"gets uninstalled"* (dies when B3 succeeds).
+  **ADR 0001's ticket economics + channel defection** (doc 00 §1.4 = **ADR 0014's argument**). ***"Over-
+  blocking is fail-closed, delivered gradually."*** 🔴 **No floor invented: the curve is ours, the
+  operating point is the admin's — and unlike U6-b's threshold it is ASKABLE. One question on the B3
+  script.**
+- **Recall's unit is the *mention*, reported per *entity*.** Doc 04 §8's *"breaks coreference for the
+  entities we did catch"* is **intra-entity, not inter-entity**, and the damage is **ADR 0011's benign
+  split.** **90%-caught is worse than 0%-caught on utility; mention-F1 averages over the variable that
+  matters.**
+- **The Ignore *rate per class* is a detector-prioritization signal and doc 00 §1.6's poisoning
+  argument does not reach it** — the poisoner is **indiscriminate**, so they move the mean and not the
+  ranking. **Never a label. It ranks our bugs; it does not label them.** **Already I3-shaped** (class +
+  count). **Cost: it is a second purpose and the DPA must name it.**
+- **DP-SGD unchanged and its trigger is still right** (doc 02 §4.5) — **but the first real data arrives
+  in the *eval* set and nothing was watching that door.**
+- **`NRIC_OR_SSM_AMBIGUOUS` cannot have a precision target** — ambiguity is a property of our
+  information, not the string. **Score its *over-firing rate*.** 🟢 **And half the collision's ground
+  truth is PUBLIC**: real SSM numbers in real sentences measure the **FP** direction — **the
+  quasi-contractual one** — **with no personal data in it at all.** Cheapest real-data eval row; build
+  it first.
 
 ### 8.1 What doc 05 settled — do NOT re-derive
 

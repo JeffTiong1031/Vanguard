@@ -579,10 +579,35 @@ inspectable) — which is also exactly why §4.5's DP-SGD is pointless on it.
 **Do not let the good privacy properties disguise the risk.** C3 — *"synthetic BM/ZH PII can be
 generated at sufficient quality"* — is **Low confidence, HIGH blast radius**, and `ASSUMPTIONS.md`
 calls it *"the load-bearing assumption of the whole beachhead."* An LLM generating Malay PII will
-generate the **stereotypical** distribution, not the real one: too-regular NRIC formats, name
-distributions skewed to whatever its training data over-represented, and code-switching patterns that
-read like a textbook rather than like a WhatsApp message from a KL office. **Train on that and you
-build a model that is excellent on synthetic Malay and mediocre on Malaysia.**
+generate the **stereotypical** distribution, not the real one: name distributions skewed to whatever
+its training data over-represented, and code-switching patterns that read like a textbook rather than
+like a WhatsApp message from a KL office. **Train on that and you build a model that is excellent on
+synthetic Malay and mediocre on Malaysia.**
+
+> 🔴 **Corrected 2026-07-17 (doc 07 §2.4). The risk list above began with a third item —
+> *"too-regular NRIC formats"* — and it is not a risk at all. The verdict (KEEP, load-bearing) and the
+> two surviving items are unchanged and were always right.**
+>
+> **Nothing learns from a synthetic NRIC.** Two independent reasons, either sufficient: **L1 is
+> written, not trained** — a regex plus doc 03 §2.1's structural validator, whose behaviour is fully
+> determined by a **published grammar**, so synthetic ICs are **unit-test fixtures, not training
+> data** — and **L2 never sees one**, because doc 03 §3.2 masks the span before the tokenizer runs.
+> **Regularity is not a defect in a fixture; it is the specification being satisfied.**
+>
+> **Why it was here, and the shape is the lesson:** *"PII"* is the **identifier** framing, and doc 03
+> §3 relocated the wedge from identifiers to **BM/ZH text NER** on 2026-07-16. That correction reached
+> doc 00 §5 and doc 01 §3 — **it did not reach this section, written after it, or `ASSUMPTIONS.md`'s
+> C3.** **The correction log lists the docs that *cite* a claim. It does not list the docs that *are*
+> the claim** — and this is C3's home section. **The ghost survived here precisely because doc 03's
+> correction was filed as an ML finding and this is a privacy section.**
+>
+> **→ C3 is split** (doc 07 §2.3, `ASSUMPTIONS.md`): **C3-a** (identifiers — **specified grammar,
+> High, near-zero blast radius**) and **C3-b** (BM/ZH text, code-switching register, name distribution,
+> **and the context tokens around every identifier** — **Low, and it carries all of the blast
+> radius**). **The two items left standing above are C3-b, and they are the best statement of the real
+> risk in the package.** **The decision rule: synthesize what has a specification; sample what you can
+> only observe** — a line that falls **through** the NRIC, not around it, since per doc 03 §2.3 the
+> words beside the digits are where *"the highest-value L1 rule in the product"* reads.
 
 That is doc 07's problem to solve and doc 08's to rank. **Doc 02's only claim is the narrow one:
 synthetic data is privacy-clean.** It says nothing about whether it's good, and this document must not

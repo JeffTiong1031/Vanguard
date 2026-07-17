@@ -338,10 +338,38 @@ cause.** And the two questions have the same answer, so **they are one spike, no
 > **Doc 03 §4.2 called fertility "the trim metric" and said *"size is the easy metric and the wrong one
 > to optimize alone."* It is more right than it knew: fertility is simultaneously the accuracy metric,
 > the latency metric, and the chunk-count metric.** Measure it once; it settles three budgets.
+
+> 🔴 **Corrected 2026-07-17 (doc 07 §3). This paragraph read: *"And the spike is still blocked on the
+> corpus (U14/C2), which depends on C3… It now blocks the latency budget too, which raises C3's blast
+> radius rather than changing it."* **The conclusion above survives — it is one measurement and it does
+> settle three budgets. The blocker does not.**
 >
-> ⚠️ **And the spike is still blocked on the corpus (U14/C2), which depends on C3 — the least-confident
-> assumption in the package.** Doc 03 §7 flagged this for the accuracy question. **It now blocks the
-> latency budget too**, which raises C3's blast radius rather than changing it.
+> **U14 is a *PII* corpus. Token frequency and fertility are unsupervised — they need no labels, no
+> PII, and no annotation of any kind, only raw EN/BM/ZH text**, which demonstrably exists in quantity.
+> §3.3 of doc 03 cites the proof without noticing what it proves: **mDeBERTa is trained on CC100
+> Malay.** **The chain conflated two different corpora.**
+>
+> **Doc 03 §4.2 sized the blocker correctly and this document copied it onto a weaker question.** Doc
+> 03 said *"we cannot pick a **vocabulary** without the corpus we don't have"* — **true, because a
+> frequency table must be representative of what users type.** **This section then discovered that
+> fertility also governs latency — the best finding in this document — and inherited doc 03's blocker
+> along with the metric, without re-sizing it.** **The three budgets do not need the same corpus:**
+>
+> | Budget | Needs | Blocked? |
+> |---|---|---|
+> | **Latency / chunk count** (U21-a) | A **ratio** — tokens per character | 🟢 **No. Any large BM/ZH text. This week** |
+> | **Memory / vocabulary pick** (doc 03 §4.2, U5) | A **frequency table** representative of what users paste | 🟠 **Partly** — public text is a biased start |
+> | **Accuracy** (doc 07 §5) | **Labels** *and* the real distribution | 🔴 **Yes. Genuinely** |
+>
+> 🔴 **→ U21 splits (doc 07 §3.3): U21-a (stock vocabulary — free, now) and U21-b (trimmed —
+> corpus-blocked).** **And U21-a is a one-sided test, which is what makes it worth doing first: this
+> section's own finding is that trimming can only *raise* fertility, so stock fertility is the
+> floor.** **If stock-vocabulary Chinese already blows the paste budget, the answer is final and §6.2's
+> distillation trigger fires through its second entrance — in week 1, from public text, without a
+> memory decision ever being made.** If it passes, it passes **provisionally** and U21-b is still owed.
+>
+> ⚠️ **C3-b's blast radius is unchanged — it still owns the *accuracy* budget** (doc 07 §5, ADR 0015).
+> **What moves is the schedule: the latency third was never blocked.**
 
 ---
 
@@ -513,7 +541,11 @@ pipeline, which is doc 08's to size, and U17 gates it.)*
   (more chunks) against recall (fewer splits). **Doc 07 owns which side to err on** — and per doc 04
   §8's handoff, **a recall miss breaks coreference for the entities we did catch.**
 - **§4.4's fertility spike settles three budgets at once** (accuracy, latency, chunk count). **It is one
-  experiment.** Blocked on the corpus (U14/C2 → C3).
+  experiment** — 🔴 **but the three budgets unblock at different times, and this line said otherwise.**
+  *(Corrected 2026-07-17 — doc 07 §3. It read *"Blocked on the corpus (U14/C2 → C3)."* **U14 is a PII
+  corpus; fertility is unsupervised.** **U21-a — stock-vocabulary fertility — is free, available now on
+  public raw text, and one-sided: a fail is final, because §4.4's own finding is that trimming only
+  raises fertility.** **U21-b and the accuracy third remain genuinely blocked.** See §4.4's note.)*
 - **§6.3: trimming, quantization and distillation all degrade BM/ZH first.** They are three taxes on one
   asset. **The eval that catches over-spending is doc 07's**, and the budget cannot be set without it.
 
@@ -534,7 +566,10 @@ pipeline, which is doc 08's to size, and U17 gates it.)*
 **New unverified claims** (added to `ASSUMPTIONS.md` §3):
 - **U21** — **tokens-per-character for BM/ZH under the trimmed vocabulary.** §4.3's ~3× is an
   **estimate**; the direction is certain and the ratio sets chunk count. **One hour with a tokenizer
-  and a corpus** — and it is the same measurement §4.4 needs.
+  and a corpus** — and it is the same measurement §4.4 needs. *(**Split 2026-07-17 → U21-a / U21-b,
+  doc 07 §3.3.** The **trimmed** framing above is U21-b and is corpus-blocked. **U21-a — the same
+  ratio under the stock 251,000 vocabulary — needs only public raw text and is available now**, and
+  per §4.4 it is the **floor**, so a failure is final.)*
 - **U22** — **COOP/COEP via manifest → `SharedArrayBuffer` → ORT Web multi-threading** in an offscreen
   document.
 
