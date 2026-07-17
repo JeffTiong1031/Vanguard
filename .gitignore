@@ -2,3 +2,9 @@
 
 .worktrees/
 
+ml/artifacts/
+*.onnx
+*.pt
+*.bin
+*.safetensors
+

@@ -1,0 +1,16 @@
+artifacts/
+**/__pycache__/
+.pytest_cache/
+.venv/
+*.onnx
+*.pt
+*.bin
+*.safetensors
+data/train/
+data/dev/
+data/eval_real/
+data/eval_simulated/
+data/llm_draft/
+*.egg-info/
+dist/
+build/
