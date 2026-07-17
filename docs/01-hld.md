@@ -138,12 +138,17 @@ not test it as one claim.**)*
 > observational API.** `chrome.webRequest` survived MV3 for observation and still supplies
 > `requestBody`. **Eliminating dNR never selected the MAIN world.**
 >
-> **And the skipped option is better on a principle the patch cannot satisfy: an independent check
-> must fail independently.** A MAIN-world `fetch` patch dies from the same class of event that kills
-> the DOM gate — the page doing something unanticipated in its own JS — so **the check shares a failure
-> mode with the thing it checks, in the same untrusted world.** `webRequest` observes below the page's
-> choice of API. **The observer therefore lives in the service worker (B3), not the MAIN world (B1),
-> and §5's boundary diagram moves with it.**
+> **And the skipped option is better on two grounds** *(ADR 0012, amended 2026-07-17 — an earlier
+> version of this note argued "an independent check must fail independently," which overstated it: the
+> gate fails on **DOM** changes and a patch fails on **transport** changes, so they coincide only in a
+> narrow corner)*. **(a) Enumeration.** A MAIN-world patch sees only the transports we enumerate —
+> `fetch`, XHR, `sendBeacon`, `WebSocket`, **and `fetch` inside a Web Worker, which a `window.fetch`
+> patch never touches because a worker has its own global.** Its blind-spot set is **unbounded and
+> silent**; `webRequest`'s is **exactly one** (WS frames — **U20**), known, and testable in week 1.
+> **The observer exists to catch silent misses and must not have an open-ended set of its own.**
+> **(b) A MAIN-world patch can break the provider's app** — force-installed estate-wide, it must never
+> throw, and if it does, their send fails. **The observer therefore lives in the service worker (B3),
+> not the MAIN world (B1), and §5's boundary diagram moves with it.**
 >
 > **Three further diagram defects fixed in the same pass, all of them the same shape — a correction
 > that landed in the prose and not in the picture:**
@@ -314,8 +319,8 @@ graph TB
 > compensating for a bad address. **In B3 it isn't compensation. We keep hashing anyway, because I3
 > requires it** — audit events carry hashes, classes and counts, never values — **but now for the right
 > reason.** §2's note carries the full reasoning; the short version is that the MAIN-world patch was
-> selected by an inference that skipped an option, and **a check that shares a failure mode with the
-> thing it checks is not a check.**
+> selected by an inference that skipped an option, and **a MAIN-world patch sees only the transports we
+> remember to enumerate — while `webRequest` enumerates none.**
 >
 > **The vault node also lost its 🔑.** It was labelled *"🔑 MAPPING VAULT"* — but per the I2 note below
 > and doc 04 §2.2 **there is no key**: the reverse map is not built, and the table is `hash(value) →

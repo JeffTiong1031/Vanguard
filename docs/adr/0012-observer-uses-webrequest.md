@@ -57,40 +57,70 @@ blocks.**
 disclosure is near zero. *(Whether `webRequest` adds a distinct install-time warning string beyond the
 host warning is **[verify]** — a store-listing question, not an architecture one.)*
 
-### The decisive argument: an independent check must fail independently
+### The decisive argument: enumeration is where silent misses come from
 
-The observer's entire purpose is to catch what the DOM gate missed. **It is a check on the gate.**
+**Amended 2026-07-17 — the original argument here was overstated, and the founder was right to press
+it.** It claimed the MAIN-world patch *"is defeated by the same class of event that defeats the gate"*
+and called it *"a second opinion from the same doctor."* **Checked concretely, the failure sets overlap
+far less than that implies:** the gate fails on **DOM** changes (a selector rename, a preempting
+listener, a non-event send path), the patch fails on **transport** changes. A selector break blinds the
+gate and not the patch. A `fetch` → XHR switch blinds the patch and not the gate. **They are correlated
+only in a narrow corner** — e.g. a voice submission issued from a Web Worker. **"Shared failure domain"
+was the right instinct and the wrong argument.** The durable one is narrower and survives:
 
-> **A MAIN-world `fetch` patch is defeated by the same class of event that defeats the gate: the page
-> doing something in its own JS that we did not anticipate.** The surface switches `fetch` → XHR, or
-> moves the send into a Web Worker, a `sendBeacon`, a WebSocket — the gate still works, and **the
-> observer goes blind.** The check and the thing it checks **share a failure mode, in the same
-> untrusted world.**
->
-> **A check correlated with the failure it detects is not a check. It is a second opinion from the same
-> doctor.**
+> **A MAIN-world patch only ever sees the transports we thought to enumerate.** `fetch`, XHR,
+> `sendBeacon`, `WebSocket` — **and `fetch` inside a Web Worker, which a `window.fetch` patch never
+> touches, because a worker has its own global scope.** Every transport we fail to enumerate is a
+> **silent** miss. **`webRequest` enumerates nothing over HTTP.** It watches the network, not the JS,
+> so the page cannot route around it by changing which API it calls.
 
-`webRequest` observes **below the page's choice of API**. It cannot be routed around by changing JS,
-because it is not watching JS. **It fails independently** — the only property that makes a check worth
-having, and the property doc 00 §4 is buying when it calls the audit trail *"half of what they're
-paying for."*
+**Compare the blind spots honestly, because this is the whole decision:**
 
-### Two further consequences, both free
+| | Blind spots | Knowable in advance? |
+|---|---|---|
+| **MAIN-world patch** | **Unbounded** — every transport not enumerated, including worker scopes and whatever ships next quarter | ❌ **No. Each one fails silently.** |
+| **`webRequest`** | **Exactly one** — WebSocket frames | ✅ **U20. One look at the Network tab, week 1.** |
 
-- **It cannot break ChatGPT.** A monkey-patch on a third-party app's network layer, shipped to every
-  user, that must never throw, is a product risk we simply decline to take.
-- **It moves the observer from B1 to B3.** Doc 01 §5 restricts the observer to *"hashes only"*
-  **because B1 is untrusted.** In B3 that is no longer compensation for a bad location. **We keep
-  hashing anyway — I3 requires it** — but now for the right reason.
+> **The observer exists to catch silent misses. Its mechanism must not have an open-ended set of its
+> own.** We are trading an **unbounded, silent, unknowable** blind-spot set for **one, known, and
+> testable before we build.** That is the trade, and it is not close.
+
+### The second argument, which is about the customer, not the architecture
+
+**A MAIN-world patch can break the provider's app.** We would be monkey-patching a third-party SPA's
+network layer, force-installed into every browser in the estate, and it must never throw on any path —
+including paths that ship next Tuesday. **If it does, their send fails.**
+
+> For a compliance vendor at pre-seed, *"your DLP tool broke ChatGPT for 150 people"* is not a bug. **It
+> is the end of the account and probably the company.** `webRequest` is a passive observer and
+> **structurally cannot do this.**
+
+**This is the argument doc 00 §4 would make if it were here:** we are optimizing for **non-defection**,
+and there is no faster route to defection than breaking the tool the user is trying to use.
+
+### A third consequence, free
+
+**It moves the observer from B1 to B3.** Doc 01 §5 restricts the observer to *"hashes only"* **because
+B1 is untrusted.** In B3 that is no longer compensation for a bad location. **We keep hashing anyway —
+I3 requires it** — but now for the right reason.
 
 ## Consequences
 
 **Accepted:**
 - 🔴 **Doc 01 §2 and §5 are now wrong.** Both diagrams place the observer in the MAIN world / B1.
   **Two diagrams and one boundary row.** Flagged rather than silently patched.
-- **We do not escape the adapter tax; we double it.** Extracting the prompt from `requestBody.raw`
-  means parsing the provider's **request schema** — a second adapter, churning on the same D4 clock as
-  the DOM one, **and doc 05 §3.3's self-test covers only the first.** A doc 08 maintenance line.
+- **A second adapter — but it is the feature's cost, not this decision's.** Extracting the prompt from
+  `requestBody.raw` means parsing the provider's **request schema**, which churns on the same D4 clock
+  as the DOM adapter, **and doc 05 §3.3's self-test covers only the first.** A doc 08 maintenance line.
+  > ⚠️ **Corrected 2026-07-17 — this bullet read "we do not escape the adapter tax; we double it," as
+  > though the doubling were a cost of choosing `webRequest`. It is not, and the framing was wrong
+  > enough to argue against this ADR.** A MAIN-world patch pays it **identically**: it intercepts
+  > `fetch(url, init)` where `init.body` is **already serialized**, so it must dig the prompt out of the
+  > same provider schema. Hashing the whole body doesn't help either — the gate hashed the *composer
+  > text*, and the body carries `conversation_id`, `model`, and the rest. **The request-schema adapter
+  > is the price of content-based reconciliation (see "Reconciliation needs the body" below). Both
+  > mechanisms pay it. It does not discriminate, and presenting it here made `webRequest` look worse
+  > than it is in a like-for-like comparison.**
 - **Blind to WebSocket frames.** New unverified claim **U20**: that each surface submits prompts over
   **HTTP** rather than a WS frame. If a surface moves to WS, it needs a MAIN-world `WebSocket.send`
   patch **in addition**, accepting every cost above for that surface alone.

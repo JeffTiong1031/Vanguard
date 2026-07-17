@@ -141,8 +141,9 @@ earlier positions, and acting on a remembered version will reintroduce errors al
    **§8 now carries a dated note: both its handoffs to doc 05 were narrower than stated.**
 7. **`docs/05-lld.md`** — the mechanism, and **the doc Chrome falsifies.** **§1** (U12 as **three**
    sub-tests with three blast radii — **never test or report it as one claim**), **§4.1** (U11's
-   inference struck), **§4.3** (**an independent check must fail independently** — the argument that
-   moved the observer), **§5.3** (conflation vs. splitting), **§6.2** (idempotency, not determinism),
+   inference struck), **§4.3** (**enumeration is where silent misses come from** — the argument that
+   moved the observer, **and note its own amendment: the first version of it was overstated and the
+   founder broke it**), **§5.3** (conflation vs. splitting), **§6.2** (idempotency, not determinism),
    **§7** (the RCE answer: *"you control when our code changes, not us"*).
 8. **Everything in `docs/adr/`** — **all twelve.** **0003, 0005 and 0012 record reversed positions**;
    reading a summary instead of the ADR will lose the reversal. **0009 now carries U19's resolution and
