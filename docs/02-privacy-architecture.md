@@ -682,8 +682,11 @@ graph TB
 Windows, a signed `.mobileconfig` on macOS (B3, U16). The admin is *already* writing machine policy.
 Adding a key to that policy payload costs them **nothing extra**, and the key **never touches our
 infrastructure at any point in its life**. No escrow, no recovery flow, no KMS. `chrome.storage.managed`
-is exactly the mechanism for admin-set config *(U19 — must verify it carries a payload of our size and
-shape)*.
+is exactly the mechanism for admin-set config *(**U19 ✅ RESOLVED 2026-07-17** — read-only and
+policy-populated as assumed; Chrome documents no quota for `managed`, but a **32-byte key** clears
+the smallest documented neighbouring quota by **~256×**, so the size worry was never proportionate.
+🔴 **The real finding: `storage.managed` is exposed to content scripts by default — the key lands in
+B2, not B3, unless we call `setAccessLevel()`.** ADR 0009 and doc 05 §8.2 carry it)*.
 
 **Why not just do Option 4 in Phase 0.** Because in Phase 0 there **is** no machine policy — decision
 #6 is self-install. Without a policy channel, an E2E key needs escrow, recovery, and rotation for
@@ -876,9 +879,15 @@ rather than a euphemism.
 answers *depend* on prompt text never leaving. If U6 fails, we lose the **gate** (doc 01 §0), **not**
 the privacy posture; §1.5 explains why those are different failures with different fallbacks.
 
-**To doc 05:** the Phase 1 dictionary key-custody mechanism (ADR 0009) needs `chrome.storage.managed`
-verified (**U19**). Also §6.4's caveat: **extension permissions and the auto-update channel are the
-questionnaire rows we cannot N/A** — that's doc 05's to answer.
+**To doc 05: ✅ BOTH DISCHARGED (doc 05, `05-lld.md`).** The Phase 1 dictionary key-custody mechanism
+(ADR 0009) needed `chrome.storage.managed` verified — **U19 ✅ resolved**, and the finding was not the
+one we were looking for: the key defaults to **B2**, not B3, absent a `setAccessLevel()` call (doc 05
+§8.2). And §6.4's caveat — **extension permissions and the auto-update channel are the questionnaire
+rows we cannot N/A** — is answered in **doc 05 §7**, and the answer is mostly **not ours**: MV3
+structurally forbids remotely-hosted code, and `ExtensionSettings` lets the admin pin our version. **The
+sentence is "you control when our code changes, not us"** — a platform property and a lever in the
+buyer's own hand, which is exactly why it is believable from a pre-seed vendor. **What remains is our
+build pipeline, and doc 05 §7.3 calls that a procedural control rather than dressing it up.**
 
 **To doc 06 — two items, one of them a specification, not a hint:**
 
@@ -918,7 +927,8 @@ synthetic data is good**, only that it's privacy-clean; C3 remains Low confidenc
 
 **New unverified claims** (added to `ASSUMPTIONS.md` §3): **U17** `ap-southeast-5` per-service
 availability · **U18** PDPA DPO appointment threshold/qualifications · **U19**
-`chrome.storage.managed` as a tenant-key channel.
+`chrome.storage.managed` as a tenant-key channel *(**✅ resolved 2026-07-17** by doc 05 §8.2 — listed
+here as the record of what this document raised, not as an open item)*.
 
 **Resolved by this document:** **U13** ✅ — `ap-southeast-5` GA 2024-08-22. **Corrects F3.**
 

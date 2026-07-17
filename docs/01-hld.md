@@ -67,7 +67,6 @@ not one product with two views.
 graph TB
     subgraph PAGE["🌐 Page JS context — MAIN world (UNTRUSTED)"]
         REACT["Provider's app<br/>React / ProseMirror / Lexical"]
-        OBS["fetch/WS Observer<br/><b>log-only, never aborts</b>"]
     end
 
     subgraph ISO["🧩 Content script — ISOLATED world (per tab)"]
@@ -81,9 +80,10 @@ graph TB
     subgraph PRIV["🔒 Extension privileged (ONE instance, all tabs)"]
         OFF["Offscreen Document"]
         ENG["Detection Engine<br/>L1 rules+dict · L2 NER"]
-        VAULT["Mapping Vault<br/><i>PERSON_1 → John Tan</i>"]
-        SW["Service Worker<br/><i>ephemeral, ~30s idle (U10)</i>"]
-        STORE["(IndexedDB<br/>policy · dict · cache)"]
+        VAULT["Mapping Vault<br/><i>hash(value) → PERSON_1</i>"]
+        SW["Service Worker<br/><i>ephemeral, 30s idle (U10 ✅)</i>"]
+        OBS["webRequest Observer<br/><b>log-only, never aborts</b><br/><i>ADR 0012</i>"]
+        STORE["(IndexedDB — vault · scan cache<br/>storage.local — policy · dict)"]
     end
 
     subgraph CLOUD["☁️ Backend — under DPA"]
@@ -104,6 +104,7 @@ graph TB
     OVER --> REACT
     SW <-->|"policy · dict"| API
     SW -->|"hashed events"| AUD
+    REACT -.->|"outbound request<br/>observed, never blocked"| OBS
     OBS -.->|"bypass reports"| SW
     OFF -.->|"Phase 1"| FILE
 
@@ -123,9 +124,36 @@ content script at `document_start` therefore fires **before** React's root-conta
 without any MAIN-world injection. And it matters enormously that it does: **the isolated world is
 where the verdict cache lives**, so the gate can read it *synchronously*. A MAIN-world gate would
 have to `postMessage` across the world boundary to reach the cache — which is async — which
-reintroduces the exact stop-and-replay problem §0 exists to avoid. **The MAIN world is used for one
-thing only: the log-only fetch observer**, which genuinely needs to patch the page's own `fetch`.
-*(Rests on U12 — must be proven empirically per surface, week 1.)*
+reintroduces the exact stop-and-replay problem §0 exists to avoid. **In Phase 0 we do not inject into
+the MAIN world at all** — see the correction note below. *(Rests on U12 — must be proven empirically
+per surface, week 1. **Doc 05 §1 splits U12 into three sub-tests with three different blast radii; do
+not test it as one claim.**)*
+
+> **Corrected 2026-07-17 (doc 05 §4, [ADR 0012](adr/0012-observer-uses-webrequest.md)) — the diagrams
+> above and in §5 have moved the observer, and this paragraph said the opposite.** It read: *"The MAIN
+> world is used for one thing only: the log-only fetch observer, which genuinely needs to patch the
+> page's own `fetch`."* **It does not genuinely need to.** That claim descends from **U11's
+> inference** — *"dNR cannot see request bodies, therefore the observer must be a MAIN-world patch"* —
+> which is **a non-sequitur.** U11's *claim* is true and cited; dNR is simply **not the only
+> observational API.** `chrome.webRequest` survived MV3 for observation and still supplies
+> `requestBody`. **Eliminating dNR never selected the MAIN world.**
+>
+> **And the skipped option is better on a principle the patch cannot satisfy: an independent check
+> must fail independently.** A MAIN-world `fetch` patch dies from the same class of event that kills
+> the DOM gate — the page doing something unanticipated in its own JS — so **the check shares a failure
+> mode with the thing it checks, in the same untrusted world.** `webRequest` observes below the page's
+> choice of API. **The observer therefore lives in the service worker (B3), not the MAIN world (B1),
+> and §5's boundary diagram moves with it.**
+>
+> **Three further diagram defects fixed in the same pass, all of them the same shape — a correction
+> that landed in the prose and not in the picture:**
+> - **The vault node read `PERSON_1 → John Tan`**, which §5's **I2 row already corrected** to
+>   `hash(value) → PERSON_1` on 2026-07-16. **The reverse map does not exist** (doc 04 §2.2). The
+>   diagram was still describing the artifact the rehydration kill deleted.
+> - **The storage node credited IndexedDB with `policy · dict · cache`**, contradicting **§6**, which
+>   puts policy and dict in `chrome.storage.local` and the vault and scan cache in IndexedDB.
+> - **The service worker's `~30s idle` is no longer approximate.** **U10 ✅ — exactly 30 seconds**,
+>   cited (doc 05 §5.1).
 
 **The detection engine lives in ONE offscreen document, not in the content script.** Content scripts
 run **per tab**. The L2 model is ~135 MB *(U5, estimate)*. Five tabs open on ChatGPT would mean five
@@ -251,16 +279,16 @@ graph TB
     end
     subgraph B1["B1 · MAIN world — UNTRUSTED (page + devtools can read all)"]
         PJS["Provider JS"]
-        FO["fetch observer<br/><i>hashes only</i>"]
     end
     subgraph B2["B2 · Isolated world — our code, per tab"]
-        GG["gate · adapter · verdict cache<br/><i>hash + boolean only</i>"]
+        GG["gate · adapter · verdict cache · token store<br/><i>hash + boolean only</i>"]
         UI["overlay · modal"]
     end
     subgraph B3["B3 · Extension privileged — one instance"]
         EE["engine · model"]
-        VV["🔑 MAPPING VAULT"]
+        VV["MAPPING VAULT<br/><i>hash(value) → PERSON_1</i>"]
         AQ["audit queue<br/><i>hashed</i>"]
+        FO["webRequest observer<br/><i>hashes only · ADR 0012</i>"]
     end
     subgraph B4["B4 · Our backend — under DPA"]
         BB["policy · dictionary · audit"]
@@ -279,6 +307,21 @@ graph TB
     style B5 fill:#7a1f1f,color:#fff
     style VV fill:#b45309,color:#fff
 ```
+
+> **Corrected 2026-07-17 ([ADR 0012](adr/0012-observer-uses-webrequest.md)) — the observer moved from
+> B1 to B3, and the move is an upgrade rather than a relocation.** This diagram placed the observer in
+> **B1** and restricted it to *"hashes only"* **because B1 is untrusted** — the restriction was
+> compensating for a bad address. **In B3 it isn't compensation. We keep hashing anyway, because I3
+> requires it** — audit events carry hashes, classes and counts, never values — **but now for the right
+> reason.** §2's note carries the full reasoning; the short version is that the MAIN-world patch was
+> selected by an inference that skipped an option, and **a check that shares a failure mode with the
+> thing it checks is not a check.**
+>
+> **The vault node also lost its 🔑.** It was labelled *"🔑 MAPPING VAULT"* — but per the I2 note below
+> and doc 04 §2.2 **there is no key**: the reverse map is not built, and the table is `hash(value) →
+> PERSON_1`, forward-only. **It remains sensitive at rest** (doc 04 §2.3 — we hold the salt, and names
+> are a small keyspace) and **I2 still binds**. The emoji was the last place in this document still
+> asserting an artifact the rehydration kill deleted.
 
 ### The rules, stated as invariants
 
@@ -354,9 +397,29 @@ changing our minds is explicit — the point is to avoid re-litigating it in mon
 | **L1 matching** | **Hand-rolled regex + Aho-Corasick** | A DLP library | L1 must be sub-millisecond and **auditable** — you show a compliance officer the rule (ADR 0004). A dependency's opaque ruleset is the opposite of that. |
 | **Backend** | **Python + FastAPI + Pydantic** | Node/TS (unifies types with the extension); Go (fast, fights the ML ecosystem) | Phase 1's file pipeline and any cloud L3 are Python-native. At A1 headcount you cannot afford two backend languages — and picking TS now means adding Python by Phase 1 anyway. **The codegen tax is smaller than the two-language-ML tax.** |
 | **Shared types** | **Pydantic → OpenAPI → generated TS client** | Hand-maintained duplicates (drift); tRPC (Node-only); protobuf (build complexity for no Phase 0 gain) | One source of truth, generated consumers. This is the price of the Python decision and it's worth paying. |
-| **Client storage** | **IndexedDB** (vault, scan cache) + `chrome.storage.local` (policy, dict) | All in `chrome.storage.local` | Quota and structure. The vault and cache are too big and too structured for the KV store. |
+| **Client storage** | **IndexedDB** (vault, scan cache) + `chrome.storage.local` (policy, dict) | All in `chrome.storage.local` | **Structure and durability** — see the correction below. The **scan cache** is genuinely too big for the KV store; the **vault** is not, and belongs here for different reasons. |
 | **Backend storage** | **Postgres** | Anything interesting | Boring is correct. Nothing here is a data-shape problem. |
 | **Audit transport** | **Batched, hashed events via SW** | Real-time per-event | Fits the ephemeral SW lifecycle (U10) and I3. |
+
+> **Corrected 2026-07-17 (doc 05 §5.3) — right decision, and one of its two reasons was wrong.** The
+> client-storage row read: *"Quota and structure. **The vault and cache are too big and too structured
+> for the KV store.**"* **"Too big" does not survive contact with doc 04 §2.4**, which says a
+> per-conversation vault is *"a few hundred entries at worst"* and that **"memory is not the
+> constraint."** Bundling the vault with the scan cache imported the cache's size argument onto an
+> artifact that doesn't have a size problem. **The cache is too big. The vault never was.**
+>
+> **The vault belongs in IndexedDB for two reasons, and the second did not exist when this row was
+> written:**
+> 1. **Structure** — it is a keyed table, not a KV blob. That half of the original reason holds.
+> 2. 🔴 **Durability, which is now a correctness requirement, not a preference.** Doc 05 §5.3 and
+>    [ADR 0011](adr/0011-monotonic-placeholder-numbering.md): Chrome may reclaim the offscreen document
+>    mid-thread (ADR 0006), and **an in-memory vault dies with it.** `chrome.storage.local` would
+>    actually have satisfied durability — **so the original row reached the right answer for a reason
+>    that could not have distinguished the two options.**
+>
+> **Worth keeping because it generalizes:** a justification that is true of a *bundle* is not
+> automatically true of each *member*. Two artifacts were put in one row because they share a
+> mechanism, and then inherited one another's arguments.
 
 ### The stack decision I'd defend hardest
 

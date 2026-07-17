@@ -466,6 +466,38 @@ ours**).
 - **Deterministic rewrite** is load-bearing: the token binds to `hash(rewritten)`, so **the same input
   must always produce the same output**, or the token never matches.
 
+> 🔴 **Corrected 2026-07-17 (doc 05 §5.3, §6.2) — both handoffs above are narrower than stated, and
+> doc 05 found it by building them. That is the same shape as this document correcting doc 03 §2.3:
+> the doc that designs the thing sees what the doc that specified it could not.**
+>
+> **1. The token requirement is not determinism — it is idempotency, and this section never names it.**
+> The token cannot mismatch: the modal computes `rewritten`, the adapter writes **that exact string**,
+> and we mint `hash(`**that same string**`)`. **We hash the string we wrote**, so the match is
+> guaranteed by construction and no property of the rewrite function is doing any work. Determinism
+> only enters if the rewrite is computed **twice** — once for the preview, once at write time — so
+> **"compute once and carry the string" retires the requirement entirely.**
+>
+> **What is actually load-bearing is `rewrite(rewrite(x)) == rewrite(x)`, and it bites hard.** We write
+> `PERSON_1 owes RM5k` into the composer. That is an input event, so **the typing-time scanner fires on
+> our own output** — and **L2 is a NER model, for which `PERSON_1` is precisely the shape of a person.**
+> A finding on our own placeholder → dirty verdict → the modal offers to rewrite `PERSON_1` to
+> `PERSON_2`. **The pipeline eats its own tail. And the token hides it for the length of its TTL, so
+> testing misses it.** Fix: an L1 placeholder-grammar mask, using the L1-masks-before-L2 ordering this
+> architecture already has (doc 01 §3, doc 03 §1). **One rule — but a detection requirement, so doc 07
+> inherits it.**
+>
+> **2. The vault bug is real, and its failure modes are asymmetric — this section named only one of
+> them.** *"Numbering restarts"* is the dangerous case because it makes `PERSON_1` mean **two people**:
+> **the model conflates them and migrates facts between named individuals.** But a **monotonic
+> counter** produces the other failure — one person becomes `PERSON_1` **and** `PERSON_5`, so **the
+> model splits them.** **Conflation is wrong output. Splitting is merely degraded output.** The counter
+> is an integer — no value, no hash, no salt, **no exposure duration at all** — so keeping it costs
+> nothing on the axis §2.4 cares about **and converts the dangerous failure into the benign one.**
+>
+> **The dividend: §2.4's aggressive eviction and doc 05's durability requirement stop competing.**
+> Evict the **mappings** on the tightest schedule coherence tolerates, per §2.4. Keep the
+> **counter**, which was never sensitive. → [ADR 0011](adr/0011-monotonic-placeholder-numbering.md).
+
 **To doc 06:**
 - Vault lookup is on the **typing-time hot path** (a hash per detected span per debounce). Small
   against doc 03's model, but it is **inside the U6 budget, not beside it** — the same accounting error

@@ -67,6 +67,43 @@ them **nothing extra**, and it means:
 
 *(U19: `chrome.storage.managed` must be verified to carry a payload of our size and shape.)*
 
+> **U19 ✅ RESOLVED 2026-07-17 (doc 05 §8.2) — the mechanism is confirmed, the size worry was never
+> proportionate, and the real finding is one this ADR didn't ask about.**
+>
+> **Confirmed** *([Chrome storage docs](https://developer.chrome.com/docs/extensions/reference/api/storage))*:
+> `managed` is **read-only** — *"trying to modify this namespace results in an error"* — and populated
+> by admins *"using a developer-defined schema and enterprise policies."* **Exactly what this ADR
+> assumed.**
+>
+> **On size: Chrome documents no quota for `managed`**, while documenting them for `local` (10 MB),
+> `sync` (100 KB total / 8 KB per item) and `session` (10 MB). **That gap is real and it is not a risk
+> to this ADR.** The payload here is **a tenant key — 32 bytes, ~44 base64 characters.** The
+> **smallest** documented quota anywhere in that table, `sync`'s 8 KB per item, clears it by **~256×**
+> *(derived)*. **A namespace that would choke on 44 bytes would be unusable for its documented
+> purpose.** The phrase *"a payload of our size and shape"* imported a worry that belongs to bulk data
+> and applied it to a key. **The residual risk is schema and delivery — i.e. B3 — which this ADR
+> already names as the actual coupling, and which is not a `chrome.storage` question.**
+>
+> 🔴 **The finding that matters, and it is a boundary defect, not a capability one:**
+>
+> > *"`storage.managed` is **exposed to content scripts**, but this behavior can be changed by calling
+> > `setAccessLevel()`"*
+>
+> **This ADR puts the tenant key in `storage.managed` and reasons about it as extension-privileged
+> (B3). By default it is not: content scripts can read it, and content scripts are B2** — one boundary
+> closer to the page, running in **every tab** where a target surface is open.
+>
+> **It does not breach I4** — B2 is our code and the page cannot read it — **but the key has no
+> business there.** Nothing in B2 decrypts the dictionary; the engine is in the offscreen document.
+> **This is the letter-vs-purpose trap for the third time** (doc 01 §5's rehydration, §5.1's
+> encryption-at-rest, now this), and CLAUDE.md predicted a third. **Note how it surfaced: not by
+> auditing the invariant, but by reading the API's default instead of assuming it matched our diagram.
+> Defaults are where this trap lives, because a default is a decision nobody remembers making.**
+>
+> **Decision: the Phase 1 key channel calls `setAccessLevel()` to withhold `storage.managed` from
+> content scripts.** One call, no cost, and it puts the key in the boundary this ADR always assumed it
+> was in.
+
 ### The migration is not the cutover — Phase 0 exposure does not expire when the code ships
 
 **The sentence to be suspicious of is "we lose the capability entirely."** Shipping the Phase 1
