@@ -1,7 +1,7 @@
 # CLAUDE.md — Session Briefing
 
 > **Read this first, before touching any deliverable.** This is a briefing for a future session, not
-> prose for the founder. Last updated: 2026-07-16, after doc 04 committed (`4026bff`).
+> prose for the founder. Last updated: 2026-07-17, after doc 05 committed (`c084f0d`).
 
 ---
 
@@ -34,21 +34,37 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 
 ## 2. Deliverable checklist
 
-> **Session ended 2026-07-16.** ✅ **Working tree clean · everything committed · everything pushed.**
-> `origin/main` = local `main` = **`d214656`** *(plus this commit)* at
-> `github.com/JeffTiong1031/Vanguard`. **Nothing is mid-write.** A fresh session starts from a
-> consistent state — **read §4, then go to §8.**
+> **Session ended 2026-07-17.** ✅ **Working tree clean · everything committed.** Local `main` =
+> **`c084f0d`** at `github.com/JeffTiong1031/Vanguard`. ⚠️ **NOT PUSHED — `3a0d738` and `c084f0d` are
+> local-only. Confirm with the founder before pushing; he did not ask for it.** **Nothing is
+> mid-write.** A fresh session starts consistent — **read §4, then go to §8.**
 >
-> **This session shipped:** docs **02**, **03**, **04** · ADRs **0008**, **0009** · the rehydration
-> kill settled in doc 01 §5 · **six correction passes** (E2 · F3/U13 · the fragmentation argument in
-> doc 00 §5 + doc 01 §3 · I2 in doc 01 §5 · doc 03 §2.3's UI resolution) · **U1–U5 and U13 resolved by
-> citation** · U17–U19 raised · the **cross-reference audit rule** added to §5.
+> **This session shipped:** doc **05** · ADRs **0010**, **0011**, **0012** · **U10/U11/U19 resolved by
+> citation**, **U20** raised · **two correction passes** (the rehydrate column in doc 00 §3 + ADR 0002
+> `3a0d738` · doc 01 §2/§5/§6 + doc 04 §8 + ADR 0009 `c084f0d`).
 >
-> **The pattern worth knowing before you write anything:** every correction this session made a claim
-> **narrower and more true**, and **none of them lost anything real** — the wedge, the posture, and the
-> NRIC/SSM collision all survived intact. That is the signature of a package whose **claims were
-> slightly ahead of its evidence**, not one whose thesis is wrong. **Expect to find more of these, and
-> expect them to tighten rather than break things.**
+> 🔴 **The pattern sharpened, and a fresh session should know how it changed.** The prior session's
+> lesson was that **internal references drift** — corrections land in one place and not another. **That
+> still holds and produced four more finds this session** (doc 00 §3's rehydrate column · doc 01 §2's
+> vault node still reading `PERSON_1 → John Tan` after §5's I2 row was fixed · §2's storage node
+> contradicting §6 · the vault's 🔑 emoji). **But the biggest find was a different animal:**
+>
+> > **U11's claim was TRUE and the inference recorded beside it was a non-sequitur — and it had been
+> > driving the architecture for three docs.** Nobody audited it **because the ✅ on the claim looked
+> > like closure.** **A register entry is a cross-reference like any other, and when one carries a
+> > *"therefore,"* the therefore is the part to audit.** The same shape appeared twice more: **doc 01
+> > §6 reached the right storage decision via a reason that could not have distinguished the options**,
+> > and **doc 04 §8 asked for determinism when the property it needed was idempotency.**
+>
+> **So the failure mode has a second form: not a stale pointer, but sound reasoning wrapped around a
+> true fact, never re-examined because the fact checked out.** Look for **"therefore," "dispositive,"
+> "must," and "so"** in our own prior text. **The nouns are usually right. The connectives are where
+> the errors live.**
+>
+> **The consolation is unchanged and it keeps being earned:** every correction across both sessions
+> made a claim **narrower and more true**, and **none lost anything real** — the wedge, the posture,
+> the NRIC/SSM collision, the form-factor verdict and the observer's *existence* all survived. **Claims
+> slightly ahead of their evidence, not a broken thesis. Expect more, and expect them to tighten.**
 
 | # | Deliverable | Status |
 |---|---|---|
@@ -58,15 +74,17 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 | 4 | `docs/02-privacy-architecture.md` | ✅ **done, committed** (`295561c`) |
 | 5 | `docs/03-ai-ml-architecture.md` | ✅ **done, committed** (`d740a68`) |
 | 6 | `docs/04-redaction-and-context-preservation.md` | ✅ **done, committed** (`4026bff`) |
-| 7 | `docs/05-lld.md` | ⬜ **not started ← NEXT** |
-| 8 | `docs/06-performance-and-scale.md` | ⬜ not started |
+| 7 | `docs/05-lld.md` | ✅ **done, committed** (`c084f0d`) |
+| 8 | `docs/06-performance-and-scale.md` | ⬜ **not started ← NEXT** |
 | 9 | `docs/07-ml-training-and-data-strategy.md` | ⬜ not started |
 | 10 | `code/` scaffold | ⬜ not started |
 | 11 | `docs/08-roadmap-and-risks.md` | ⬜ not started — **written LAST** so it inherits real risks |
 
 **ADRs committed so far:** 0001 buyer · 0002 form factor · 0003 wedge-vs-moat · 0004 org dictionary ·
 0005 gate in isolated world · 0006 offscreen document · 0007 Python backend · 0008 hybrid split by
-workload · 0009 org-dictionary key custody. New ADRs continue from **0010**.
+workload · 0009 org-dictionary key custody · **0010 gate registers at `window`** (refines 0005) ·
+**0011 monotonic placeholder numbering** · **0012 observer uses `webRequest`** (reverses the plan's
+mechanism). New ADRs continue from **0013**.
 
 ---
 
@@ -98,9 +116,11 @@ workload · 0009 org-dictionary key custody. New ADRs continue from **0010**.
 **Actually read these files. Do not assume you know their contents.** They contain reversals of
 earlier positions, and acting on a remembered version will reintroduce errors already corrected.
 
-1. **`ASSUMPTIONS.md`** — assumptions A1–F4 with confidence + blast radius; the **U1–U19 unverified
-   claims register** (**U1–U5 and U13 now resolved**; **E2 and F3 are closed/corrected, not open**);
-   §4 deliberate non-assumptions; **§5 correction log — read it, it is where the reversals live.**
+1. **`ASSUMPTIONS.md`** — assumptions A1–F4 with confidence + blast radius; the **U1–U20 unverified
+   claims register** (**U1–U5, U10, U11, U13, U19 now resolved**; **E2 and F3 are closed/corrected, not
+   open**); §4 deliberate non-assumptions; **§5 correction log — read it, it is where the reversals
+   live.** ⚠️ **Read U11's entry specifically, whatever you are working on** — the claim is ✅ and its
+   *inference* is struck, and that split is the session's main lesson.
 2. **`docs/00-critique-and-positioning.md`** — the critique, competitive landscape, buyer argument,
    wedge-vs-moat split, threat model.
 3. **`docs/01-hld.md`** — the architecture. §0 (the one architectural idea) and §5 (trust boundary
@@ -118,10 +138,18 @@ earlier positions, and acting on a remembered version will reintroduce errors al
    forward-only and hash-keyed — **there is no de-pseudonymization key**), **§2.3** (…**and it is still
    sensitive** — hashing is not a boundary; the section records the error nearly recurring),
    **§3.2** (the kill makes **surrogates dangerous**), **§5.2** (ambiguity is a **policy** question).
-7. **Everything in `docs/adr/`** — all nine. 0003 and 0005 both record **reversed CTO positions**;
-   reading a summary instead of the ADR will lose the reversal. **Doc 04 mints none, deliberately** —
-   its decisions all follow from decisions already recorded, and an ADR per section devalues the ones
-   recording real forks.
+   **§8 now carries a dated note: both its handoffs to doc 05 were narrower than stated.**
+7. **`docs/05-lld.md`** — the mechanism, and **the doc Chrome falsifies.** **§1** (U12 as **three**
+   sub-tests with three blast radii — **never test or report it as one claim**), **§4.1** (U11's
+   inference struck), **§4.3** (**an independent check must fail independently** — the argument that
+   moved the observer), **§5.3** (conflation vs. splitting), **§6.2** (idempotency, not determinism),
+   **§7** (the RCE answer: *"you control when our code changes, not us"*).
+8. **Everything in `docs/adr/`** — **all twelve.** **0003, 0005 and 0012 record reversed positions**;
+   reading a summary instead of the ADR will lose the reversal. **0009 now carries U19's resolution and
+   the `setAccessLevel()` finding.** **Doc 04 mints none, deliberately** — its decisions all follow from
+   decisions already recorded, and an ADR per section devalues the ones recording real forks. **Doc 05
+   mints three and says why each is not that** (0010 revises an accepted ADR · 0011 resolves
+   correctness-vs-privacy · 0012 reverses a mechanism on evidence).
 
 **External, outside the repo:** the approved plan lives at
 `C:\Users\user\.claude\plans\role-you-are-acting-parsed-engelbart.md`. It contains agreed positions
@@ -379,14 +407,21 @@ buyer (doc 00 §6). Test:
 - This is precisely the class of silent miss the **log-only fetch observer** exists to detect (§6.4).
 
 ### Other unverified claims blocking downstream docs
-Full register is `ASSUMPTIONS.md` §3 (**U1–U19**). Blocking ones by doc:
+Full register is `ASSUMPTIONS.md` §3 (**U1–U20**). Blocking ones by doc:
 
 - **doc 06:** ~~U4/U5~~ ✅ resolved by doc 03 — see §6.2. **U15** remains.
 - **doc 06:** U15 (WebGPU availability under enterprise Chrome policy) — materially affects the budget.
-- **doc 05:** U10 (MV3 SW ~30s idle termination), U11 (**`declarativeNetRequest` cannot inspect
-  request bodies** — if true this is *dispositive*: the fetch observer **must** be a MAIN-world patch,
-  since dNR structurally cannot see prompt content), U16 (macOS `.mobileconfig` signing specifics;
-  Windows HKLM path is High confidence and unaffected).
+- **doc 05:** ~~U10~~ ✅ · ~~U11~~ ✅ · ~~U19~~ ✅ — **all three resolved by citation** (`c084f0d`).
+  **U16 remains, deliberately:** macOS `.mobileconfig` signing. **Windows HKLM is High confidence and
+  unaffected**, and B2 puts the beachhead on Windows — U16 touches **the secondary platform only** and
+  resolves when a design partner has Macs. Doc 05 §8.1 states it as a **scoped gap**, not an unranked
+  risk.
+  > 🔴 **U11's lesson outlived U11 and is the one to carry forward.** The **claim** was true; the
+  > **inference** recorded beside it — *"dispositive: the observer **must** be a MAIN-world patch"* —
+  > was a **non-sequitur that had been driving the design for three docs.** §5 says re-read the target
+  > rather than your memory of it. **U11 shows the target can be our own register, and that a verdict
+  > can be right while the "therefore" bolted onto it is wrong.** **When a register entry carries a
+  > *therefore*, audit the therefore** — nobody had, because the ✅ on the claim looked like closure.
 - **doc 07:** U14 (no usable public EN/BM/ZH code-switched PII corpus) — flagged as *an assumption
   masquerading as a fact*; treat with suspicion.
 - **doc 00:** U8/U9 (Chrome Enterprise Premium native DLP; Microsoft Purview endpoint DLP) — these
@@ -397,8 +432,19 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U19**). Blocking ones by doc:
   08 sizes Phase 1**; the residency decision assumes the stack runs there.
 - **U18** — PDPA **DPO appointment threshold**. The obligation is confirmed and **its date has already
   passed (2025-06-01)**, binding processors too. We may already be non-compliant. Doc 08 cost line.
-- **U19** — `chrome.storage.managed` as the tenant-key channel. **ADR 0009's entire Phase 1 key-custody
-  upgrade rests on it** — it's what turns I4 from a contractual control into a mathematical one.
+- ~~**U19**~~ ✅ **RESOLVED by doc 05 §8.2** — mechanism confirmed (read-only, policy-populated). **The
+  size worry was never proportionate to a 32-byte key** (`sync`'s 8 KB per-item floor clears it
+  **~256×**). 🔴 **The finding was elsewhere: `storage.managed` is exposed to content scripts by
+  default, so ADR 0009's tenant key lands in B2, not B3, unless we call `setAccessLevel()`.** Third
+  instance of the letter-vs-purpose trap — **and it surfaced from reading an API default, not from
+  auditing an invariant. Defaults are where this trap lives, because a default is a decision nobody
+  remembers making.** ADR 0009 carries a dated note.
+
+**New, raised by doc 05:**
+- **U20** — that each surface submits prompts as an **HTTP request, not a WebSocket frame.**
+  `webRequest` sees the WS **handshake**, never the frames, so a surface that moved submission onto an
+  open socket is **invisible to the observer** (ADR 0012). Not believed likely; **observable during the
+  U12 spike at zero marginal cost.**
 
 **Resolved by doc 03 (`d740a68`) — do not re-open, do not re-derive:**
 - **U1 ✅** no NRIC checksum → validation is structural. 🔴 **And a kill: a hobbyist repo claims ISO
@@ -433,7 +479,62 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U19**). Blocking ones by doc:
 
 ## 8. Immediate next action
 
-**Write `docs/05-lld.md`.**
+**Write `docs/06-performance-and-scale.md`.**
+
+> **Doc 05 is committed (`c084f0d`). Read it before doc 06 — it hands doc 06 four things and one of
+> them changes the budget's shape.** The scope below is doc 06's; §8.1 records what doc 05 settled so
+> it is not re-derived.
+
+**Scope:**
+1. 🔴 **Size the latency budget against the PASTE case, not the typing case** (doc 05 §6.3). Doc 01 §4
+   annotates the cache-miss branch *"rare path"* — **it is rare across all sends and universal on the
+   sends that matter.** Every typed prompt is debounce-scanned, so the cache is warm by construction.
+   **Paste is the only way to fill a composer in one event — and doc 00 §6 calls accidental paste the
+   dominant real-world leak case.** The cache is cold by definition on the threat we exist for. **U6's
+   stakes are higher than doc 01 §4's "~95% clean hit" implies.**
+2. **The runtime multiple** (doc 03 §4.4 — weights ≠ RAM; ~1.5–2× is a rule of thumb doc 03 **refuses**
+   to assert). **Measure it.** If the budget lands **below ~140 MB of weights, §6.2's distillation risk
+   becomes a Phase 0 requirement** — and its fallback depends on **C3**, the least-confident assumption
+   in the package.
+3. **The int8 path** (dynamic vs. static, per-channel vs. per-tensor) — **it degrades BM/ZH accuracy
+   first. The wedge is what quantization eats.**
+4. 🔴 **Dead-engine degradation — specify it, don't inherit it** (doc 02 §8). Slow fails to friction and
+   self-clears; **dead does not resolve at all.** The obvious patch — a timeout that lets the send
+   through — is a **silent fail-open**. Degrade to **advisory** (decision #3's existing mode), surfaced
+   to user **and** admin as *"protection degraded."* **Doc 05 §3.3 adds two more triggers for the same
+   mode** (broken adapter, unresolvable surface): **one degradation state, three triggers.** Doc 06
+   owns the **timeout value** (derive from U6 — no number invented) and the **fail-open/fail-closed**
+   call, which doc 01 §7 assigns here.
+5. **U15** (WebGPU under enterprise Chrome policy) — materially affects the budget; enterprise policy
+   may disable it **on exactly the fleet we target.** ⚠️ **§6.3: the offscreen document is a Window
+   context, so it PRESERVES WebGPU** — do not write doc 06 on the opposite assumption.
+6. **U6 must include the content-script → offscreen hop** (ADR 0006 — *inside* the budget, not beside
+   it). Worst case: **a cold offscreen document during a send-gate cache miss** (doc 05 §5.2).
+7. **Doc 03 §6's falsifiable prediction:** trimming should cut **memory ~50%, latency barely at all**
+   (embedding is lookup, backbone is compute). **Doc 06 is where it gets falsified.**
+8. **No tokens/sec until measured or cited.** Docs 03 and 05 both held this line and produced none.
+   **Doc 06 is where the pressure to break it is highest, because it is the doc whose whole subject is
+   numbers.**
+9. **Vault TTL × token TTL interact** (doc 05 §5.3, §6.4) and neither has a value.
+
+### 8.1 What doc 05 settled — do NOT re-derive
+
+- **U10 ✅ 30 s**, cited. **Offscreen→SW messages reset the timer**, so the engine keeps the SW alive
+  when there is work.
+- **U11 ✅ TRUE, inference struck.** **U19 ✅.** **U20 raised** (prompt submission is HTTP, not a WS
+  frame — observable during the U12 spike at zero marginal cost).
+- **The observer is `webRequest` in the SW (B3), not a MAIN-world patch** (ADR 0012). **Doc 01 §2/§5
+  corrected.** **Phase 0 injects nothing into the MAIN world.**
+- **The gate registers at `window`** (ADR 0010), not `document`.
+- **Token needs idempotency, not determinism** (doc 05 §6.2) — and the L1 placeholder-grammar mask that
+  delivers it is **doc 07's**, as a detection requirement.
+
+---
+
+## 8.2 Superseded — the doc 05 brief (kept for the reasoning, not the task)
+
+**Doc 05 is done. This section is retained only because its framing of U12 survived and is binding on
+the spike.**
 
 **Doc 05 is where the two week-1 spikes live, and it is the doc most likely to be wrong in ways that
 only a browser can reveal.** Docs 00–04 can be argued. **This one gets falsified by Chrome.**
