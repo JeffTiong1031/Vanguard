@@ -785,12 +785,78 @@ def align_bio_from_offsets(example: Example, offsets: list[tuple[int, int]]) -> 
 
 Refine B/I rule in implementation until test passes (token that first overlaps span start → B).
 
+> 🔴 **CORRECTNESS FIX — founder-directed 2026-07-17. Do this before training; it must NOT block
+> Slice 1.** The naive rule *"B iff `start <= sp.start < end`, else I"* is **wrong when a MASK span
+> begins mid-token or in a gap the tokenizer skipped** — the case that actually shows up in BM's
+> agglutinative morphology and ZH without whitespace, i.e. **the wedge's own languages.** When the
+> first token that overlaps a span *starts after* `sp.start` (leading space, or a sub-word split
+> inside the name), `start <= sp.start` is **false**, so that token gets **I-MASK with no preceding
+> B-MASK** — a broken BIO sequence `seqeval` will reject, and the word-aligned fixtures above never
+> exercise it. **Requirement: the FIRST overlapping token of each span gets `B-MASK`, every subsequent
+> overlapping token gets `I-MASK` — decided by overlap order, not by an offset comparison.**
+
+- [ ] **Step 2b (founder addendum): add the mid-token failing test**
+
+```python
+# ml/tests/test_bio.py  — add this case
+def test_span_starting_mid_token_still_gets_B_first():
+    # Span (5,20). No token covers offset 5 (a gap); the first OVERLAPPING token
+    # starts at 6. The naive `start <= sp.start` rule makes it I-MASK with no B.
+    # text: "abcde-FGHIJKLMNO-xyz" (len 20); surface = text[5:20]
+    text = "abcde-FGHIJKLMNO-xyz"
+    offsets = [(0, 0), (0, 4), (6, 10), (11, 20), (0, 0)]
+    ex = Example(
+        id="mid",
+        text=text,
+        lang="bm",
+        spans=[Span(start=5, end=20, label="MASK", surface=text[5:20])],
+        source="t",
+        split="train",
+        substrate="synthetic",
+    )
+    labels = align_bio_from_offsets(ex, offsets)
+    assert labels[0] == -100                 # [CLS]
+    assert labels[1] == LABEL2ID["O"]        # (0,4) does not overlap (5,20)
+    assert labels[2] == LABEL2ID["B-MASK"]   # (6,10) FIRST overlap -> B, not I
+    assert labels[3] == LABEL2ID["I-MASK"]   # (11,20) continuation -> I
+    assert labels[4] == -100                 # [SEP]
+```
+
+- [ ] **Step 2c (founder addendum): correct `align_bio_from_offsets` to be first-overlap stateful**
+
+```python
+# ml/src/sens/bio.py  — replace align_bio_from_offsets with this
+def align_bio_from_offsets(example: Example, offsets: list[tuple[int, int]]) -> list[int]:
+    labels: list[int] = []
+    started: set[int] = set()  # span index -> B-MASK already emitted
+    for start, end in offsets:
+        if end <= start:                       # specials / empty tokens
+            labels.append(-100)
+            continue
+        hit = None
+        for idx, sp in enumerate(example.spans):
+            if not (end <= sp.start or start >= sp.end):  # overlaps this span
+                hit = idx
+                break
+        if hit is None:
+            labels.append(LABEL2ID["O"])
+        elif hit not in started:               # FIRST overlapping token of the span
+            started.add(hit)
+            labels.append(LABEL2ID["B-MASK"])
+        else:                                  # subsequent overlapping tokens
+            labels.append(LABEL2ID["I-MASK"])
+    return labels
+```
+
+This keeps every case in Step 1's test green (first overlap still → B there) **and** fixes the
+mid-token case. The `test_align_bio_simple` assertions are unchanged.
+
 - [ ] **Step 3: PASS + commit**
 
 ```bash
 pytest tests/test_bio.py -v
 git add ml/src/sens/bio.py ml/tests/test_bio.py
-git commit -m "feat(ml): align character MASK spans to token BIO labels"
+git commit -m "feat(ml): align character MASK spans to token BIO labels (first-overlap B/I)"
 ```
 
 ---
