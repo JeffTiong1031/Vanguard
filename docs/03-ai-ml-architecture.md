@@ -12,12 +12,17 @@
 
 ## 0. The short version
 
-1. **U4 ✅ resolved, and the estimate was nearly exact.** Microsoft's model card: mDeBERTa-v3-base is
-   **86M backbone + 250K vocab → 190M embedding = 280M total.** `ASSUMPTIONS.md` estimated ~192M/278M
-   from arithmetic. **~68% of the model is a lookup table.** §6.2's thesis is now citable: multilingual
-   is paid for in **RAM and download size, not FLOPs**.
+1. **U4 ✅ resolved, and the estimate was more accurate than the "citation" that corrected it.**
+   The card states **86M backbone** and **190M embedding** — **and no total.** From `config.json`
+   (`vocab_size: 251000`, `hidden_size: 768`): **192.8M embedding + 86M = ~279M total** *(derived,
+   §4.1)*. `ASSUMPTIONS.md` estimated **278M** — **0.28% off.** **~69% of the model is a lookup
+   table**, so multilingual is paid for in **RAM and download size, not FLOPs**.
+   > 🔴 **This section previously read "= 280M total," sourced to the model card. 86 + 190 = 276, and
+   > the card states no total — the figure was neither the sum nor the citation it claimed to be.**
+   > **Corrected 2026-07-17 (§4.1).** The 86M floor, the trim math and the thesis are all unaffected;
+   > **the wrong number was within 0.5% of the right one, which is exactly why it survived.**
 2. **U5 ✅ confirmed, and it exposes a floor nobody costed.** Vocab-trimming to ~70K tokens cuts
-   embedding **190M → ~54M (−72%)**, total **280M → ~140M**, ~140 MB int8. But **the 86M backbone is
+   embedding **192.8M → ~54M (−72%)**, total **~279M → ~140M**, ~140 MB int8. But **the 86M backbone is
    irreducible by trimming.** Everything below ~130 MB requires **distillation** — a step Phase 0
    never budgeted. → **doc 08 ranked risk**, per §6.2's instruction not to absorb it silently.
 3. **U1 ✅ confirmed — with a trap.** No documented NRIC checksum, so validation is structural. But a
@@ -360,26 +365,63 @@ wrong"* (ADR 0003).
 
 ## 4. L2 — the model budget, re-derived
 
-### 4.1 U4 ✅ — resolved by the model card, not by our arithmetic
+### 4.1 U4 ✅ — and the total is **derived**, because the card does not state one
 
 | | Value | Source |
 |---|---|---|
 | Layers | 12 | [Model card](https://huggingface.co/microsoft/mdeberta-v3-base) |
-| Hidden size | 768 | Model card |
-| **Backbone params** | **86M** | Model card |
-| Vocabulary | **250K** | Model card |
-| **Embedding params** | **190M** | Model card |
-| **Total** | **280M** | Model card |
+| Hidden size | **768** | Model card · [`config.json`](https://huggingface.co/microsoft/mdeberta-v3-base/raw/main/config.json) |
+| **Backbone params** | **86M** *(rounded)* | Model card |
+| Vocabulary | **250K** *(card, rounded)* · **251,000** *(exact)* | Model card · `config.json` |
+| **Embedding params** | **190M** *(card, rounded)* · **192.8M** *(exact)* | Model card · **derived:** 251,000 × 768 |
+| **Total** | **~279M** | 🔴 **DERIVED — not the card. The card states no total.** |
+| Max sequence length | **512** | `config.json` (`max_position_embeddings`) |
 
-**`ASSUMPTIONS.md` U4 estimated ~86M + ~192M ≈ 278M. The card says 86M + 190M = 280M.** Our
-independent arithmetic (250,000 × 768 = 192.0M) lands **within ~1%**; the residual is the exact
-SentencePiece vocabulary count *(the card rounds; the precise token count is **unverified** and
-irrelevant at this precision)*.
+**The card's exact words are the whole of what it claims:**
 
-> **68% of mDeBERTa-v3-base is a lookup table.** 190M of 280M parameters are embedding — never
-> multiplied, only indexed. **This is §6.2's thesis, now cited rather than asserted: multilingual is
-> paid for in download size and RAM, not FLOPs** — the two resources a browser extension can least
-> afford, and the two D2 constrains hardest.
+> *"The mDeBERTa V3 base model comes with 12 layers and a hidden size of 768. It has 86M backbone
+> parameters with a vocabulary containing 250K tokens which introduces 190M parameters in the
+> Embedding layer."*
+
+**Read what is not there: a total.** So the total is **ours to derive and ours to own**, and the only
+honest derivation runs off `config.json`'s exact figures rather than the card's rounded prose:
+**251,000 × 768 = 192.8M embedding + 86M backbone = 278.8M ≈ ~279M** *(derived)*.
+
+> 🔴 **Corrected 2026-07-17 — this section previously asserted `Total | 280M | Model card`, and the
+> prose read: *"The card says 86M + 190M = 280M."* Both halves are wrong, and the second is worse
+> than the first.**
+>
+> 1. **86 + 190 = 276, not 280.** A sum that does not add, in the document whose opening line is that
+>    it *"does arithmetic rather than argument."*
+> 2. 🔴 **The card says no such thing. It states no total at all** — so the Source column read *"Model
+>    card"* beside a number the model card does not contain. **That is not an arithmetic slip. It is
+>    an attribution to a source that does not carry the claim** — the same defect this package keeps
+>    finding in its *internal* references, committed for the first time against an *external* one.
+>    `ASSUMPTIONS.md`'s own framing is the indictment: *"If an investor's ML advisor finds a
+>    confidently-stated number that turns out invented, every other number in the package loses its
+>    credit."*
+> 3. **The irony worth recording: our estimate was better than the "citation" that corrected it.**
+>    U4 estimated **278M** from arithmetic. The derived truth is **278.8M** — **0.28% off**, not the
+>    *"~1% off"* this section claimed. **The estimate was nearly exact and got marked down against a
+>    number that was invented.**
+> 4. **What survives: everything that mattered.** The 86M backbone floor (§4.3), the trim math
+>    (§4.2 — every trimmed row recomputes correctly), and the lookup-table thesis all stand. **~279M
+>    is also within 0.5% of the fabricated 280M**, which is precisely why nobody caught it: **the
+>    wrong number was close enough to look right, and the reasoning attached to it was checkable in
+>    one second and never checked.**
+>
+> **Two gaps closed while fixing this:** the *"precise token count is unverified"* hedge is retired —
+> `config.json` says **251,000** — and **`max_position_embeddings` is 512**, which doc 03 never
+> recorded and which **doc 06 cannot budget the paste path without** (a long paste must be chunked, so
+> its latency is `ceil(tokens/512) × per-chunk`, not one forward pass).
+
+> **~69% of mDeBERTa-v3-base is a lookup table.** 192.8M of ~279M parameters are embedding — never
+> multiplied, only indexed *(derived: 192.8 / 278.8 = 69.1%; the card's rounded figures give 190 / 276
+> = 68.8%. **Either consistent method gives ~69%. The old "68%" came from mixing the card's rounded
+> 190M over the invented 280M** — a third number produced by the same error)*. **This is the
+> multilingual-cost thesis, and it is now honestly sourced: multilingual is paid for in download size
+> and RAM, not FLOPs** — the two resources a browser extension can least afford, and the two D2
+> constrains hardest.
 
 ### 4.2 U5 ✅ — vocabulary trimming, with real numbers
 
@@ -387,15 +429,22 @@ Embedding params scale linearly with vocabulary: `vocab × 768`.
 
 | Vocab | Embedding | + 86M backbone | **int8 weights** | vs. untrimmed |
 |---|---|---|---|---|
-| **250K** (stock) | 190M | **280M** | **~280 MB** | — |
+| **251K** (stock, exact) | 192.8M | **~279M** | **~279 MB** | — |
 | **80K** | 61.4M | **147M** | **~147 MB** | **−47%** |
 | **70K** | 53.8M | **140M** | **~140 MB** | **−50%** |
 | **60K** | 46.1M | **132M** | **~132 MB** | **−53%** |
 | *30K (EN-only, illustrative)* | *23.0M* | *109M* | *~109 MB* | *−61%* |
 
+*(Stock row corrected 2026-07-17 — see §4.1. **Every other row recomputes exactly as published**, and
+so does every percentage: against the true ~278.8M the cuts are **−47.1%, −49.9%, −52.6%, −60.9%**.
+**The trimmed rows were always right, because they were computed rather than cited** — they use
+`vocab × 768 + 86M` directly. **Only the row that leaned on the card was wrong**, which is the whole
+lesson in one table.)*
+
 **U5 is confirmed on both axes.** It predicted "~70% embedding cut → ~278M → ~135M, ~135 MB int8." At
-70K: embedding falls **190M → 53.8M = −72%**, total **280M → 140M**, **~140 MB int8.** **Direction and
-magnitude both hold** — the estimate was good.
+70K: embedding falls **192.8M → 53.8M = −72%**, total **~279M → ~140M**, **~140 MB int8.** **Direction
+and magnitude both hold** — the estimate was good. *(And U5's starting point, ~278M, was the accurate
+one all along — see §4.1's correction.)*
 
 **What is *not* settled is whether 60–80K tokens is enough for EN+BM+ZH.** That number came from
 judgement, not measurement, and **trimming has a failure mode that a size table cannot show**:
@@ -478,7 +527,7 @@ are targeting**, which is the pessimistic case that matters.
 > laptop running WASM in a browser under an unknown thread budget, alongside the provider's own
 > React app.
 
-**What §4 does contribute is the shape of the answer:** ~68% of the model is embedding — **lookup, not
+**What §4 does contribute is the shape of the answer:** ~69% of the model is embedding — **lookup, not
 compute.** So **latency is dominated by the 86M backbone, while memory is dominated by the 190M
 embedding.** They are governed by different halves of the model, which has a useful consequence:
 
@@ -540,7 +589,8 @@ worst latency path.
 **Resolved by this document:** **U1** ✅ (no checksum — and a phantom one killed) · **U2** ✅ (format +
 PB table; **gender digit still unverified**) · **U3** ✅ *individually* (LHDN verified · SSM verified ·
 passport medium · **old-format IC unverified, not shipping** · **EPF not L1-detectable**) · **U4** ✅
-(86M + 190M = 280M, cited) · **U5** ✅ (trim math confirmed; **86M floor exposed**).
+(86M backbone + 190M embedding **cited**; **~279M total derived, not cited — the card states none**,
+§4.1) · **U5** ✅ (trim math confirmed; **86M floor exposed**).
 
 **Still open:** **U6** (unmeasured, highest priority) · **U15** (doc 06) · **U14/C2** (doc 07 — and it
 blocks §4.2's spike).
@@ -549,7 +599,8 @@ blocks §4.2's spike).
 
 ### Sources
 
-- [microsoft/mdeberta-v3-base — Hugging Face model card](https://huggingface.co/microsoft/mdeberta-v3-base) — 12 layers, hidden 768, **86M backbone**, 250K vocab → **190M embedding**, **280M total**
+- [microsoft/mdeberta-v3-base — Hugging Face model card](https://huggingface.co/microsoft/mdeberta-v3-base) — 12 layers, hidden 768, **86M backbone**, 250K vocab → **190M embedding**. ⚠️ **The card states NO total** — see §4.1's correction. Verbatim: *"It has 86M backbone parameters with a vocabulary containing 250K tokens which introduces 190M parameters in the Embedding layer."*
+- [microsoft/mdeberta-v3-base — `config.json`](https://huggingface.co/microsoft/mdeberta-v3-base/raw/main/config.json) — `vocab_size: 251000`, `hidden_size: 768`, `num_hidden_layers: 12`, **`max_position_embeddings: 512`**. **The exact figures the card rounds**, and the source of §4.1's derived **~279M** total. **The 512 window is doc 06's chunking constraint.**
 - [Malaysian identity card — Wikipedia](https://en.wikipedia.org/wiki/Malaysian_identity_card) — `YYMMDD-PB-###G`; full place-of-birth code table; no checksum documented
 - [Malaysia TIN guide — LookupTax](https://lookuptax.com/docs/tax-identification-number/malaysia-tax-id-guide) and [OECD — Malaysia TIN information](https://www.oecd.org/content/dam/oecd/en/topics/policy-issue-focus/aeoi/malaysia-tin.pdf) — `IG` prefix, legacy `SG`/`OG`
 - [LHDN new prefix for individual taxpayers — RinggitPlus](https://ringgitplus.com/en/blog/income-tax/lhdn-enables-e-daftar-for-more-categories-introduces-new-prefix-for-individual-taxpayers.html) — `SG`/`OG` → `IG` unification, 2023-01-01

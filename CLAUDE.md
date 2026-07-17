@@ -211,14 +211,28 @@ later in history than doc 01 and also carries it. The trailer stopped at `ae7d83
 Caught while verifying the push. A claim about our own git history is still a claim.)*
 
 ### 6.2 Doc 06 — the L2 backbone is a cost shift, not an architecture swap
-Founder flag, accepted. **✅ Doc 03 did the real math (`d740a68`); U4 and U5 are RESOLVED.** The
-numbers below are now **cited, not estimated** — do not re-derive them, and do not reintroduce the
-estimates.
-- **Cited (Microsoft model card):** mDeBERTa-v3-base = **86M backbone + 190M embedding (250K vocab) =
-  280M total.** **68% of the model is a lookup table**, not compute. **Multilingual is paid for in
-  download size and RAM, not FLOPs** — the budget a browser extension can least afford.
-- **Vocabulary trimming works, once:** ~70K tokens → embedding **190M → ~54M (−72%)**, total
-  **280M → ~140M (~140 MB int8)**. U5's estimate was good.
+Founder flag, accepted. **✅ Doc 03 did the real math (`d740a68`); U4 and U5 are RESOLVED** — **and its
+headline total was wrong until 2026-07-17. Read the correction before quoting any number here.**
+- **Cited (model card), and this is ALL the card says:** **86M backbone** · **190M embedding** ·
+  **250K vocab.** 🔴 **The card states NO total.** Its verbatim claim is: *"It has 86M backbone
+  parameters with a vocabulary containing 250K tokens which introduces 190M parameters in the
+  Embedding layer."*
+- **Derived (`config.json` — `vocab_size: 251000` × `hidden_size: 768`):** **192.8M embedding + 86M =
+  278.8M ≈ ~279M total.** **~69% of the model is a lookup table**, not compute. **Multilingual is paid
+  for in download size and RAM, not FLOPs** — the budget a browser extension can least afford.
+  > 🔴 **Doc 03 §4.1 asserted `Total | 280M | Model card` and *"the card says 86M + 190M = 280M."*
+  > **86 + 190 = 276, and the card states no total.** Neither the sum nor the citation it claimed.
+  > **This is the one confident fabrication that shipped** — and it shipped **against an external
+  > source**, after four instances of the same defect were caught against our own internal ones.
+  > **The total can never be cited. It is ours to derive and ours to own.** Everything load-bearing
+  > survived (86M floor · trim table · thesis), and **our 278M estimate was 0.28% off — more accurate
+  > than the "citation" that marked it down.** It survived because **~279M is within 0.5% of 280M: the
+  > wrong number looked right and the one-second check was never run.**
+- 🔑 **`max_position_embeddings` = 512** *(`config.json`, verified 2026-07-17)*. **Doc 06 cannot budget
+  the paste path without it** — a long paste chunks to `ceil(tokens/512)` forward passes, so paste
+  latency is **not** one forward pass. Doc 03 never recorded this.
+- **Vocabulary trimming works, once:** ~70K tokens → embedding **192.8M → ~54M (−72%)**, total
+  **~279M → ~140M (~140 MB int8)**. U5's estimate was good.
 - 🔴 **The floor U5 never mentioned, and it's doc 06's problem:** **the 86M backbone is irreducible by
   trimming.** Vocabulary trimming buys **exactly one halving and is then exhausted.** Below ~130 MB the
   only lever is **distillation**. **Trigger: if doc 06's D2 memory budget lands below ~140 MB of
@@ -589,6 +603,21 @@ available via `npx`.
 - **Markdown table column consistency** — a ragged row renders as garbage and is invisible in review.
 - **Relative link resolution** — doc 00 §6 once pointed at a doc 01 §5 that didn't carry the claim.
   **A link that resolves is not a link that's correct** — check the target says what you cite it for.
-- **Recompute every number in the doc independently** before committing. Doc 03's parameter and
-  probability arithmetic was re-derived from scratch and matched; that check is cheap and it is exactly
-  what an ML advisor will do first.
+- 🔴 **Recompute every number independently before committing — and do NOT trust this line's own
+  history.** It used to read: *"Doc 03's parameter and probability arithmetic was re-derived from
+  scratch and matched."* **It did not match. `86M + 190M` was published as `280M` and shipped for
+  three commits** — a sum that does not add, in the doc whose first line is that it *"does arithmetic
+  rather than argument."* **Corrected 2026-07-17; the true total is ~279M, derived, and the model card
+  states no total at all.** *(Full account: `ASSUMPTIONS.md` §5 · doc 03 §4.1.)*
+
+  **Three lessons, and the third is the one that will save you:**
+  1. **A claimed check is not a check.** This very line asserted the verification had happened. **The
+     assertion was the only evidence, and it was false.** If a number matters, recompute it **now**,
+     in a shell, even if the docs say someone already did.
+  2. 🔴 **Audit the Source column, not just the number.** `280M` was sourced to *"Model card."* **The
+     card contains no total.** Checking whether a source *says what you cite it for* is the §5 rule —
+     **and it applies to external sources too**, which is where we finally broke it.
+  3. **The error survived because it was nearly right.** ~279M vs 280M is **0.5%**. **Plausible
+     numbers do not get checked. Implausible ones do.** So the numbers most likely to be wrong in this
+     package are **the ones that look fine** — and a two-second `python -c` is cheaper than the
+     credibility of every other number in the package (`ASSUMPTIONS.md`'s own framing).
