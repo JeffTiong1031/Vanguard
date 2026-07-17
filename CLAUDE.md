@@ -142,7 +142,7 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 | 7 | `docs/05-lld.md` | ✅ **done, committed** (`c084f0d`) |
 | 8 | `docs/06-performance-and-scale.md` | ✅ **done, committed** (`50037b8`) |
 | 9 | `docs/07-ml-training-and-data-strategy.md` | ✅ **done, committed** |
-| 10 | `code/` scaffold | ⬜ **not started ← NEXT** |
+| 10 | `code/` scaffold | ✅ **done, committed.** 🔴 **Two artifacts, deliberately:** `code/spikes/` is **LIVE** (U12 harness · U21-a fertility) · `code/extension/` + `code/backend/` are **STUBS** — doc 01 §2's shape only. **The spike is raw MV3, NOT WXT** (doc 01 §6's own eject rule: U12 *is* the MAIN-world work, and a build step makes a rework-trigger test ambiguous). **Read [`code/README.md`](code/README.md) §Order of operations before building anything.** |
 | 11 | `docs/08-roadmap-and-risks.md` | ⬜ not started — **written LAST** so it inherits real risks |
 
 **ADRs committed so far:** 0001 buyer · 0002 form factor · 0003 wedge-vs-moat · 0004 org dictionary ·
@@ -735,7 +735,22 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 
 ## 8. Immediate next action
 
-> ## ✅ DOC 07 IS DONE. **Next: the `code/` scaffold** (deliverable 10), **then doc 08 LAST.**
+> ## ✅ DOC 07 AND THE SCAFFOLD ARE DONE. **Next: run the spikes, then doc 08 LAST.**
+>
+> 🔴 **The next action is NOT code. It is the founder's, and doc 00 §7 says so: *"Go make ten phone
+> calls before you write a line of the detection engine."*** See [`code/README.md`](code/README.md)
+> §Order of operations — **B3 (calls) → U12-a (20 min) → U21-a (an afternoon) → U12-b (needs an IME)
+> → everything else.** **Steps 1–4 cost a week and no engineering. Step 5 costs 18 months.**
+>
+> **The scaffold is deliberately stubs until those report.** Doc 05 §1.1: *"Read the failure column
+> top to bottom — it is a ranking, and **it inverts the effort you'd naively spend.**"*
+>
+> **Founder has the open action on U25** (lawful basis for ADR 0015's eval corpus) **and on B3's
+> interviews** — including doc 07 §1.5's one added question, which closes the precision floor free.
+>
+> ⚠️ **Do not write doc 08 before the spikes report.** It is *"written LAST so it inherits real
+> risks"* (§2) — and U12-a, U21-a and B3 are exactly the risks it is supposed to inherit. **Doc 08
+> written now would rank three guesses it could have ranked as measurements.**
 >
 > **Read doc 07 before either.** It **re-specified three register entries** (C3, U21, U14), **corrected
 > doc 02 §4.7 and doc 06 §4.4/§9 upstream**, and **minted ADR 0015** — the decision that puts real

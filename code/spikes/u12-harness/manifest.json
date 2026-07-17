@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Vanguard U12 Harness (SPIKE ONLY - not the product)",
+  "version": "0.0.1",
+  "description": "Measures U12-a/b/c against real ChatGPT and Claude. Observes by default. Blocks ONLY when armed from the HUD.",
+
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": ["main-probe.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": ["iso-gate.js", "hud.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
+    }
+  ]
+}

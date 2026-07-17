@@ -879,9 +879,32 @@ considerably.**
 2. **The overlap is bounded by our own spec, not the user's text.** It must cover the **longest span we
    intend to detect, plus the context window doc 03 §2.3's disambiguation reads** — and per §2.3 that
    context is *"Company No."*, so the window is **leading**, not symmetric. **Both are tens of tokens,
-   not hundreds** *(estimate — and the arithmetic is visible: a name is a few tokens, an NRIC's digits
-   a dozen at most, `Company No.` two or three. Against 512, that is a single-digit percentage of extra
-   chunks, not a multiple.)*
+   not hundreds.**
+
+   > ✅ **MEASURED 2026-07-17, and this paragraph's supporting figure was wrong.** Running
+   > [`code/spikes/u21a-fertility`](../code/spikes/u21a-fertility/) against the stock mDeBERTa
+   > tokenizer: **longest detector span = 8 tokens** (a Malay name — `Nurul Aina binti Abdullah`),
+   > **longest context token = 4** (`Reg. No.`), **overlap floor = 12 tokens = 2.3% of the 512
+   > window.**
+   >
+   > **The conclusion holds and got stronger** — *"a single-digit percentage of extra chunks, not a
+   > multiple"* is **2.3%**. 🔴 **But this paragraph's arithmetic said *"an NRIC's digits a dozen at
+   > most."* It is FOUR** — `890101-14-5555` → `['▁89', '0101', '-14-', '5555']`. **I overestimated by
+   > 3×, in the safe direction, which is exactly why it survived to commit: it made the conclusion
+   > look harder to reach than it was.** *(A wrong number that argues against you is still a wrong
+   > number — doc 03 §4.1's lesson does not only apply to flattering ones.)*
+   >
+   > ⚠️ **And it resolves something doc 03 §3.1 explicitly left open — with no consequence, exactly as
+   > doc 03 §3.2 predicted.** §3.1 says a multilingual tokenizer *"produces digit soup for
+   > `890101-14-5555` as well"*, tagged *"the exact per-tokenizer segmentation is **unverified** and is
+   > a trivial thing to measure… **measure it rather than argue.**"* **Measured: it is not digit soup.
+   > Four tokens, landing on near-perfect semantic boundaries** — `89` = year, `0101` = Jan 01, `-14-` =
+   > the PB code, `5555` = the serial. **Nothing moves**, because §3.2's whole point is that **L1 masks
+   > the IC before L2 ever sees it**, so the segmentation is irrelevant to us. 🟢 **That is the package
+   > working as designed: §3.1 declined to depend on a number it had not measured, and when the number
+   > arrived it changed nothing.** *(The claim §3.1 actually makes — that multilingual has no advantage
+   > over English-first **here** — is a comparison, and this measures only one side. It stays as
+   > written, and it stays irrelevant.)*
 3. 🔴 **It is the one number in this document that is neither B3-blocked nor corpus-blocked.** The
    longest span is **a property of our own detector list.** The context window is **our own rule**.
    **We own both sides.** After §1.5, §3.4 and §5.4, that is worth noticing: **everything else here

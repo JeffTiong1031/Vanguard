@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+node_modules/
+.wxt/
+.output/
+code/spikes/u21a-fertility/corpus/
+code/spikes/u21a-fertility/out.json

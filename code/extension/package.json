@@ -1,0 +1,19 @@
+{
+  "name": "vanguard-extension",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "_comment": "SKELETON. doc 01 §2's component shape with stubs. The live code is ../spikes/. See ../README.md for why the U12 spike is deliberately NOT built on this.",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "compile": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "wxt": "^0.19.0"
+  },
+  "dependencies": {
+    "preact": "^10.22.0"
+  }
+}
