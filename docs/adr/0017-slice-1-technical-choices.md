@@ -117,3 +117,54 @@ one action, not two.
   public entities, **that is the measurement**, and it is the argument for the trained L2 that C3-b
   and U25 gate. **Do not "fix" it with an invented sensitivity heuristic** — that would be a number
   nobody checked, in the layer whose precision is quasi-contractual (ADR 0001).
+
+## 6. Slice 1 build decisions (2026-07-18, from the `/grill-me` pass)
+
+Four `how` choices, resolving the forks a no-placeholder implementation plan forced. Plan:
+[`docs/superpowers/plans/2026-07-18-slice-1-chat-text-extension.md`](../superpowers/plans/2026-07-18-slice-1-chat-text-extension.md).
+
+1. 🔴 **L2 runtime = transformers.js, not raw onnxruntime-web — for Slice 1 only.** transformers.js
+   **is** ORT-web underneath (so §1's "ONNX Runtime Web in the offscreen doc" holds), but ships the
+   tokenizer + model + token-classification pipeline as one library, collapsing ~4–8 engineer-days of
+   ORT wiring + a hand-rolled browser tokenizer. **Accepted tradeoffs:** heavier download, and
+   chunking/quantization control through a wrapper rather than direct. 🔴 **Recorded so nobody reads
+   doc 01 §6 / doc 03's raw-ORT preference as a Slice 1 blocker: it is not.** **Raw ORT-web + a
+   hand-rolled tokenizer is the LIKELY later engine shape** if/when shipping needs vocabulary trimming,
+   int8 control, or the size budget the wrapper cannot give (doc 06 §6.2) — **a deliberate rework
+   AFTER the team test, not Slice 1 scope.**
+2. **The log-only send observer is DEFERRED past Slice 1** — not built, and the "local reconciliation,
+   no webRequest" middle path is rejected too (a partial control that reads as a full one). Slice 1 is
+   the felt UX: gate, modal, rewrite, Ignore. The observer returns as a follow-on aligned with doc 05
+   §6.4 / ADR 0012 **after** the team accepts Slice 1. **Still "in for Phase 0" — Phase 0 ⊃ Slice 1.**
+3. **Storage/crypto = scaffold the seam + a clearly-labelled STAGED demo; real ADR 0009 is post-MVP.**
+   The boss POC walks a chronology (MVP → coworker isolation → org dictionary → encrypted vault →
+   audit). **Chapters 1–4 are REAL; chapters 5–7 are STAGED theatre**, and the split is load-bearing —
+   see §7. **No production claim that a per-tenant DEK protects customer data ships in Slice 1.**
+4. **L1 detector set = NRIC + SSM (+`NRIC_OR_SSM_AMBIGUOUS`) + LHDN TIN + email + credit-card (Luhn).**
+   The Malaysian identifier core plus two universal low-FP patterns. Each is a structured grammar, so
+   §5's `1+1` guardrail holds by construction.
+
+## 7. The REAL / STAGED split — the "second product inside Slice 1" guardrail
+
+The founder asked for a chronology demo **and** flagged its risk in the same breath: *"so we don't
+accidentally build a second product inside Slice 1."* This split is that guardrail, and it is binding.
+
+| # | Chapter | REAL / STAGED | Rule |
+|---|---|---|---|
+| 1 | Type *"Please call Ahmad about the deal."* → rewrite to `PERSON_1` → modal → **user presses Send** | 🟢 **REAL** | The Slice 1 acceptance flow. Must actually work on ChatGPT + Claude. |
+| 2 | Session mapping is **in-memory only**; no rehydration; no readable `Ahmad` persisted as a product vault | 🟢 **REAL** | E2. The map dies with the session. |
+| 3 | Local audit line: **class + count + salted-hash fingerprint** (never the raw name) | 🟢 **REAL** | I3 / decision #5. Feeds Ignore-rate-per-class. |
+| 4 | Rachel on another machine gets **her own** `PERSON_1`; no shared live mask list | 🟢 **REAL** | Trivially true with no backend — but **assert it** (no network call carries prompt content). |
+| 5 | Org-dictionary panel: admin-uploaded terms "unlocked" by a local demo tenant key | 🟠 **STAGED** | A demo panel. **No real dictionary distribution, key custody, or admin console.** |
+| 6 | Encrypted-vault panel: shows a locked/unlocked `PERSON_1 → Ahmad` mapping under a hardcoded demo key | 🟠 **STAGED** | Theatre for the chronology. **Not production at-rest protection.** |
+| 7 | Audit panel: redacted findings list (classes / counts / fingerprints / Ignore reasons) | 🟠 **STAGED** | Reads the REAL local audit for shape, but **no raw-name admin feed.** |
+
+🔴 **Binding rules on the STAGED chapters, because staging that reads as real is exactly the E2 failure
+(*"the audit trail says it worked"*):**
+
+- **Every staged panel carries an unmistakable `DEMO · NOT REAL PROTECTION` marker** in its own UI.
+- **Staged panels never write to the real audit store** and never touch the real gate/verdict path —
+  they are a separate, inert surface, so nothing downstream can mistake theatre for a finding.
+- **The demo key is hardcoded and named `DEMO_KEY`** in code; it is never presented as custody.
+- **If the staged chapters threaten the real path's critical path, they stay a thin panel/script** and
+  do not grow (founder, explicit). They are a **follow-on plan**, not part of the real-path plan.
