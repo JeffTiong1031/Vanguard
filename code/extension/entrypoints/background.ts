@@ -20,9 +20,15 @@ export default defineBackground(() => {
   chrome.runtime.onMessage.addListener((msg: ScanRequest, _s, sendResponse) => {
     if (msg?.kind !== 'l2-scan') return;
     (async () => {
-      await ensureOffscreen();
-      const res = (await chrome.runtime.sendMessage(msg)) as ScanResponse;
-      sendResponse(res);
+      try {
+        await ensureOffscreen();
+        const res = (await chrome.runtime.sendMessage(msg)) as ScanResponse;
+        sendResponse(res);
+      } catch (e) {
+        // Without this, a throw becomes an unhandled rejection and the content side only
+        // sees a timeout → 'degraded'. Surface the real failure as an l2-result error.
+        sendResponse({ kind: 'l2-result', id: msg.id, ok: false, error: String(e) } satisfies ScanResponse);
+      }
     })();
     return true;
   });

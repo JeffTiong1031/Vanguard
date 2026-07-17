@@ -58,9 +58,12 @@ chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) =
   (async () => {
     try {
       const ner = await getNer();
-      const raw = (await ner(msg.text)) as unknown as PipelineNerToken[];
-      // [finding] the pipeline never populates start/end (see messages.ts); reconstruct them
-      // from the prompt text before merging into whole-entity spans.
+      // CRITICAL: default ignore_labels:['O'] drops non-entity tokens and leaves
+      // attachCharOffsets's cursor stranded on recurring substrings (wrong span). Pass
+      // ignore_labels:[] so the FULL ordered stream (entity + O) advances the cursor.
+      // Verified against transformers@3.8.1 src/pipelines.js (TokenClassificationPipeline._call
+      // and the documented example at line ~370). mergeNerTokens drops O afterward.
+      const raw = (await ner(msg.text, { ignore_labels: [] })) as unknown as PipelineNerToken[];
       const withOffsets = attachCharOffsets(msg.text, raw);
       const entities = mergeNerTokens(withOffsets);
       sendResponse({ kind: 'l2-result', id: msg.id, ok: true, entities } satisfies ScanResponse);

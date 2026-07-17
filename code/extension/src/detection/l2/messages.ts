@@ -54,13 +54,16 @@ export function mergeNerTokens(tokens: RawNerToken[]): L2Entity[] {
 // position rather than by `text`) needs real offsets.
 //
 // This reconstructs them by walking the prompt text left-to-right and locating each decoded
-// token's text, stripping the WordPiece continuation prefix ("##") before searching. It is the
-// same fallback technique used when a fast tokenizer's offset mapping isn't available. Known
-// limitation: `text.indexOf` can misalign on a token that recurs before its true position, or on
-// tokenizer-side Unicode normalization that changes a character's byte form (rare for a *cased*
-// tokenizer, which — unlike an uncased one — does not lowercase or strip accents). A token whose
-// search fails is dropped rather than guessed: silent recall loss on one mention, never a wrong
-// span written back into the composer.
+// token's text, stripping the WordPiece continuation prefix ("##") before searching.
+//
+// 🔴 CRITICAL invariant: `tokens` MUST be the FULL ordered stream (entity + O + subword), in
+// sequence order. The pipeline defaults to `ignore_labels: ['O']`, which drops non-entity tokens
+// and leaves the cursor stranded — `indexOf(piece, cursor)` then lands on the FIRST occurrence of
+// a recurring word even when the tagged mention is a later one (wrong span reported as ok). The
+// offscreen caller passes `ignore_labels: []` so O tokens advance the cursor between entities.
+// Special tokens whose `word` is not a text substring (`[CLS]`/`[SEP]`) return -1 and are dropped
+// WITHOUT advancing the cursor — they sit at boundaries and are not text content.
+// `mergeNerTokens` then drops non-KEEP labels (including O) after offsets are attached.
 export type PipelineNerToken = { entity: string; word: string };
 
 export function attachCharOffsets(text: string, tokens: PipelineNerToken[]): RawNerToken[] {
@@ -71,7 +74,8 @@ export function attachCharOffsets(text: string, tokens: PipelineNerToken[]): Raw
     const piece = isContinuation ? t.word.slice(2) : t.word;
     if (!piece) continue;
     const idx = text.indexOf(piece, cursor);
-    if (idx === -1) continue; // can't align this token to the text; drop rather than guess a span
+    // Unalignable (special tokens, normalization misses): drop WITHOUT advancing cursor.
+    if (idx === -1) continue;
     out.push({ entity: t.entity, start: idx, end: idx + piece.length, word: t.word });
     cursor = idx + piece.length;
   }

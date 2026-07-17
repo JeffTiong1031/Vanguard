@@ -58,4 +58,52 @@ describe('attachCharOffsets', () => {
     ]);
     expect(tokens.map((t) => t.word)).toEqual(['hello', 'world']);
   });
+
+  // CRITICAL regression: recurring substring + entity-only stream (pipeline default
+  // ignore_labels:['O']) mislocates the tagged mention onto the FIRST occurrence.
+  // Production must pass the FULL ordered stream (ignore_labels:[]) so O tokens advance
+  // the cursor. This test uses the production-shaped full stream and asserts the LATER
+  // occurrence; the companion check below documents that entity-only is wrong.
+  it('points at the later occurrence of a recurring word when given the full ordered stream', () => {
+    // "I love Apple and my friend has an apple; call Apple Inc"
+    //  indices:         ^7                           ^46
+    const text = 'I love Apple and my friend has an apple; call Apple Inc';
+    const firstApple = text.indexOf('Apple'); // 7
+    const lastApple = text.lastIndexOf('Apple'); // 46
+    expect(firstApple).toBe(7);
+    expect(lastApple).toBe(46);
+
+    // Entity-only stream (old production shape) — MUST land on the WRONG (first) span.
+    const entityOnly = attachCharOffsets(text, [{ entity: 'B-ORG', word: 'Apple' }]);
+    expect(entityOnly[0]!.start).toBe(firstApple);
+    expect(entityOnly[0]!.start).not.toBe(lastApple);
+
+    // Full ordered stream as the real pipeline emits with ignore_labels:[] — O tokens
+    // between the three "Apple"/"apple" mentions advance the cursor past the early ones.
+    const fullStream = attachCharOffsets(text, [
+      { entity: 'O', word: 'I' },
+      { entity: 'O', word: 'love' },
+      { entity: 'O', word: 'Apple' }, // first Apple — not the tagged entity
+      { entity: 'O', word: 'and' },
+      { entity: 'O', word: 'my' },
+      { entity: 'O', word: 'friend' },
+      { entity: 'O', word: 'has' },
+      { entity: 'O', word: 'an' },
+      { entity: 'O', word: 'apple' }, // lowercase apple — not the tagged entity
+      { entity: 'O', word: ';' },
+      { entity: 'O', word: 'call' },
+      { entity: 'B-ORG', word: 'Apple' }, // the tagged mention — LATER occurrence
+      { entity: 'I-ORG', word: 'Inc' },
+    ]);
+    const orgTokens = fullStream.filter((t) => t.entity.endsWith('ORG'));
+    expect(orgTokens).toEqual([
+      { entity: 'B-ORG', start: lastApple, end: lastApple + 5, word: 'Apple' },
+      { entity: 'I-ORG', start: lastApple + 6, end: lastApple + 9, word: 'Inc' },
+    ]);
+    // End-to-end: merge must also land on the later span, not the first.
+    const merged = mergeNerTokens(fullStream);
+    expect(merged).toEqual([
+      { type: 'ORG', start: lastApple, end: lastApple + 9, text: 'Apple Inc' },
+    ]);
+  });
 });
