@@ -77,6 +77,7 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 > | 3 | **doc 04 §8** | ✅ The token must bind to the rewrite | Asked for **determinism** when the property it needed was **idempotency** | ✅ Yes — property renamed (doc 05 §6.2) |
 > | 4 | **ADR 0012** | ✅ `webRequest` is the right mechanism | *"A second opinion from the same doctor"* — **the founder broke it** | ✅ Yes — re-argued on **enumeration** + **provider-app integrity** |
 > | 5 | **doc 03 §6** | ✅ Trimming cuts memory ~50%, latency flat | **True *per token*, silent on *token count*** — trimming moves fertility, and fertility adds chunks (doc 06 §4.4) | ✅ Yes — **scope narrowed**, not reversed |
+> | 6 | **§7.3's own through-line** | ✅ The wedge really is where the cost lands | *"**Coherent for a moat** — the hard thing is the defensible thing, and per ADR 0003 the wedge was never claimed as one anyway"* — **asserts the framing, asserts a false general rule, refutes itself, all in one sentence.** The founder built on it and reached *"friction is the price of the moat"* — **decision #4's exact prohibition** | ✅ Yes — **lead with it** (founder, 2026-07-17); **framing reversed to *"the wedge is where we spend, the moat is where we don't"*** |
 >
 > > **What the ledger actually says — and it is more useful than the slogan was.** **Five instances.
 > > In four, the conclusion survived and the reasoning did not.** **In one — U11, the earliest and the
@@ -376,6 +377,17 @@ Approved during planning; transcribed here so they survive.
 - Scope phases to **A1/A2 (2–3 engineers, 18 months)**. **Do not re-derive from a different number** —
   the founder confirmed this is a deliberate constraint, not a compromise: solo would collapse the
   multilingual ML edge into regex-chasing, and more headcount would let the performance budget go soft.
+- 🔴 **DOC 08 OPENS WITH THE WEDGE'S COST — founder decision, 2026-07-17.** Three of the top eight
+  ranked items are the wedge's own price. **Lead with it; do not bury it in a risk table** — the facts
+  are the same either way and **only the ordering decides whether they read as *priced* or as *didn't
+  know*.**
+  > ✅ **"The wedge is where we spend. The moat is where we don't."** It buys **18–24 months of
+  > beachhead, not defensibility.** Vendor neutrality costs **zero engineering** and **widens for
+  > free.**
+  >
+  > ❌ **NOT *"friction is the price of the moat"*** — that reverses **decision #4** and **ADR 0003**,
+  > and the asymmetry runs the wrong way (**Microsoft ships the IME in U12-b; Google trained the
+  > multilingual models**). **Full argument and the sentence in this file that caused the error: §7.3.**
 
 ### 6.5 Obligations handed forward by committed docs
 
@@ -631,14 +643,55 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
   headcount lets the performance budget go soft. *(§6.4)*
 - **B3 ranks above the engineering spikes.** *(§6.4, and now doubly — see rank 3.)*
 
-> 🔴 **The through-line doc 08 should name rather than bury: three of the top eight are the wedge's own
-> cost.** U12-b (the naive gate breaks Chinese input), §4.3 (the wedge's language is the slowest on the
-> critical path), and §6.3's three taxes (**trimming, quantization and distillation all degrade BM/ZH
-> first — three taxes on one asset**). **Decision #4 chose EN/BM/ZH as the beachhead, and the wedge
-> keeps turning out to be where the engineering is hardest.** **That is coherent for a moat** — the
-> hard thing is the defensible thing, and per ADR 0003 the wedge was never claimed as one anyway —
-> **but it must be ranked, not discovered.** An investor who spots the pattern before we state it will
-> conclude we did not.
+> 🔴 **DOC 08 LEADS WITH THIS. Founder decision, 2026-07-17. Do not bury it in a risk table.**
+>
+> **The through-line: three of the top eight ranked items are the wedge's own cost.** U12-b (the naive
+> gate breaks Chinese input) · §4.3 (the wedge's language is the slowest on the critical path) ·
+> §6.3's three taxes (**trimming, quantization and distillation all degrade BM/ZH first — three taxes
+> on one asset**). **Decision #4 chose EN/BM/ZH, and the wedge keeps turning out to be where the
+> engineering is hardest.**
+>
+> **The founder's reason for leading, and it is the durable part:** the facts are identical either
+> way; **only the ordering decides whether they read as *priced* or as *didn't know*.** Bury it and a
+> diligence reader who finds it concludes we missed it. Lead with it and the same three items are
+> evidence about our engineering rigor — **doc 00 §7's underclaiming argument.**
+>
+> ### 🔴 The framing — decided, and the rejected one is a trap this file set
+>
+> ✅ **"The wedge is where we spend. The moat is where we don't."** The three costs buy **18–24 months
+> of beachhead — not defensibility** *(estimate, low confidence; the **optimistic** end since
+> SentinelOne closed Prompt Security)*. **Vendor neutrality costs zero engineering** — it is a
+> structural *refusal* (never a model vendor or router, ADR 0003's necessary condition) and **it widens
+> for free as Gemini grows.** **We know what the pain buys, and it isn't the moat.** This survives the
+> diligence question *"why won't Google just do this?"* **because it does not depend on the answer.**
+>
+> ❌ **NEVER: *"the engineering is hardest here because this is where our strategic advantage lies"*** —
+> i.e. friction as **the price of the moat.** **Three reasons, and the third is the one that bites:**
+> 1. **It contradicts decision #4 and ADR 0003** — *"the **wedge**, not the moat."* Doc 00 §5's title
+>    is **"Wedge vs. moat — do not conflate these"**; ADR 0003's consequence is *"stated separately and
+>    **never blurred**"* and its warning is *"**calling it a moat is what gets caught in diligence.**"*
+>    **This framing puts a multilingual-is-the-moat claim in doc 08's opening paragraph of a package
+>    that ships an ADR explaining why it is false.**
+> 2. **"A moat is only defensible because it is hard to build" is false as a general rule.**
+>    **Difficulty is defensibility only when it is *asymmetric* — hard for the competitor, not merely
+>    hard.**
+> 3. 🔴 **Our asymmetry runs BACKWARDS, and this is checkable.** **U12-b's decisive test is Windows +
+>    Microsoft Pinyin — the IME is made by Microsoft**, Layer 4, the competitor doc 00 §2.4 calls
+>    ***"the existential one."*** **The BM/ZH fertility problem is hard because multilingual tokenizers
+>    are hard, and per ADR 0003 *"Google's multilingual NLP is better than ours will ever be"* — they
+>    trained the models the field is built on.** None of it is proprietary. **It is hardest for a 2–3
+>    engineer team (A1/A2) and easiest for the incumbents most able to eat us.** So *"hardest here
+>    because our advantage lies here"* is **exactly inverted: it is hardest here because *theirs* does,
+>    and we operate in it anyway, on a timer.**
+>
+> ⚠️ **This file caused the error, which is why the rejected framing is written out rather than just
+> omitted.** This paragraph previously read: *"**That is coherent for a moat** — the hard thing is the
+> defensible thing, and per ADR 0003 the wedge was never claimed as one anyway."* **One sentence that
+> asserts the moat framing, asserts the false general rule, and then refutes itself with the ADR that
+> kills it.** The founder built on it and reached the moat framing; **his connective was downstream of
+> ours.** **It is doc 01 §3 refuting doc 00 §5 mid-sentence — the package's oldest failure mode — and
+> it shipped in the paragraph that tells doc 08 how to talk about the wedge.** *(Instance #6 in §2's
+> ledger. Corrected 2026-07-17.)*
 
 ---
 
