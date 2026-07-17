@@ -25,25 +25,40 @@ const SRC = new URL('./iso-gate.js', import.meta.url);
 
 function load() {
   const listeners = [];
-  const mkTarget = () => ({ addEventListener: (t, fn, o) => listeners.push({ t, fn, o }) });
-  const win = mkTarget();
+  const clock = { t: 0 };
+  const mkTarget = (nodeName) => ({
+    addEventListener: (type, fn, o) => listeners.push({ nodeName, type, fn, o }),
+  });
+  const win = mkTarget('window');
   const sandbox = {
     window: win,
-    document: mkTarget(),
-    performance: { now: () => 0 },
+    document: mkTarget('document'),
+    performance: { now: () => clock.t },
     navigator: { userAgent: 'test' },
     location: { hostname: 'test.local' },
     console: { info() {}, debug() {} },
   };
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(SRC, 'utf8'), sandbox);
-  return sandbox.window.__VANGUARD_U12;
+  const API = sandbox.window.__VANGUARD_U12;
+  API.STATE.verbose = false;
+  // Fire a real event at the real listeners on `window`. Used by the dispatch-driven cases below.
+  API.__fire = (type, ev) => {
+    clock.t = ev.t ?? clock.t;
+    for (const l of listeners) {
+      if (l.nodeName !== 'window' || l.type !== type) continue;
+      // `source: win` by default — the message listener's first guard is `ev.source !== window`,
+      // which is how the MAIN-world probe's records reach the log.
+      l.fn({ type, eventPhase: 1, composedPath: () => [], target: undefined, source: win,
+             defaultPrevented: false, stopImmediatePropagation() {}, preventDefault() {}, ...ev });
+    }
+  };
+  return API;
 }
 
 // Drive the analyser by pushing directly into its log, then reading analyse().u12b.
 function run(name, events, expect) {
   const API = load();
-  API.STATE.verbose = false;
   let seq = 0;
   for (const e of events) API.log.push({ at: 'window', seq: seq++, ...e });
   const b = API.analyse().u12b;
@@ -122,6 +137,109 @@ all &= run('compositions but none committed via Enter => case NOT exercised, not
   { kind: 'compositionend', t: 1500 },
   { kind: 'keyup', key: ' ', t: 1560 },
 ], (b) => /NOT EXERCISED/.test(b.verdict));
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+// DISPATCH-DRIVEN CASES — added 2026-07-17, and the gap they close is the point.
+//
+// 🔴 Cases 1–6 push straight into the log, so they test the ANALYSER and nothing else. The founder's
+// focused ChatGPT capture found TWO bugs and the FIRST ONE WAS IN THE RECORDER: composition events
+// were pushed without `at: 'window'`, so the analyser's `r.at === 'window'` filter dropped every one
+// of them and U12-b reported `compositionsObserved: 0 → NOT TESTED` on a capture containing a clean,
+// complete composition.
+//
+// Cases 1–6 could never have caught that. They SUPPLIED the missing field themselves — `{ at:
+// 'window', ...e }` on line 48 — so the tests were passing precisely the input the recorder failed
+// to produce. A test fixture that hand-writes the field under test is testing the fixture.
+//
+// So these cases go through the real listeners: fire the event, read the verdict. The seam moves out
+// to the browser's edge, which is the only place a harness's correctness is actually decided.
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+
+function fire(name, script, expect) {
+  const API = load();
+  for (const [type, ev] of script) API.__fire(type, ev);
+  const out = API.analyse();
+  const ok = expect(out.u12b, out);
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
+  if (!ok) console.log('       ', JSON.stringify(out.u12b, null, 2));
+  return ok;
+}
+
+// ── 7. REGRESSION: the `at` bug ──────────────────────────────────────────────────────────────
+// Recorded through the listeners. Fails against the version that omitted `at: 'window'`.
+all &= fire('recorder: composition events reach the analyser (at: window)', [
+  ['compositionstart', { t: 1000, data: 'ni' }],
+  ['compositionend', { t: 1500, data: 'nihao' }],
+], (b) => b.compositionsObserved === 1);
+
+// ── 8. THE FOUNDER'S FOCUSED CHATGPT CAPTURE, key: "Process" ─────────────────────────────────
+// Microsoft Pinyin, ChatGPT, 2026-07-17:
+//   compositionstart -> updates -> keydown(code:"Enter", key:"Process", isComposing:true,
+//   keyCode:229) -> compositionend -> keyup
+// Fails against BOTH bugs: the `at` bug drops the compositions, and the `key === 'Enter'` matcher
+// never sees an Enter whose key value is "Process".
+all &= fire('founder\'s focused capture: Process/Enter, safe ordering => isComposing SUFFICIENT', [
+  ['compositionstart', { t: 1000, data: 'n' }],
+  ['compositionupdate', { t: 1100, data: 'ni' }],
+  ['compositionupdate', { t: 1200, data: 'niha' }],
+  ['keydown', { t: 1500, key: 'Process', code: 'Enter', isComposing: true, keyCode: 229 }],
+  ['compositionend', { t: 1502, data: 'nihao' }],
+  ['keyup', { t: 1560, key: 'Enter', code: 'Enter', isComposing: false, keyCode: 13 }],
+], (b) => b.compositionsObserved === 1
+       && b.entersObserved === 1
+       && b.enterWithIsComposingTrue === 1
+       && b.compositionEndFollowedByEnter === 0
+       && b.focusedCapture === true
+       && b.enterKeyValuesSeen.join() === 'Process (Enter)'
+       && /isComposing SUFFICIENT/.test(b.verdict));
+
+// ── 9. THE SAME CAPTURE, DANGEROUS ORDERING ──────────────────────────────────────────────────
+// The verdict must still fire when `key` is "Process" — i.e. the fix must not have moved the
+// blindness rather than removed it.
+all &= fire('dangerous ordering survives key:"Process" => window REQUIRED', [
+  ['compositionstart', { t: 1000, data: 'n' }],
+  ['compositionend', { t: 1500, data: 'nihao' }],
+  ['keydown', { t: 1502, key: 'Process', code: 'Enter', isComposing: false, keyCode: 229 }],
+  ['keyup', { t: 1560, key: 'Enter', code: 'Enter', isComposing: false, keyCode: 13 }],
+], (b) => b.compositionEndFollowedByEnter === 1
+       && b.focusedCapture === true
+       && b.gapDistributionMs[0] === 2
+       && /🔴 compositionend PRECEDES/.test(b.verdict));
+
+// ── 10. A LETTER KEY DURING COMPOSITION IS NOT AN ENTER ──────────────────────────────────────
+// `code` discriminates: key:"Process" is reported for EVERY key the IME consumes, so matching on
+// key:"Process" alone would count the whole composition as Enters.
+all &= fire('key:"Process" on a non-Enter code is not an Enter', [
+  ['compositionstart', { t: 1000, data: 'n' }],
+  ['keydown', { t: 1100, key: 'Process', code: 'KeyI', isComposing: true, keyCode: 229 }],
+  ['keydown', { t: 1200, key: 'Process', code: 'Space', isComposing: true, keyCode: 229 }],
+  ['compositionend', { t: 1300, data: 'nihao' }],
+  ['keyup', { t: 1360, key: ' ', code: 'Space', isComposing: false, keyCode: 32 }],
+], (b) => b.entersObserved === 0
+       && b.compositionEndsCommittedOtherwise === 1
+       && /NOT EXERCISED/.test(b.verdict));
+
+// ── 11. U20 MUST NOT NAME THE PROMPT ITSELF ──────────────────────────────────────────────────
+// The founder's real ChatGPT run: largest body is ANALYTICS (2669B /ces/v1/t); the prompt is
+// SMALLER (1882B /backend-api/f/conversation). The old verdict fired "PROMPT TRANSPORT LOOKS LIKE
+// HTTP → confirm maxHttpBodyBytes ≈ your prompt" — right conclusion, off a statistic that is not
+// the prompt, via a confirmation that FAILS on a correct result.
+all &= fire('u20: largest body is analytics => analyser refuses to name the prompt', [
+  ['message', { data: { __vanguard: 'u12', kind: 'http-send',
+    payload: { transport: 'fetch', method: 'post', path: '/ces/v1/t', bodyBytes: 2669 } } }],
+  ['message', { data: { __vanguard: 'u12', kind: 'http-send',
+    payload: { transport: 'fetch', method: 'POST', path: '/backend-api/f/conversation', bodyBytes: 1882 } } }],
+], (_b, out) => out.u20.maxHttpBodyBytes === 2669
+             && out.u20.maxWebSocketFrameBytes === 0
+             && /CANNOT TELL WHICH BODY IS YOURS/.test(out.u20.verdict)
+             && !/LOOKS LIKE HTTP/.test(out.u20.verdict)
+             && out.u20.largestHttpSends[0].path === '/ces/v1/t');
+
+// ── 12. A PROMPT-SIZED WS FRAME STILL FIRES 🔴 ───────────────────────────────────────────────
+all &= fire('u20: a prompt-sized WebSocket frame still raises the ADR 0012 blind spot', [
+  ['message', { data: { __vanguard: 'u12', kind: 'websocket-send',
+    payload: { bytes: 1900 } } }],
+], (_b, out) => /STRUCTURALLY BLIND/.test(out.u20.verdict));
 
 console.log(all ? '\nall pass' : '\nFAILURES');
 process.exit(all ? 0 : 1);

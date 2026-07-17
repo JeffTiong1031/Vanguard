@@ -1,0 +1,538 @@
+{
+    "surface": "claude.ai",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "recorded": 39,
+    "u12a": {
+      "isolatedWindowCaptureFired": 6,
+      "isolatedDocumentCaptureFired": 6,
+      "byPath": {
+        "keydownEnter": {
+          "observed": 1,
+          "stoppedWhileArmed": 0
+        },
+        "clickSendButton": {
+          "observed": 0,
+          "stoppedWhileArmed": 0,
+          "note": "Send button never clicked in this capture — UNTESTED, not passed."
+        }
+      },
+      "windowFiresBeforeDocument": true,
+      "reactStandinObserved": 6,
+      "isolatedBeatsPageHandler": true,
+      "armedStops": 0,
+      "stopCrossedWorldBoundary": null,
+      "verdict": "SEE PROTOCOL.md STEP 5 — the machine cannot judge this one",
+      "note": "stopImmediatePropagation() suppressing the send is NECESSARY, not SUFFICIENT. Doc 05 §1.2: a run that suppresses the send but leaves a spinner turning has falsified the claim while appearing to pass. A human must look at the page."
+    },
+    "u12b": {
+      "compositionsObserved": 1,
+      "entersObserved": 1,
+      "focusedCapture": true,
+      "enterWithIsComposingTrue": 1,
+      "safeOrderings": [
+        {
+          "seq": 33,
+          "t": 12641.6,
+          "key": "Process",
+          "code": "Enter",
+          "isComposing": true,
+          "keyCode": 229
+        }
+      ],
+      "enterKeyValuesSeen": [
+        "Process (Enter)"
+      ],
+      "compositionEndFollowedByEnter": 0,
+      "candidates": [],
+      "compositionEndsCommittedOtherwise": 1,
+      "unpaired": [
+        {
+          "compositionEndSeq": 36,
+          "committedBy": "keyup:Process (Enter)"
+        }
+      ],
+      "verdict": "isComposing SUFFICIENT on this IME/platform, in a FOCUSED capture — the committing Enter arrived with isComposing true, i.e. compositionend FOLLOWS the keydown, so doc 05 §1.3's gate rule works AS WRITTEN and NO suppression window is needed here. Doc 05 §1.3 asked an ORDERING question and this is the safe answer to it. ⚠️ SCOPE: one IME, one platform, one surface — it is evidence about Microsoft Pinyin on Windows, not about IMEs.",
+      "gapDistributionMs": [],
+      "note": "Pairing is by CAUSAL ADJACENCY (next key event), never by proximity. The previous version searched for the nearest Enter anywhere in the log and reported 3.6s–40.8s \"orderings\" that were send Enters, not commits. A time-bounded search would not have fixed that — it would have made the same mis-pairing look plausible."
+    },
+    "u12c": {
+      "pageListenersAtWindowCapture": 0,
+      "pageListenersAtDocumentCapture": 0,
+      "inventory": [],
+      "verdict": "INCONCLUSIVE — the MAIN-world probe registered nothing. Either the surface truly adds no window/document listeners (possible) or the probe did not land before the page scripts (see PROTOCOL.md step 0). Do not read this as a pass."
+    },
+    "u20": {
+      "webSocketFrames": 0,
+      "maxWebSocketFrameBytes": 0,
+      "httpBodies": 2,
+      "maxHttpBodyBytes": 1087,
+      "largestHttpSends": [
+        {
+          "kind": "main:http-send",
+          "transport": "fetch",
+          "method": "POST",
+          "t": 11146.3,
+          "path": "/api/event_logging/v2/batch",
+          "bodyBytes": 1087,
+          "seq": 1
+        },
+        {
+          "kind": "main:http-send",
+          "transport": "fetch",
+          "method": "POST",
+          "t": 10553.6,
+          "path": "/api/event_logging/v2/batch",
+          "bodyBytes": 308,
+          "seq": 0
+        }
+      ],
+      "verdict": "PROMPT TRANSPORT LOOKS LIKE HTTP → ADR 0012's webRequest observer SEES it → U20 RESOLVED for this surface. Confirm maxHttpBodyBytes is ≈ the length of the long prompt you pasted (PROTOCOL.md step 7).",
+      "note": "Argue from SIZE, not from timing. 62-byte frames cannot carry a prompt at any compression; a body ≈ the prompt's length can only be the prompt."
+    },
+    "log": [
+      {
+        "kind": "main:http-send",
+        "transport": "fetch",
+        "method": "POST",
+        "t": 10553.6,
+        "path": "/api/event_logging/v2/batch",
+        "bodyBytes": 308,
+        "seq": 0
+      },
+      {
+        "kind": "main:http-send",
+        "transport": "fetch",
+        "method": "POST",
+        "t": 11146.3,
+        "path": "/api/event_logging/v2/batch",
+        "bodyBytes": 1087,
+        "seq": 1
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyN",
+        "isComposing": false,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11206.6,
+        "seq": 2
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyN",
+        "isComposing": false,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11208.1,
+        "seq": 3
+      },
+      {
+        "kind": "compositionstart",
+        "at": "window",
+        "data": "",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "t": 11209,
+        "seq": 4
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<1 chars>",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "t": 11209.1,
+        "seq": 5
+      },
+      {
+        "kind": "main:react-standin-keydown",
+        "key": "Process",
+        "phase": 1,
+        "t": 11226.1,
+        "afterArmedStop": false,
+        "seq": 6
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyN",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 11330,
+        "seq": 7
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "n",
+        "code": "KeyN",
+        "isComposing": true,
+        "keyCode": 78,
+        "t": 11338.5,
+        "seq": 8
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyI",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11369.6,
+        "seq": 9
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyI",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11369.8,
+        "seq": 10
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<2 chars>",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "t": 11374.7,
+        "seq": 11
+      },
+      {
+        "kind": "main:react-standin-keydown",
+        "key": "Process",
+        "phase": 1,
+        "t": 11379.7,
+        "afterArmedStop": false,
+        "seq": 12
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyI",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 11457.5,
+        "seq": 13
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "i",
+        "code": "KeyI",
+        "isComposing": true,
+        "keyCode": 73,
+        "t": 11459.3,
+        "seq": 14
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyH",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11473.5,
+        "seq": 15
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyH",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11473.8,
+        "seq": 16
+      },
+      {
+        "kind": "main:react-standin-keydown",
+        "key": "Process",
+        "phase": 1,
+        "t": 11475.9,
+        "afterArmedStop": false,
+        "seq": 17
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<4 chars>",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "t": 11480.1,
+        "seq": 18
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyH",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 11553.5,
+        "seq": 19
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "h",
+        "code": "KeyH",
+        "isComposing": true,
+        "keyCode": 72,
+        "t": 11554.8,
+        "seq": 20
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyA",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11561.7,
+        "seq": 21
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyA",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11562,
+        "seq": 22
+      },
+      {
+        "kind": "main:react-standin-keydown",
+        "key": "Process",
+        "phase": 1,
+        "t": 11563.9,
+        "afterArmedStop": false,
+        "seq": 23
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<5 chars>",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "t": 11566.6,
+        "seq": 24
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyA",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 11658,
+        "seq": 25
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "a",
+        "code": "KeyA",
+        "isComposing": true,
+        "keyCode": 65,
+        "t": 11660,
+        "seq": 26
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyO",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11705.7,
+        "seq": 27
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyO",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 11706.3,
+        "seq": 28
+      },
+      {
+        "kind": "main:react-standin-keydown",
+        "key": "Process",
+        "phase": 1,
+        "t": 11709,
+        "afterArmedStop": false,
+        "seq": 29
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<6 chars>",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "t": 11710.6,
+        "seq": 30
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyO",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 11785.8,
+        "seq": 31
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "o",
+        "code": "KeyO",
+        "isComposing": true,
+        "keyCode": 79,
+        "t": 11788,
+        "seq": 32
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "Enter",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 12641.6,
+        "seq": 33
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "Enter",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 12643.3,
+        "seq": 34
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<5 chars>",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "t": 12644.3,
+        "seq": 35
+      },
+      {
+        "kind": "compositionend",
+        "at": "window",
+        "data": "<5 chars>",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "t": 12648.4,
+        "seq": 36
+      },
+      {
+        "kind": "main:react-standin-keydown",
+        "key": "Process",
+        "phase": 1,
+        "t": 12652.1,
+        "afterArmedStop": false,
+        "seq": 37
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "Enter",
+        "isComposing": false,
+        "keyCode": 229,
+        "t": 12729.6,
+        "seq": 38
+      }
+    ]
+  }

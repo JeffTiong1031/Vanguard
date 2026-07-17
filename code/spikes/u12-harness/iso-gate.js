@@ -42,6 +42,29 @@
     surface: location.hostname,
   };
 
+  // ── What counts as "Enter" ────────────────────────────────────────────────────────────────────
+  //
+  // 🔴 Added 2026-07-17 after the founder's focused ChatGPT capture. The first version tested
+  // `key === 'Enter'` and that is WRONG DURING COMPOSITION.
+  //
+  // While an IME is processing, the UA Events spec has the key value be `"Process"` — the key is
+  // being consumed by the IME, so `key` reports that fact instead of the character. The PHYSICAL key
+  // is still in `code`. Microsoft Pinyin on ChatGPT produced exactly this:
+  //
+  //     keydown  code:"Enter"  key:"Process"  isComposing:true  keyCode:229
+  //
+  // So a matcher keyed on `key` is BLIND to the composition Enter — the one event U12-b exists to
+  // observe. The harness looked at the highest-risk sub-test and saw nothing.
+  //
+  // `code` is the physical key and does not change under composition, so match on it and keep `key`
+  // as the fallback for surfaces that report `"Enter"` directly.
+  //
+  // ⚠️ Do NOT read this as "the naive gate is safe on Pinyin because key never says Enter." That is
+  // the connective, not the fact, and it is per-IME, per-platform, unverified everywhere else — and
+  // doc 05 §1.3's rule reads `isComposing`, not `key`, so it does not depend on this either way.
+  const ENTER_CODES = ['Enter', 'NumpadEnter'];
+  const isEnter = (r) => (r.code ? ENTER_CODES.includes(r.code) : r.key === 'Enter');
+
   const describe = (el) => {
     if (!el || el === window) return 'window';
     if (el === document) return 'document';
@@ -93,7 +116,7 @@
     //
     // The composition guard is doc 05 §1.3's decided rule, applied here so that arming the harness
     // on a Chinese IME does not simply eat the user's composition and call it a pass.
-    if (STATE.armed && ev.key === 'Enter' && nodeName === 'window' && ev.eventPhase === 1) {
+    if (STATE.armed && isEnter(ev) && nodeName === 'window' && ev.eventPhase === 1) {
       const composing = ev.isComposing || ev.keyCode === 229;
       if (composing) {
         rec.passedThroughAsComposition = true;   // doc 05 §1.3: pass it through. Do NOT stop.
@@ -117,7 +140,10 @@
     // is not causation. See the correction block in analyseU12b().
     if (name === 'window') {
       node.addEventListener('keyup', (ev) => {
-        push({ kind: 'keyup', at: name, key: ev.key, isComposing: ev.isComposing, keyCode: ev.keyCode });
+        // `code` recorded here too — the adjacency rule below discriminates key events by PHYSICAL
+        // key, and a keyup during composition reports key:"Process" exactly as keydown does.
+        push({ kind: 'keyup', at: name, key: ev.key, code: ev.code,
+               isComposing: ev.isComposing, keyCode: ev.keyCode });
       }, { capture: true });
     }
     node.addEventListener('click', (ev) => {
@@ -170,7 +196,17 @@
   // the U12-b measurement or it does not exist."
   for (const type of ['compositionstart', 'compositionupdate', 'compositionend']) {
     window.addEventListener(type, (ev) => {
-      push({ kind: type, data: ev.data ? `<${ev.data.length} chars>` : '', target: describe(ev.target) });
+      // 🔴 `at: 'window'` — added 2026-07-17. Its absence was a REAL BUG, not a cosmetic one: the
+      // analyser's stream filter is `r.at === 'window'` (it exists to stop the window/document
+      // double-registration double-counting the stream), so every composition event was silently
+      // dropped and U12-b reported `compositionsObserved: 0 → NOT TESTED` on a capture that
+      // contained a clean, complete composition.
+      //
+      // ⚠️ Note the shape: the filter was correct, the listener was correct, and the FIELD THEY
+      // AGREE ON was never written. A defect in neither of the two things anyone would read.
+      // The verdict string was honest — the log it was handed was not.
+      push({ kind: type, at: 'window', data: ev.data ? `<${ev.data.length} chars>` : '',
+             target: describe(ev.target) });
     }, { capture: true });
   }
 
@@ -239,33 +275,38 @@
     // The SAFE ordering is directly observable and needs no pairing at all: the committing Enter
     // arrived while the IME was still composing, so we can read isComposing and pass it through.
     const safe = stream
-      .filter((r) => r.kind === 'keydown' && r.key === 'Enter'
+      .filter((r) => r.kind === 'keydown' && isEnter(r)
                      && (r.isComposing === true || r.keyCode === 229))
-      .map((r) => ({ seq: r.seq, t: r.t, isComposing: r.isComposing, keyCode: r.keyCode }));
+      .map((r) => ({ seq: r.seq, t: r.t, key: r.key, code: r.code,
+                     isComposing: r.isComposing, keyCode: r.keyCode }));
 
     const candidates = [];   // compositionend whose next key event is keydown:Enter
     const unpaired = [];     // compositionend committed some other way — THE EXPECTED MAJORITY
     for (let i = 0; i < stream.length; i++) {
       if (stream[i].kind !== 'compositionend') continue;
       const next = stream.slice(i + 1).find((r) => r.kind === 'keydown' || r.kind === 'keyup');
-      if (next && next.kind === 'keydown' && next.key === 'Enter') {
+      if (next && next.kind === 'keydown' && isEnter(next)) {
         candidates.push({
           compositionEndSeq: stream[i].seq,
           enterSeq: next.seq,
           gapMs: +(next.t - stream[i].t).toFixed(3),
+          key: next.key,
+          code: next.code,
           isComposing: next.isComposing,
           keyCode: next.keyCode,
         });
       } else {
         unpaired.push({
           compositionEndSeq: stream[i].seq,
-          committedBy: next ? `${next.kind}:${next.key}` : 'no subsequent key event (mouse?)',
+          committedBy: next
+            ? `${next.kind}:${next.key}${next.code ? ` (${next.code})` : ''}`
+            : 'no subsequent key event (mouse?)',
         });
       }
     }
 
     const compositions = stream.filter((r) => r.kind === 'compositionend').length;
-    const enters = stream.filter((r) => r.kind === 'keydown' && r.key === 'Enter').length;
+    const enters = stream.filter((r) => r.kind === 'keydown' && isEnter(r)).length;
     // Attribution is only unambiguous when there is nothing to confuse. PROTOCOL.md step 6.
     const focused = compositions === 1 && enters === 1;
 
@@ -275,9 +316,12 @@
         + 'untested result is NOT a pass. Needs a real IME: Microsoft Pinyin on Windows (doc 05 §1.3 '
         + 'ranks it highest — it is the beachhead\'s Chinese user).';
     } else if (candidates.length === 0 && safe.length > 0) {
-      verdict = 'isComposing SUFFICIENT on this IME/platform — the committing Enter arrived with '
-        + 'isComposing true, so doc 05 §1.3\'s gate rule works AS WRITTEN and NO suppression window '
-        + 'is needed here.';
+      verdict = 'isComposing SUFFICIENT on this IME/platform' + (focused ? ', in a FOCUSED capture' : '')
+        + ' — the committing Enter arrived with isComposing true, i.e. compositionend FOLLOWS the '
+        + 'keydown, so doc 05 §1.3\'s gate rule works AS WRITTEN and NO suppression window is needed '
+        + 'here. Doc 05 §1.3 asked an ORDERING question and this is the safe answer to it. '
+        + '⚠️ SCOPE: one IME, one platform, one surface — it is evidence about Microsoft Pinyin on '
+        + 'Windows, not about IMEs.';
     } else if (candidates.length === 0 && safe.length === 0) {
       verdict = 'COMPOSITIONS OBSERVED BUT NONE COMMITTED WITH ENTER (' + compositions + ' commits, '
         + 'all via ' + [...new Set(unpaired.map((u) => u.committedBy))].join(' / ') + '). '
@@ -303,6 +347,11 @@
       // Directly observed, no pairing involved. This is the signal the gate rule actually reads.
       enterWithIsComposingTrue: safe.length,
       safeOrderings: safe,
+      // 🔴 Recorded because the harness's own blindness lived here. If this contains "Process" then
+      // a matcher keyed on `key` never sees the composition Enter at all — which is how U12-b
+      // reported NOT TESTED on a capture that had a complete composition in it.
+      enterKeyValuesSeen: [...new Set(stream.filter((r) => r.kind === 'keydown' && isEnter(r))
+                                            .map((r) => `${r.key} (${r.code})`))],
       // Adjacency-paired, NOT proximity-paired.
       compositionEndFollowedByEnter: candidates.length,
       candidates,
@@ -335,7 +384,7 @@
       // Per-path, because "U12-a passes" must not mean "passes on the path we happened to arm."
       byPath: {
         keydownEnter: {
-          observed: isoWin.filter((r) => r.key === 'Enter').length,
+          observed: isoWin.filter((r) => isEnter(r)).length,
           stoppedWhileArmed: stops.filter((r) => r.kind === 'keydown').length,
         },
         clickSendButton: {
@@ -407,21 +456,43 @@
       largestHttpSends: http.slice().sort((a, b) => (b.bodyBytes || 0) - (a.bodyBytes || 0)).slice(0, 5),
       verdict: (ws.length === 0 && http.length === 0)
         ? 'NOT TESTED — no outbound traffic recorded. Send a prompt with the harness loaded.'
-        : (maxHttp > maxWs && maxHttp > 200
-            ? 'PROMPT TRANSPORT LOOKS LIKE HTTP → ADR 0012\'s webRequest observer SEES it → U20 '
-            + 'RESOLVED for this surface. Confirm maxHttpBodyBytes is ≈ the length of the long '
-            + 'prompt you pasted (PROTOCOL.md step 7).'
-            : (maxWs > 200
-                ? '🔴 A WebSocket frame is large enough to carry a prompt → U20 MAY BE REAL for this '
-                + 'surface → webRequest sees the handshake, NEVER the frames → the observer would be '
-                + 'STRUCTURALLY BLIND here and would need a MAIN-world WebSocket.send patch IN '
-                + 'ADDITION — the one thing ADR 0012 was avoiding. Confirm against the long prompt.'
+        : (maxWs > 200
+            ? '🔴 A WebSocket frame is large enough to carry a prompt (' + maxWs + 'B) → U20 MAY BE '
+            + 'REAL for this surface → webRequest sees the handshake, NEVER the frames → the observer '
+            + 'would be STRUCTURALLY BLIND here and would need a MAIN-world WebSocket.send patch IN '
+            + 'ADDITION — the one thing ADR 0012 was avoiding. Attribute it by path before believing '
+            + 'it.'
+            : (maxHttp > 200
+                ? 'HTTP CARRIES BODIES LARGE ENOUGH TO BE A PROMPT, and no WebSocket frame does '
+                + '(max WS ' + maxWs + 'B). 🔴 THE MACHINE CANNOT TELL WHICH BODY IS YOURS — read '
+                + 'largestHttpSends and name the conversation path YOURSELF. U20 resolves on a '
+                + 'prompt-sized body on a CONVERSATION path, never on the largest body.'
                 : 'INCONCLUSIVE — no body large enough to be a prompt was seen on either transport '
                 + '(max WS ' + maxWs + 'B, max HTTP ' + maxHttp + 'B). Small WS frames are almost '
                 + 'certainly telemetry, and "almost certainly" is not this package\'s standard. '
                 + 'Redo with PROTOCOL.md step 7\'s long prompt.')),
-      note: 'Argue from SIZE, not from timing. 62-byte frames cannot carry a prompt at any '
-          + 'compression; a body ≈ the prompt\'s length can only be the prompt.',
+      // 🔴 REWRITTEN 2026-07-17, on the founder's U20 run, because the previous verdict was RIGHT BY
+      // ACCIDENT and said so in a checkable sentence that was FALSE.
+      //
+      // It fired on `maxHttp > maxWs && maxHttp > 200` → "PROMPT TRANSPORT LOOKS LIKE HTTP", and told
+      // the reader to "confirm maxHttpBodyBytes is ≈ the length of the prompt you pasted." In the
+      // actual run the largest HTTP body was NOT the prompt ON EITHER SURFACE:
+      //
+      //     ChatGPT  largest = 2669B  /ces/v1/t     (analytics)   prompt = 1882B  /backend-api/f/conversation
+      //     Claude   largest = 15486B /api/v2/rum   (RUM)         prompt = 6576B  .../completion
+      //
+      // ANALYTICS BEACONS ARE ROUTINELY BIGGER THAN PROMPTS. So the statistic the verdict was built
+      // on is not the quantity it names, the instructed confirmation FAILS on a correct result, and
+      // the conclusion was reached by a route that does not support it. The founder got the right
+      // answer by attributing on PATH — i.e. DESPITE the instrument, not because of it.
+      //
+      // Size was the right move (it killed the 62-byte-frame timing argument). Size ALONE is not
+      // enough: it needs a path. And attribution by path is not automatable — a blocklist of
+      // analytics hosts is a guess that goes stale — so the analyser now REFUSES and hands the naming
+      // to the human, exactly as U12-a step 5 does for the visual criterion.
+      note: 'Argue from SIZE, then ATTRIBUTE BY PATH. 62-byte frames cannot carry a prompt at any '
+          + 'compression — but the LARGEST body is usually telemetry, not the prompt. A prompt-sized '
+          + 'body on a conversation path is the evidence; max(bodyBytes) is not.',
     };
 
     out.log = LOG;

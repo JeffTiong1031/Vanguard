@@ -1,0 +1,472 @@
+{
+    "surface": "chatgpt.com",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "recorded": 32,
+    "u12a": {
+      "isolatedWindowCaptureFired": 6,
+      "isolatedDocumentCaptureFired": 6,
+      "byPath": {
+        "keydownEnter": {
+          "observed": 1,
+          "stoppedWhileArmed": 0
+        },
+        "clickSendButton": {
+          "observed": 0,
+          "stoppedWhileArmed": 0,
+          "note": "Send button never clicked in this capture — UNTESTED, not passed."
+        }
+      },
+      "windowFiresBeforeDocument": true,
+      "reactStandinObserved": 0,
+      "isolatedBeatsPageHandler": null,
+      "armedStops": 0,
+      "stopCrossedWorldBoundary": null,
+      "verdict": "SEE PROTOCOL.md STEP 5 — the machine cannot judge this one",
+      "note": "stopImmediatePropagation() suppressing the send is NECESSARY, not SUFFICIENT. Doc 05 §1.2: a run that suppresses the send but leaves a spinner turning has falsified the claim while appearing to pass. A human must look at the page."
+    },
+    "u12b": {
+      "compositionsObserved": 1,
+      "entersObserved": 1,
+      "focusedCapture": true,
+      "enterWithIsComposingTrue": 1,
+      "safeOrderings": [
+        {
+          "seq": 26,
+          "t": 10930.8,
+          "key": "Process",
+          "code": "Enter",
+          "isComposing": true,
+          "keyCode": 229
+        }
+      ],
+      "enterKeyValuesSeen": [
+        "Process (Enter)"
+      ],
+      "compositionEndFollowedByEnter": 0,
+      "candidates": [],
+      "compositionEndsCommittedOtherwise": 1,
+      "unpaired": [
+        {
+          "compositionEndSeq": 29,
+          "committedBy": "keyup:Process (Enter)"
+        }
+      ],
+      "verdict": "isComposing SUFFICIENT on this IME/platform, in a FOCUSED capture — the committing Enter arrived with isComposing true, i.e. compositionend FOLLOWS the keydown, so doc 05 §1.3's gate rule works AS WRITTEN and NO suppression window is needed here. Doc 05 §1.3 asked an ORDERING question and this is the safe answer to it. ⚠️ SCOPE: one IME, one platform, one surface — it is evidence about Microsoft Pinyin on Windows, not about IMEs.",
+      "gapDistributionMs": [],
+      "note": "Pairing is by CAUSAL ADJACENCY (next key event), never by proximity. The previous version searched for the nearest Enter anywhere in the log and reported 3.6s–40.8s \"orderings\" that were send Enters, not commits. A time-bounded search would not have fixed that — it would have made the same mis-pairing look plausible."
+    },
+    "u12c": {
+      "pageListenersAtWindowCapture": 0,
+      "pageListenersAtDocumentCapture": 0,
+      "inventory": [],
+      "verdict": "INCONCLUSIVE — the MAIN-world probe registered nothing. Either the surface truly adds no window/document listeners (possible) or the probe did not land before the page scripts (see PROTOCOL.md step 0). Do not read this as a pass."
+    },
+    "u20": {
+      "webSocketFrames": 0,
+      "maxWebSocketFrameBytes": 0,
+      "httpBodies": 1,
+      "maxHttpBodyBytes": 1478,
+      "largestHttpSends": [
+        {
+          "kind": "main:http-send",
+          "transport": "fetch",
+          "method": "post",
+          "t": 12536.2,
+          "path": "/ces/v1/t",
+          "bodyBytes": 1478,
+          "seq": 31
+        }
+      ],
+      "verdict": "PROMPT TRANSPORT LOOKS LIKE HTTP → ADR 0012's webRequest observer SEES it → U20 RESOLVED for this surface. Confirm maxHttpBodyBytes is ≈ the length of the long prompt you pasted (PROTOCOL.md step 7).",
+      "note": "Argue from SIZE, not from timing. 62-byte frames cannot carry a prompt at any compression; a body ≈ the prompt's length can only be the prompt."
+    },
+    "log": [
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyN",
+        "isComposing": false,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 9706.1,
+        "seq": 0
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyN",
+        "isComposing": false,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 9710.1,
+        "seq": 1
+      },
+      {
+        "kind": "compositionstart",
+        "at": "window",
+        "data": "",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "t": 9711.6,
+        "seq": 2
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<1 chars>",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "t": 9712.5,
+        "seq": 3
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyN",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 9802.3,
+        "seq": 4
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "n",
+        "code": "KeyN",
+        "isComposing": true,
+        "keyCode": 78,
+        "t": 9804.8,
+        "seq": 5
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyI",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 9836.4,
+        "seq": 6
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyI",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 9836.8,
+        "seq": 7
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<2 chars>",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "t": 9838.8,
+        "seq": 8
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyH",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 9938.4,
+        "seq": 9
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyH",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 9938.8,
+        "seq": 10
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<4 chars>",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "t": 9943.9,
+        "seq": 11
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyI",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 9951.4,
+        "seq": 12
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "i",
+        "code": "KeyI",
+        "isComposing": true,
+        "keyCode": 73,
+        "t": 9952,
+        "seq": 13
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyA",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 10026.7,
+        "seq": 14
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyA",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 10027.3,
+        "seq": 15
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<5 chars>",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "t": 10031.4,
+        "seq": 16
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyH",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 10036,
+        "seq": 17
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "h",
+        "code": "KeyH",
+        "isComposing": true,
+        "keyCode": 72,
+        "t": 10036.4,
+        "seq": 18
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyO",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 10122.3,
+        "seq": 19
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "KeyO",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 10122.7,
+        "seq": 20
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<6 chars>",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "t": 10127.4,
+        "seq": 21
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyA",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 10131,
+        "seq": 22
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "a",
+        "code": "KeyA",
+        "isComposing": true,
+        "keyCode": 65,
+        "t": 10131.6,
+        "seq": 23
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "KeyO",
+        "isComposing": true,
+        "keyCode": 229,
+        "t": 10219.2,
+        "seq": 24
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "o",
+        "code": "KeyO",
+        "isComposing": true,
+        "keyCode": 79,
+        "t": 10221.1,
+        "seq": 25
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Process",
+        "code": "Enter",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 10930.8,
+        "seq": 26
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Process",
+        "code": "Enter",
+        "isComposing": true,
+        "keyCode": 229,
+        "pathOrigin": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 10934,
+        "seq": 27
+      },
+      {
+        "kind": "compositionupdate",
+        "at": "window",
+        "data": "<5 chars>",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "t": 10935,
+        "seq": 28
+      },
+      {
+        "kind": "compositionend",
+        "at": "window",
+        "data": "<5 chars>",
+        "target": "div#prompt-textarea.ProseMirror.ProseMirror-focused[contenteditable]",
+        "t": 10938.4,
+        "seq": 29
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Process",
+        "code": "Enter",
+        "isComposing": false,
+        "keyCode": 229,
+        "t": 11026.5,
+        "seq": 30
+      },
+      {
+        "kind": "main:http-send",
+        "transport": "fetch",
+        "method": "post",
+        "t": 12536.2,
+        "path": "/ces/v1/t",
+        "bodyBytes": 1478,
+        "seq": 31
+      }
+    ]
+  }

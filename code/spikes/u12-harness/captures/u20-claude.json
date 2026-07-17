@@ -1,0 +1,666 @@
+{
+    "surface": "claude.ai",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "recorded": 37,
+    "u12a": {
+      "isolatedWindowCaptureFired": 3,
+      "isolatedDocumentCaptureFired": 3,
+      "byPath": {
+        "keydownEnter": {
+          "observed": 0,
+          "stoppedWhileArmed": 0
+        },
+        "clickSendButton": {
+          "observed": 2,
+          "stoppedWhileArmed": 0,
+          "note": "The Send button is a DIFFERENT dispatch from keydown. Doc 05 §2.3: an Enter-only gate fails OPEN on it, silently — doc 00 §6's worst case."
+        }
+      },
+      "windowFiresBeforeDocument": true,
+      "reactStandinObserved": 3,
+      "isolatedBeatsPageHandler": true,
+      "armedStops": 0,
+      "stopCrossedWorldBoundary": null,
+      "verdict": "SEE PROTOCOL.md STEP 5 — the machine cannot judge this one",
+      "note": "stopImmediatePropagation() suppressing the send is NECESSARY, not SUFFICIENT. Doc 05 §1.2: a run that suppresses the send but leaves a spinner turning has falsified the claim while appearing to pass. A human must look at the page."
+    },
+    "u12b": {
+      "compositionsObserved": 0,
+      "entersObserved": 0,
+      "focusedCapture": false,
+      "enterWithIsComposingTrue": 0,
+      "safeOrderings": [],
+      "enterKeyValuesSeen": [],
+      "compositionEndFollowedByEnter": 0,
+      "candidates": [],
+      "compositionEndsCommittedOtherwise": 0,
+      "unpaired": [],
+      "verdict": "NOT TESTED — no composition observed. This is the HIGHEST-RISK sub-test and an untested result is NOT a pass. Needs a real IME: Microsoft Pinyin on Windows (doc 05 §1.3 ranks it highest — it is the beachhead's Chinese user).",
+      "gapDistributionMs": [],
+      "note": "Pairing is by CAUSAL ADJACENCY (next key event), never by proximity. The previous version searched for the nearest Enter anywhere in the log and reported 3.6s–40.8s \"orderings\" that were send Enters, not commits. A time-bounded search would not have fixed that — it would have made the same mis-pairing look plausible."
+    },
+    "u12c": {
+      "pageListenersAtWindowCapture": 0,
+      "pageListenersAtDocumentCapture": 5,
+      "inventory": [
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "keydown",
+          "capture": false,
+          "passive": false,
+          "t": 45138.7,
+          "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82767",
+          "seq": 13
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "compositionend",
+          "capture": false,
+          "passive": false,
+          "t": 45138.8,
+          "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82845",
+          "seq": 14
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "click",
+          "capture": true,
+          "passive": false,
+          "t": 45138.9,
+          "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82923",
+          "seq": 15
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "keydown",
+          "capture": false,
+          "passive": false,
+          "t": 45138.9,
+          "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82767",
+          "seq": 16
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "compositionend",
+          "capture": false,
+          "passive": false,
+          "t": 45138.9,
+          "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82845",
+          "seq": 17
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "click",
+          "capture": true,
+          "passive": false,
+          "t": 45138.9,
+          "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82923",
+          "seq": 18
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "window",
+          "type": "keydown",
+          "capture": false,
+          "passive": false,
+          "t": 45681.5,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:2676038 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 22
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "window",
+          "type": "keydown",
+          "capture": false,
+          "passive": false,
+          "t": 45683.3,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:731717 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 23
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "window",
+          "type": "keyup",
+          "capture": false,
+          "passive": false,
+          "t": 45683.4,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:731754 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 24
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "keydown",
+          "capture": true,
+          "passive": false,
+          "t": 45683.5,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:3124862 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 25
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "keydown",
+          "capture": false,
+          "passive": false,
+          "t": 45683.6,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c572cda51-DXwmZL3e.js:3:2179187 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 26
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "keydown",
+          "capture": true,
+          "passive": false,
+          "t": 45684.1,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:3124862 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 27
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "window",
+          "type": "keydown",
+          "capture": false,
+          "passive": false,
+          "t": 45684.1,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/index-BTeNEC6q.js:2:2816326 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 28
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "keydown",
+          "capture": false,
+          "passive": false,
+          "t": 45777.9,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c6a9163d1-DNsKMMEW.js:1:1529 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 29
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "window",
+          "type": "keydown",
+          "capture": false,
+          "passive": false,
+          "t": 49036.6,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:2676038 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 33
+        },
+        {
+          "kind": "main:listener-registered",
+          "node": "document",
+          "type": "keydown",
+          "capture": true,
+          "passive": false,
+          "t": 49624.7,
+          "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:3124862 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+          "seq": 34
+        }
+      ],
+      "verdict": "See inventory. ADR 0010 puts us at window at document_start; a page script structurally cannot precede a document_start content script — [unverified] as an absolute, and this inventory is what measures it."
+    },
+    "u20": {
+      "webSocketFrames": 0,
+      "maxWebSocketFrameBytes": 0,
+      "httpBodies": 6,
+      "maxHttpBodyBytes": 15486,
+      "largestHttpSends": [
+        {
+          "kind": "main:http-send",
+          "transport": "fetch",
+          "method": "POST",
+          "t": 45784.4,
+          "path": "/api/v2/rum",
+          "bodyBytes": 15486,
+          "seq": 30
+        },
+        {
+          "kind": "main:http-send",
+          "transport": "fetch",
+          "method": "POST",
+          "t": 49630.3,
+          "path": "/api/v2/rum",
+          "bodyBytes": 14855,
+          "seq": 35
+        },
+        {
+          "kind": "main:http-send",
+          "transport": "fetch",
+          "method": "POST",
+          "t": 48786.8,
+          "path": "/api/v2/rum",
+          "bodyBytes": 13982,
+          "seq": 31
+        },
+        {
+          "kind": "main:http-send",
+          "transport": "fetch",
+          "method": "post",
+          "t": 50688.4,
+          "path": "/v1/b",
+          "bodyBytes": 12613,
+          "seq": 36
+        },
+        {
+          "kind": "main:http-send",
+          "transport": "fetch",
+          "method": "POST",
+          "t": 45676.2,
+          "path": "/api/organizations/<redacted-uuid>/chat_conversations/<redacted-uuid>/completion",
+          "bodyBytes": 6576,
+          "seq": 21
+        }
+      ],
+      "verdict": "PROMPT TRANSPORT LOOKS LIKE HTTP → ADR 0012's webRequest observer SEES it → U20 RESOLVED for this surface. Confirm maxHttpBodyBytes is ≈ the length of the long prompt you pasted (PROTOCOL.md step 7).",
+      "note": "Argue from SIZE, not from timing. 62-byte frames cannot carry a prompt at any compression; a body ≈ the prompt's length can only be the prompt."
+    },
+    "log": [
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Meta",
+        "code": "MetaLeft",
+        "isComposing": false,
+        "keyCode": 91,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 38442.6,
+        "seq": 0
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Meta",
+        "code": "MetaLeft",
+        "isComposing": false,
+        "keyCode": 91,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 38442.9,
+        "seq": 1
+      },
+      {
+        "kind": "main:react-standin-keydown",
+        "key": "Meta",
+        "phase": 1,
+        "t": 38447,
+        "afterArmedStop": false,
+        "seq": 2
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "v",
+        "code": "KeyV",
+        "isComposing": false,
+        "keyCode": 86,
+        "t": 38795.3,
+        "seq": 3
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Meta",
+        "code": "MetaLeft",
+        "isComposing": false,
+        "keyCode": 91,
+        "t": 38843.7,
+        "seq": 4
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "Control",
+        "code": "",
+        "isComposing": false,
+        "keyCode": 17,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 40250.2,
+        "seq": 5
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "Control",
+        "code": "",
+        "isComposing": false,
+        "keyCode": 17,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 40251.8,
+        "seq": 6
+      },
+      {
+        "kind": "main:react-standin-keydown",
+        "key": "Control",
+        "phase": 1,
+        "t": 40254.7,
+        "afterArmedStop": false,
+        "seq": 7
+      },
+      {
+        "kind": "keydown",
+        "at": "window",
+        "phase": 1,
+        "key": "v",
+        "code": "",
+        "isComposing": false,
+        "keyCode": 86,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 40292.9,
+        "seq": 8
+      },
+      {
+        "kind": "keydown",
+        "at": "document",
+        "phase": 1,
+        "key": "v",
+        "code": "",
+        "isComposing": false,
+        "keyCode": 86,
+        "pathOrigin": "div.tiptap.ProseMirror[contenteditable]",
+        "target": "div.tiptap.ProseMirror[contenteditable]",
+        "retargeted": false,
+        "defaultPrevented": false,
+        "armed": false,
+        "stopped": false,
+        "t": 40293.1,
+        "seq": 9
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "v",
+        "code": "",
+        "isComposing": false,
+        "keyCode": 86,
+        "t": 40324.7,
+        "seq": 10
+      },
+      {
+        "kind": "keyup",
+        "at": "window",
+        "key": "Control",
+        "code": "",
+        "isComposing": false,
+        "keyCode": 17,
+        "t": 40324.9,
+        "seq": 11
+      },
+      {
+        "kind": "main:react-standin-keydown",
+        "key": "v",
+        "phase": 1,
+        "t": 40332.3,
+        "afterArmedStop": false,
+        "seq": 12
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "keydown",
+        "capture": false,
+        "passive": false,
+        "t": 45138.7,
+        "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82767",
+        "seq": 13
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "compositionend",
+        "capture": false,
+        "passive": false,
+        "t": 45138.8,
+        "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82845",
+        "seq": 14
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "click",
+        "capture": true,
+        "passive": false,
+        "t": 45138.9,
+        "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82923",
+        "seq": 15
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "keydown",
+        "capture": false,
+        "passive": false,
+        "t": 45138.9,
+        "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82767",
+        "seq": 16
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "compositionend",
+        "capture": false,
+        "passive": false,
+        "t": 45138.9,
+        "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82845",
+        "seq": 17
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "click",
+        "capture": true,
+        "passive": false,
+        "t": 45138.9,
+        "stack": "    at zo (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:57557) |     at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-base-ui-Y5XYzw50.js:1:82923",
+        "seq": 18
+      },
+      {
+        "kind": "click-send",
+        "at": "window",
+        "phase": 1,
+        "pathOrigin": "span",
+        "armed": false,
+        "stopped": false,
+        "t": 45345.2,
+        "seq": 19
+      },
+      {
+        "kind": "click-send",
+        "at": "document",
+        "phase": 1,
+        "pathOrigin": "span",
+        "armed": false,
+        "stopped": false,
+        "t": 45346.7,
+        "seq": 20
+      },
+      {
+        "kind": "main:http-send",
+        "transport": "fetch",
+        "method": "POST",
+        "t": 45676.2,
+        "path": "/api/organizations/<redacted-uuid>/chat_conversations/<redacted-uuid>/completion",
+        "bodyBytes": 6576,
+        "seq": 21
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "window",
+        "type": "keydown",
+        "capture": false,
+        "passive": false,
+        "t": 45681.5,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:2676038 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 22
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "window",
+        "type": "keydown",
+        "capture": false,
+        "passive": false,
+        "t": 45683.3,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:731717 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 23
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "window",
+        "type": "keyup",
+        "capture": false,
+        "passive": false,
+        "t": 45683.4,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:731754 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 24
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "keydown",
+        "capture": true,
+        "passive": false,
+        "t": 45683.5,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:3124862 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 25
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "keydown",
+        "capture": false,
+        "passive": false,
+        "t": 45683.6,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c572cda51-DXwmZL3e.js:3:2179187 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 26
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "keydown",
+        "capture": true,
+        "passive": false,
+        "t": 45684.1,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:3124862 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 27
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "window",
+        "type": "keydown",
+        "capture": false,
+        "passive": false,
+        "t": 45684.1,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/index-BTeNEC6q.js:2:2816326 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 28
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "keydown",
+        "capture": false,
+        "passive": false,
+        "t": 45777.9,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c6a9163d1-DNsKMMEW.js:1:1529 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 29
+      },
+      {
+        "kind": "main:http-send",
+        "transport": "fetch",
+        "method": "POST",
+        "t": 45784.4,
+        "path": "/api/v2/rum",
+        "bodyBytes": 15486,
+        "seq": 30
+      },
+      {
+        "kind": "main:http-send",
+        "transport": "fetch",
+        "method": "POST",
+        "t": 48786.8,
+        "path": "/api/v2/rum",
+        "bodyBytes": 13982,
+        "seq": 31
+      },
+      {
+        "kind": "main:http-send",
+        "transport": "fetch",
+        "method": "POST",
+        "t": 48831.3,
+        "path": "/api/organizations/<redacted-uuid>/chat_conversations/<redacted-uuid>/title",
+        "bodyBytes": 1035,
+        "seq": 32
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "window",
+        "type": "keydown",
+        "capture": false,
+        "passive": false,
+        "t": 49036.6,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:2676038 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 33
+      },
+      {
+        "kind": "main:listener-registered",
+        "node": "document",
+        "type": "keydown",
+        "capture": true,
+        "passive": false,
+        "t": 49624.7,
+        "stack": "    at https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c457aa9e5-CPWOwhrx.js:622:3124862 |     at vu (https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/vendor-react-RSDKEZ60.js:10:96729)",
+        "seq": 34
+      },
+      {
+        "kind": "main:http-send",
+        "transport": "fetch",
+        "method": "POST",
+        "t": 49630.3,
+        "path": "/api/v2/rum",
+        "bodyBytes": 14855,
+        "seq": 35
+      },
+      {
+        "kind": "main:http-send",
+        "transport": "fetch",
+        "method": "post",
+        "t": 50688.4,
+        "path": "/v1/b",
+        "bodyBytes": 12613,
+        "seq": 36
+      }
+    ]
+  }

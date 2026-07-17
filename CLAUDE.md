@@ -82,11 +82,12 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 > | 8 | **doc 06 §4.4** (doc 07 §3) | ✅ Fertility is one measurement settling three budgets — doc 06's best finding | *"therefore **blocked on the corpus (U14/C2 → C3)**"* — 🔴 **a false dependency. U14 is a *PII* corpus; fertility is unsupervised and needs only raw text.** **Doc 03 sized the blocker for the *vocabulary pick*, correctly; doc 06 copied it onto *latency*, which needs less** | ✅ Yes — **conclusion survives, blocker dies.** **U21-a is free, now, and one-sided.** The package's highest-value measurement had a lower bound nobody took |
 > | 9 | **doc 04 §8** (doc 07 §1.4) | ✅ Recall matters, and mention-level recall is the unit | *"a missed entity **breaks coreference for the entities we did catch**"* — **inter-entity, and the case could not be constructed.** True form is **intra-entity**: a miss on a *mention* of A splits A | ✅ Yes — **but it deflates rather than escalates.** The damage is **ADR 0011's *split*, already ruled the benign failure.** **The asymmetry is *less* complicated than the brief said** |
 > | 10 🔴 | **The U12-b analyser** (2026-07-17, founder) | ✅ The `compositionend`/`keydown` **ordering** really is the whole of U12-b — doc 05 §1.3 was right | *"`compositionend_then_keydown` **therefore** `isComposing` is insufficient and a suppression window is REQUIRED"* — 🔴 **built on a PROXIMITY search ("nearest Enter anywhere in the log"), on a false premise: most compositions never commit with Enter at all.** It paired commits with **send** Enters **3.6–40.8 s away** | ✅ **Conclusion (the ordering is the test) survives. The instrument did not.** **Founder broke it on the MAGNITUDES, not the logic** — 40 s is not one key press. **Fixed causally** (next-key-event adjacency + a *focused* capture), **not by bounding the search** |
+> | 11 🔴 | **The U12-b/U20 instruments** (2026-07-17, founder) | ✅ **U12-b PASSED and U20 RESOLVED** — the safe ordering, and prompts go by HTTP | 🔴 **THREE bugs, and the shape INVERTED from #10.** `NOT TESTED` on a log holding a clean composition (`at:'window'` never written — **the filter and the listener were both right; the field they agree on was never set**) · `key === 'Enter'` **blind to `key:"Process"`**, the IME's own key value, i.e. blind to **the exact event U12-b exists to observe** · U20's verdict fired on **`max(bodyBytes)` = an analytics beacon**, bigger than the prompt on **both** surfaces | ✅ **All three. #10 was a FALSE verdict; these were HONEST verdicts on the WRONG INPUT** — true of the data held, false of the run performed. **The instrument was correct and the measurement was still wrong** |
 >
-> > **What the ledger actually says — and it is more useful than the slogan was.** **Ten instances.
-> > In nine, the conclusion survived and the reasoning did not.** **In one — U11, the earliest and the
+> > **What the ledger actually says — and it is more useful than the slogan was.** **ELEVEN instances.
+> > In TEN, the conclusion survived and the reasoning did not.** **In one — U11, the earliest and the
 > > most expensive — the conclusion fell with it.** So the honest rule is **not** *"the conclusion is
-> > always right"*: that is the comfortable read, it is 9-for-10, and **the exception is the instance
+> > always right"*: that is the comfortable read, it is 10-for-11, and **the exception is the instance
 > > that cost the most.** The rule is: **a true fact confers nothing on the sentence attached to it.
 > > Audit the therefore on its own evidence** — sometimes the decision survives, sometimes it is
 > > U11 and three docs were built on a non-sequitur. **You cannot tell which until you check, and the
@@ -104,6 +105,20 @@ Agreeing with him quickly is the failure mode here, not disagreeing.
 > > **nobody audits a function the way they audit a sentence.** **The three most dangerous lines in
 > > this repo are now the `verdict:` strings**, because they are the only place the package converts
 > > a measurement into a claim without a human in between.
+> >
+> > 🔴 **#11 is the one to internalize, because it is the failure #10's fix DOES NOT CATCH.** #10 said
+> > *audit the `verdict:` strings.* **#11's verdict strings were all correct.** `NOT TESTED` was a true
+> > statement **about the log the analyser was handed** — and the log had been silently emptied by the
+> > recorder. **So: a verdict is a claim about its INPUT, and auditing the therefore does nothing if
+> > nobody checks that the input is the experiment you ran.** **The `if` was innocent. The data never
+> > arrived.**
+> >
+> > 🔴 **And the tests were complicit, which is the transferable part.** They pushed straight into the
+> > log and **hand-wrote the missing field themselves** (`{ at: 'window', ...e }`) — **feeding the
+> > analyser precisely the input the recorder failed to produce.** **A fixture that supplies the field
+> > under test is testing the fixture.** The seam has to sit at the **real** boundary — fire the event,
+> > read the verdict — or the tests certify the half that was never broken. **Both bugs were in the
+> > half the tests did not reach, and BOTH were found by a human reading a raw log.**
 > >
 > > **And #10 pays back CLAUDE.md §9's rule with interest.** It was caught **because 40.8 s is
 > > absurd**; the same bug at **80 ms** would have been **believed**. So: **an instrument's most
@@ -524,6 +539,13 @@ and fails a first-year crypto exercise.*
 ### 7.1 The three week-1 validation spikes
 Between them, these decide whether the design survives contact. All three are cheap.
 
+> 🔴 **Updated 2026-07-17 (second pass): U12 IS FULLY RESOLVED — U12-a ✅ (Enter **and** click) · U12-b ✅ ·
+> U12-c ✅ — and **U20 ✅** fell out of the same run at zero marginal cost, as doc 05 predicted it would.
+> **The rework trigger did not fire. Every engineering spike that could have killed the design has now
+> run and held.** **What remains is not engineering: it is B3, and it always was.** Doc 00 §7: *"Go make
+> ten phone calls before you write a line of the detection engine."* **That sentence is now the whole
+> critical path.**
+>
 > ⚠️ **Updated 2026-07-17: it is `U6-b`, not `U6`, and the table below is unchanged only because the
 > priority didn't move — the *input* did.** Doc 06 §3 found U6 was specified against **typing**, where
 > the user's own keystroke gaps hide the scan. **The critical path is paste.** And **U6-b's threshold
@@ -532,8 +554,8 @@ Between them, these decide whether the design survives contact. All three are ch
 | Item | Claim | Why it's blocking | Owner doc |
 |---|---|---|---|
 | **B3** 🔴 | Target segment will actually force-install | **#1 priority — ranked above the two engineering spikes.** Asks *"will anyone deploy it?"* Deployment hurdle is low (one HKLM registry key on Windows; no Chrome Enterprise Core needed) but the **sales** hurdle is unmeasured. Requires **phone calls, not code.** | doc 08 |
-| ~~**U12**~~ ✅🔴 | **RAN 2026-07-17 against real ChatGPT + Claude on Windows.** **U12-a ✅ PASS (Enter path) · U12-c ✅ PASS · U12-b 🔴 STILL OPEN.** | 🔴 **THE REWORK TRIGGER DID NOT FIRE.** ADR 0005/0010, doc 01 §0's coupling and decisions #2/#8 now rest on a **measurement**. `windowFiresBeforeDocument: true`; armed Enter suppressed across the world boundary; **doc 05 §1.2's visual criterion held** (no spinner, no wedge). **U12-c: 20 page `window`-capture listeners on ChatGPT, 4 on Claude — all registered after ours. ADR 0010 was load-bearing, not theoretical.** ⚠️ **Two narrowings, both real:** **(1) U12-a is PASS-for-Enter, UNTESTED-for-click** — the harness recorded clicks and never stopped them, so **the Send button's dispatch was never tested**, and it **empirically confirms doc 05 §2.3: an Enter-only gate fails OPEN on the button.** **(2) U12-b's 🔴 verdict was a HARNESS BUG** — see §2's ledger #10. | ✅ **done — except U12-b** |
-| **U12-b** 🔴 | **A composition-commit `Enter` is distinguishable from a send-intent `Enter`** — **focused re-run owed** (`code/spikes/u12-harness/PROTOCOL.md` §6a) | **The wedge's language.** **The first run's 🔴 was a false alarm from a broken analyser, not a finding** (ledger #10). **The UI worked; the ordering was never measured.** **No suppression window may be derived until a *focused* capture exists** — one composition, one Enter. **Untested is not passed.** | doc 05 / code |
+| ~~**U12**~~ ✅ | **FULLY RESOLVED 2026-07-17 against real ChatGPT + Claude on Windows.** **U12-a ✅ (Enter **and** click) · U12-b ✅ · U12-c ✅ · and U20 ✅ free.** | 🔴 **THE REWORK TRIGGER DID NOT FIRE.** ADR 0005/0010, doc 01 §0's coupling and decisions #2/#8 now rest on a **measurement**. `windowFiresBeforeDocument: true`; armed Enter suppressed across the world boundary; **doc 05 §1.2's visual criterion held** (no spinner, no wedge). **U12-c: 20 page `window`-capture listeners on ChatGPT, 4 on Claude — all registered after ours. ADR 0010 was load-bearing, not theoretical.** ⚠️ **Three narrowings, all real:** **(1)** the **click** PASS is the **founder's observation, not a saved capture** — every attached JSON has `armedStops: 0` (correctly: U20 needs an *unarmed* run). **~30 s to close.** **(2)** U12-b is **one IME, one platform, one date** — evidence about Pinyin, not about IMEs. **(3)** U12-c and U20 are **properties of two websites** and move on the **D4** clock. 🔴 **And the run's real lesson is not in this row: FOUR harness bugs produced three wrong answers, and the founder caught every one by reading raw logs instead of verdicts** (§2 ledgers #10, #11). | ✅ **done** |
+| ~~**U12-b**~~ ✅ | **RESOLVED 2026-07-17 — PASS, both surfaces, focused capture.** `keydown(code:"Enter", key:"Process", isComposing:true)` → `compositionend` → `keyup`. **The committing Enter arrives WHILE composing → `isComposing` is SUFFICIENT → NO suppression window.** | ✅ **The wedge's language is not broken by the gate — on Microsoft Pinyin / Windows / these two surfaces / this date.** **Doc 05 §1.3 named the ordering as the whole test and refused to invent the window: the doc was right THREE times while the instrument was wrong three times** (ledgers #10, #11). ⚠️ **SCOPE IS NARROW AND IS THE ONLY THING TO CARRY FORWARD: one IME, not IMEs.** Sogou/Google Pinyin, macOS, JP/KR **untested**. 🔴 **Do not promote *"Pinyin never reports `key:'Enter'` while composing"* into *"a naive gate cannot break Chinese input"* — the fact is real, the therefore is unearned and per-IME.** | ✅ **done** |
 | **U6-b** 🔴 | **Time from `paste` to a gate-usable verdict**, P50/P95 paste length, D2 | **The zero-friction path — and the input is paste, not typing.** *(Was "U6 / a few hundred tokens" until doc 06 §3: **typing is not on the critical path**, because keystroke gaps warm the cache for free. **Paste is one event then Enter**, and per doc 00 §6 it is the **dominant** leak case — **so the cache is cold by construction on the threat we exist for.**)* If it's slow the miss path dominates and the product becomes *"press Send twice on every paste."* **Mitigated but not removed by ADR 0013:** L1 gates the *dangerous* paste sub-ms; **U6-b governs the wait to say *"clean."*** ⚠️ **Curve is ours (week 1, no human needed). Threshold is B3-blocked** — it is the measured `Ctrl+V` → `Enter` interval. **No number invented.** | doc 06 / code |
 
 #### U12 sub-tests — all three must pass, against **real ChatGPT and Claude**, not a test page
@@ -669,14 +691,14 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 |---|---|---|
 | 🔴 **1** | **B3 primary research** — 5–10 IT-lead interviews. Above both engineering spikes: they ask *"can we build it?"*, B3 asks *"will anyone deploy it?"* — **cheaper to answer and likelier to be fatal.** **Now first for THREE independent reasons** (below + rank 3 + rank 3a). 🔴 **Doc 07 §1.5 adds ONE QUESTION to the script and it closes the precision floor for free:** *"You already run some control that flags things. **How many false flags a week, per hundred staff, does your team absorb before you loosen it or turn it off?**"* — **about their present, not our hypothetical.** | doc 00 §3 · ADR 0001 · §6.4 · **doc 07 §1.5** |
 | ~~🔴 **2**~~ ✅ | ~~U12-a is the package's single rework trigger~~ → **ANSWERED 2026-07-17. It did not fire.** PASS on both surfaces for the **Enter path**, including doc 05 §1.2's visual criterion. **Doc 08 reports this as a resolved risk with a measurement behind it, not an open spike** — and per doc 00 §7's underclaiming argument, *"we tested the thing that could kill it, first, and it held"* is a better diligence line than a green risk table. ⚠️ **Two live remainders: the CLICK path is untested** (harness gap; **doc 05 §2.3's Enter-only-fails-open is now empirically confirmed**) **and U12-c is a property of two websites that changes when they deploy.** | doc 05 §10 · **U12-a** |
-| 🔴 **2a** | **U12-b — the wedge's language — is STILL OPEN, and the first run's 🔴 was a false alarm from a broken analyser** (ledger #10), **not a finding.** **The UI worked; the ordering was never measured.** **Rank the focused re-run, not the false alarm** — and **do not carry the 3.6–40.8 s gaps into doc 08 as data.** | **U12-b** · §2 ledger #10 |
+| ~~🔴 **2a**~~ ✅ | **U12-b — the wedge's language — RESOLVED 2026-07-17: PASS.** `isComposing` is **sufficient** on Microsoft Pinyin / Windows; **no suppression window exists or is needed.** **Doc 08 reports a resolved risk with a measurement behind it.** 🔴 **Report the SCOPE with it, always: one IME, not IMEs** — and **do not carry the first run's 3.6–40.8 s gaps as data; they were a broken analyser** (ledger #10). | **U12-b** · §2 ledgers #10, #11 |
 | 🔴 **3** | **U6-b's pass criterion is B3-blocked** — the deadline is the measured `Ctrl+V`→`Enter` interval, which needs a design partner on real work. **This couples the #1 engineering number to the #1 validation item.** | doc 06 §3.3, §9 |
 | 🔴 **3a** | **The precision floor's operating point is the admin's, not ours — B3's THIRD reason.** 🟢 **But unlike U6-b it is *askable*: U6-b needs instrumentation on real work (nobody knows their own paste-to-Enter interval); the ticket tolerance is a number the admin has lived.** **One line on a script that is already happening.** 🔴 **And the standing justification for the floor is wrong: *"cries wolf → gets uninstalled"* dies when B3 succeeds** (**ledger #7**). **It is ADR 0001's ticket economics + ADR 0014's channel defection — *over-blocking is fail-closed, delivered gradually*.** | doc 07 §1.2, §1.5 · ADR 0014 |
 | 🔴 **4** | **The distillation risk has TWO entrances, not one** — the memory budget landing under ~140 MB **or** fertility forcing a larger vocabulary. **Same risk; the second entrance never involves a memory decision.** Depends on **C3-b**. ⚠️ **And U21-a can fire the second entrance in week 1, from public text** — doc 07 §3.3. | doc 06 §6.2 · doc 03 §4.3 |
 | 🔴 **4a** | 🔴 **The eval corpus is a LEGAL event, not a data task** — **ADR 0015 puts real personal data in the company before there is a product.** **Lawful basis is `[verify]` (U25) and is counsel's call — A3's first real invoice.** **Not optional: the eval is the only detector C3-b will ever have**, and a risk with no experiment is not managed (ADR 0009's standard). ⚠️ **Do NOT reopen DP-SGD** — eval data never enters a gradient. | doc 07 §5.4 · **ADR 0015** · **U25** |
 | 🔴 **4b** | 🟢 **U21-a is FREE and must not be ranked as blocked** — *"blocked on the corpus"* was a false dependency (**ledger #8**). **Public raw text, week 1, an afternoon, and one-sided: a fail is FINAL.** **The package's highest-value measurement has a lower bound nobody took.** | doc 07 §3 · **U21-a** |
 | 🟠 **5** | **PDPA DPO + breach-notification readiness — in-force dates already past** (2025-06-01). **First invoice against A3.** We may already be non-compliant. | doc 02 §6.1 · **U18** |
-| 🟠 **6** | **U12-b breaks the wedge's language** if the naive gate ships. **Windows + Microsoft Pinyin is the test that matters.** ⚠️ **Ran 2026-07-17 and did NOT resolve** — see rank 2a. **Merge with 2a; do not rank twice.** | doc 05 §1.3, §10 · **U12-b** |
+| ~~🟠 **6**~~ ✅ | **U12-b would break the wedge's language if the naive gate shipped — MEASURED AND IT DOES NOT.** **Windows + Microsoft Pinyin was the test that matters and it PASSED** (2026-07-17). **Merged into rank 2a; do not rank twice.** ⚠️ **The residual is scope, not mechanism: other IMEs are untested and doc 08 should say so rather than generalize a single pass.** | doc 05 §1.3, §10 · **U12-b** |
 | 🟠 **7** | **The beachhead's language is the slowest on the critical path** (~3× chunks, **estimate**, U21). **Second instance of the pattern** after U12-b. **Rank it as the wedge's engineering cost, honestly, rather than discover it.** | doc 06 §4.3 |
 | 🟠 **8** | **§2.3's NRIC/SSM collision** — systematic FP source on **~86%** of 2001–2012 incorporations, in the layer whose precision is **quasi-contractual**. **Structure cannot fix it.** | doc 03 §2.3 |
 | 🟠 **9** | **I4's Phase 0 gap** — **the weakest privacy claim in the package, in the most valuable feature.** Contractual now; mathematical at Phase 1. | doc 02 §5.4, §7 · ADR 0009 |
@@ -751,12 +773,33 @@ Full register is `ASSUMPTIONS.md` §3 (**U1–U22**). Blocking ones by doc:
 
 ## 8. Immediate next action
 
-> ## ✅ DOC 07 AND THE SCAFFOLD ARE DONE. **Next: run the spikes, then doc 08 LAST.**
+> ## ✅ DOC 07, THE SCAFFOLD, **AND ALL FOUR U12/U20 SPIKES ARE DONE.** **Next: B3. Then doc 08 LAST.**
+>
+> 🔴 **THE CRITICAL PATH CHANGED SHAPE ON 2026-07-17 AND A FRESH SESSION MUST NOT MISS IT.** **Every
+> engineering spike that could have killed the design has now RUN and HELD** — U12-a ✅ (Enter **and**
+> click) · U12-b ✅ · U12-c ✅ · U20 ✅. **The rework trigger did not fire.** **So there is no engineering
+> question left that gates anything.** **What remains is B3, and it always was** — doc 00 §7: *"Go make
+> ten phone calls before you write a line of the detection engine."* **That sentence is now the entire
+> critical path, and it is the founder's, not yours.**
+>
+> ⚠️ **The temptation this creates is the one to name: four green spikes make it FEEL like the right
+> move is to build.** **It is not.** U12 asked *"can we build it?"* and the answer is yes. **B3 asks
+> *"will anyone deploy it?"* — still unasked, still cheaper, still likelier to be fatal** (doc 00 §3,
+> ADR 0001). **Nothing in the spike results touches it.** **And U6-b — the #1 engineering number — is
+> B3-BLOCKED by construction**, since its pass criterion is a measured `Ctrl+V`→`Enter` interval that
+> only a design partner on real work can produce. **Green spikes did not unblock a single thing that
+> was blocked.**
 >
 > 🔴 **The next action is NOT code. It is the founder's, and doc 00 §7 says so: *"Go make ten phone
 > calls before you write a line of the detection engine."*** See [`code/README.md`](code/README.md)
-> §Order of operations — **B3 (calls) → U12-a (20 min) → U21-a (an afternoon) → U12-b (needs an IME)
-> → everything else.** **Steps 1–4 cost a week and no engineering. Step 5 costs 18 months.**
+> §Order of operations — **B3 (calls) → ~~U12-a~~ ✅ → U21-a (an afternoon, FREE, one-sided) →
+> ~~U12-b~~ ✅ → everything else.** **Steps 1–4 cost a week and no engineering. Step 5 costs 18
+> months.** **Two of the four are now struck, and the two that remain are the two nobody has started.**
+>
+> 🟢 **U21-a is the only thing left that is BOTH yours and unblocked** — public raw text, an afternoon,
+> **one-sided** (trimming only raises fertility, so a fail is FINAL and fires doc 06 §6.2's
+> distillation trigger without a memory decision ever being made). `code/spikes/u21a-fertility/` is
+> live and verified end-to-end. **It needs a corpus, not a decision.**
 >
 > **The scaffold is deliberately stubs until those report.** Doc 05 §1.1: *"Read the failure column
 > top to bottom — it is a ranking, and **it inverts the effort you'd naively spend.**"*
