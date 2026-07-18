@@ -3,6 +3,31 @@
  * Browsers provide these; jsdom does not.
  */
 
+if (typeof globalThis.chrome === 'undefined') {
+  const store: Record<string, unknown> = {};
+  globalThis.chrome = {
+    storage: {
+      local: {
+        get: async (keys: string | string[] | Record<string, unknown> | null) => {
+          if (keys === null) return { ...store };
+          if (typeof keys === 'string') return { [keys]: store[keys] };
+          if (Array.isArray(keys)) {
+            const out: Record<string, unknown> = {};
+            for (const key of keys) out[key] = store[key];
+            return out;
+          }
+          const out: Record<string, unknown> = {};
+          for (const key of Object.keys(keys)) out[key] = store[key];
+          return out;
+        },
+        set: async (items: Record<string, unknown>) => {
+          Object.assign(store, items);
+        },
+      },
+    },
+  } as typeof chrome;
+}
+
 function emptyFileList(): FileList {
   return {
     length: 0,
