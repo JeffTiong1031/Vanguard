@@ -1,19 +1,23 @@
 {
-  "name": "vanguard-extension",
-  "version": "0.0.0",
+  "name": "vanguard-slice1",
   "private": true,
   "type": "module",
-  "_comment": "SKELETON. doc 01 §2's component shape with stubs. The live code is ../spikes/. See ../README.md for why the U12 spike is deliberately NOT built on this.",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
-    "compile": "tsc --noEmit"
+    "postbuild": "node scripts/check-dist-drift.mjs --write",
+    "check:dist": "node scripts/check-dist-drift.mjs",
+    "test": "vitest run"
   },
   "devDependencies": {
+    "@testing-library/preact": "^3.2.4",
+    "jsdom": "^29.1.1",
     "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
     "wxt": "^0.19.0"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.0.0",
     "preact": "^10.22.0"
   }
 }
