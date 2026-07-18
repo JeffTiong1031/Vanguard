@@ -59,6 +59,16 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=20260718)
     ap.add_argument("--mask-weight", type=float, default=1.0,
                     help="loss weight for the MASK class (>1 fights KEEP imbalance)")
+    # transformers defaults to adamw_torch_fused. The fused CUDA kernel is a different code
+    # path from the one a CPU run exercises, so a CPU smoke test does NOT cover it. A T4 run
+    # on 2026-07-18 produced grad_norm=nan at ~step 20 that a 30-step CPU run with plain
+    # AdamW could not reproduce; the fused kernel is the prime suspect. Default to the
+    # unfused implementation: it is the path we can actually verify.
+    ap.add_argument("--optim", default="adamw_torch",
+                    help="HF optimizer name (default adamw_torch; adamw_torch_fused is the "
+                         "HF default and is NOT verified on this stack)")
+    ap.add_argument("--warmup-ratio", type=float, default=0.1,
+                    help="LR warmup fraction; 0 means no warmup (HF default)")
     args = ap.parse_args()
 
     if args.model == "xlm-roberta-base":
@@ -140,10 +150,13 @@ def main() -> None:
         per_device_eval_batch_size=args.batch,
         learning_rate=args.lr,
         seed=args.seed,
+        optim=args.optim,
+        warmup_ratio=args.warmup_ratio,
         save_strategy="epoch",
         logging_steps=5,
         report_to=[],
     )
+    print(f"optimizer={args.optim}  warmup_ratio={args.warmup_ratio}  lr={args.lr}")
 
     trainer_cls = Trainer
     if args.mask_weight != 1.0:
