@@ -45,6 +45,10 @@ Load unpacked. On **chatgpt.com** and then on **claude.ai**, in this order:
 | `__u27_reattach()` | U28 probe — synthesize `vanguard-test.txt` on the first `input[type=file]` and dispatch `change`. |
 | `__u27_dump()` | Return the full event log as JSON. |
 
+🔴 **DevTools context:** helpers live in the content-script world. In Console, set the context dropdown to **U27 file-capture spike** (not `top`). On `top`, `typeof __u27_reattach` is `"undefined"` even when the spike is loaded.
+
+🔴 **U28 passthrough (2026-07-18 harness fix):** `__u27_reattach` sets a one-shot `allowNextChange` flag so the capture listener does **not** block/clear our own synthetic `change`. Without that, U28 always self-fails (`blocked: true` then `ok: false`). After editing `capture.js`, click **Reload** on the extension at `chrome://extensions`, then refresh the ChatGPT/Claude tab.
+
 ## Stop condition
 
 If **U27-a fails on either surface**, STOP. The plan's shape is wrong and remaining tasks are built on it. Do not narrow a timing window to make it pass — fix the attribution or fix the capture, never the tolerance.
