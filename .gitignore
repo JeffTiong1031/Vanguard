@@ -1,3 +1,9 @@
 .claude/settings.local.json
 .superdesign/tmp/
 .worktrees/
+
+ml/artifacts/
+*.onnx
+*.pt
+*.bin
+*.safetensors
