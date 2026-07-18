@@ -33,6 +33,7 @@ def _training_args(TrainingArguments, **kw):
 
 def main() -> None:
     import numpy as np
+    import torch
     from datasets import Dataset
     from transformers import (
         AutoModelForSequenceClassification,
@@ -89,10 +90,34 @@ def main() -> None:
 
     tok = AutoTokenizer.from_pretrained(args.model)
     tok.add_special_tokens({"additional_special_tokens": [E_OPEN, E_CLOSE]})
-    model = AutoModelForSequenceClassification.from_pretrained(
-        args.model, num_labels=2, id2label=ID2LABEL, label2id=LABEL2ID
-    )
+
+    # Load in fp32 EXPLICITLY. transformers 5.x honours the checkpoint dtype, and
+    # mdeberta-v3-base ships fp16 — which silently destroys training: AdamW's eps=1e-8 is
+    # not representable in fp16 (it rounds to 0.0), so the update denominator sqrt(v)+eps
+    # becomes exactly 0 for any parameter whose gradient underflows, and one step turns the
+    # whole model to inf/NaN. Symptom: finite loss and finite grads, then grad_norm=nan,
+    # loss=0, and an always-KEEP model. Measured 2026-07-18 on torch 2.13.0 / transformers
+    # 5.14.1. transformers 4.x defaulted to fp32, which is why the plan's code predates this.
+    try:
+        model = AutoModelForSequenceClassification.from_pretrained(
+            args.model, num_labels=2, id2label=ID2LABEL, label2id=LABEL2ID,
+            dtype=torch.float32,
+        )
+    except TypeError:  # transformers 4.x spelling
+        model = AutoModelForSequenceClassification.from_pretrained(
+            args.model, num_labels=2, id2label=ID2LABEL, label2id=LABEL2ID,
+            torch_dtype=torch.float32,
+        )
     model.resize_token_embeddings(len(tok))
+
+    # Guard, not a hope: half-precision master weights must never reach the optimizer.
+    half = {n for n, p in model.named_parameters() if p.dtype in (torch.float16, torch.bfloat16)}
+    if half:
+        raise SystemExit(
+            f"{len(half)} parameters are half precision (e.g. {sorted(half)[:3]}). "
+            f"AdamW eps underflows to 0 in fp16 and the model becomes NaN in one step. "
+            f"Refusing to train."
+        )
 
     def tok_fn(batch):
         return tok(batch["text"], truncation=True, max_length=args.max_len)
