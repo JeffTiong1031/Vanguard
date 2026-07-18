@@ -13,6 +13,9 @@ class SafetyError(Exception):
         self.code = code
         self.message = message
 
+    def __reduce__(self):
+        return (SafetyError, (self.code, self.message))
+
 
 _MAGIC: list[tuple[bytes, str]] = [
     (b"%PDF-", "pdf"),
