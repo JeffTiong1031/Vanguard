@@ -17,6 +17,7 @@ app.add_middleware(
     allow_origins=["https://chatgpt.com", "https://claude.ai"],
     allow_methods=["POST", "GET"],
     allow_headers=["content-type", "x-vanguard-filename"],
+    expose_headers=["x-vanguard-redacted-name"],
 )
 
 app.include_router(router)

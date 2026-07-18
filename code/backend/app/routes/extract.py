@@ -2,13 +2,16 @@ import hashlib
 import logging
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from pydantic import ValidationError
 
 from app import limits
-from app.models import Coverage, ErrorCode, ErrorResponse, ExtractResponse
+from app.models import Coverage, ErrorCode, ErrorResponse, ExtractResponse, RedactRequest, RedactSpan
 from app.parsers.docx import parse_docx
 from app.parsers.pdf import parse_pdf
 from app.parsers.text import parse_text, truncate
+from app.redact.docx import redact_docx
+from app.redact.pdf import redact_pdf
 from app.safety import SafetyError, guard_zip, run_with_timeout, sniff_format
 
 log = logging.getLogger("vanguard")
@@ -135,3 +138,122 @@ def _split_multipart(raw: bytes) -> tuple[bytes, str | None]:
             name = head[start : head.index(b'"', start)].decode("utf-8", "replace")
         return tail.rstrip(b"\r\n-"), name
     return raw, None
+
+
+async def _read_multipart_with_spec(request: Request) -> tuple[bytes, str, str]:
+    filename = request.headers.get("x-vanguard-filename", "upload")
+
+    declared = request.headers.get("content-length")
+    if declared and int(declared) > limits.MAX_UPLOAD_BYTES:
+        raise SafetyError(
+            ErrorCode.TOO_LARGE,
+            f"This file is {int(declared) / 1024 / 1024:.0f} MB. The limit is 10 MB, "
+            "so it was not checked and has not been sent to the AI.",
+        )
+
+    data = bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data) > limits.MAX_UPLOAD_BYTES + 4096:
+            raise SafetyError(
+                ErrorCode.TOO_LARGE,
+                "This file is larger than the 10 MB limit, so it was not checked "
+                "and has not been sent to the AI.",
+            )
+
+    body, parsed_name, spec_raw = _parse_multipart_with_spec(bytes(data))
+    if parsed_name:
+        filename = parsed_name
+    return body, filename, spec_raw
+
+
+def _parse_multipart_with_spec(raw: bytes) -> tuple[bytes, str | None, str]:
+    if not raw.startswith(b"--"):
+        return raw, None, "{}"
+
+    boundary = raw.split(b"\r\n", 1)[0]
+    parts = raw.split(boundary)
+    file_body = raw
+    file_name: str | None = None
+    spec_raw = "{}"
+
+    for part in parts:
+        head, _, tail = part.partition(b"\r\n\r\n")
+        payload = tail.rstrip(b"\r\n-")
+        if b'name="file"' in head:
+            file_body = payload
+            marker = b'filename="'
+            if marker in head:
+                start = head.index(marker) + len(marker)
+                file_name = head[start : head.index(b'"', start)].decode("utf-8", "replace")
+        elif b'name="spec"' in head:
+            spec_raw = payload.decode("utf-8", errors="replace")
+
+    return file_body, file_name, spec_raw
+
+
+@router.post("/v1/redact")
+async def redact(request: Request) -> Response:
+    """Apply accepted masks to the original file, in its original format."""
+    try:
+        body, filename, spec_raw = await _read_multipart_with_spec(request)
+    except SafetyError as err:
+        return _fail(err)
+
+    try:
+        spec = RedactRequest.model_validate_json(spec_raw)
+    except ValidationError:
+        return _fail(SafetyError(ErrorCode.PARSE_FAILED, "The redaction request was malformed."))
+
+    try:
+        kind = sniff_format(filename, body)
+        if kind == "docx":
+            guard_zip(body)
+            text, _, _, nodes = run_with_timeout(parse_docx, body, limits.PARSE_TIMEOUT_SECONDS)
+        elif kind == "pdf":
+            text, _, _, nodes = run_with_timeout(parse_pdf, body, limits.PARSE_TIMEOUT_SECONDS)
+        else:
+            text, _, _, nodes = parse_text(filename, body)
+        text, _ = truncate(text)
+
+        if hashlib.sha256(text.encode("utf-8")).hexdigest() != spec.extract_sha256:
+            raise SafetyError(
+                ErrorCode.EXTRACT_MISMATCH,
+                "This file changed between checking and sending, so it was not "
+                "redacted and has not been sent to the AI. Please attach it again.",
+            )
+
+        for span in spec.spans:
+            if text[span.start : span.end] != span.text:
+                raise SafetyError(
+                    ErrorCode.REDACTION_FAILED,
+                    f'Vanguard could not apply the mask for "{span.text}" to this document, '
+                    "so nothing was changed and the file has not been sent to the AI.",
+                )
+
+        stem, _, suffix = filename.rpartition(".")
+        if kind == "docx":
+            payload = redact_docx(body, spec.spans, nodes)
+            media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        elif kind == "pdf":
+            payload = redact_pdf(body, spec.spans)
+            media = "application/pdf"
+        else:
+            payload = _apply_to_text(text, spec.spans).encode("utf-8")
+            media = "text/csv" if kind == "csv" else "text/plain"
+        out_name = f"{stem or filename}.redacted.{suffix or 'txt'}"
+    except SafetyError as err:
+        return _fail(err)
+
+    log.info("redact ok format=%s spans=%d", kind, len(spec.spans))
+    return Response(
+        content=payload,
+        media_type=media,
+        headers={"x-vanguard-redacted-name": out_name},
+    )
+
+
+def _apply_to_text(text: str, spans: list[RedactSpan]) -> str:
+    for span in sorted(spans, key=lambda s: s.start, reverse=True):
+        text = text[: span.start] + span.placeholder + text[span.end :]
+    return text
