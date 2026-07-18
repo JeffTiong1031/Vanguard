@@ -86,6 +86,11 @@ On ChatGPT **and** Claude:
 - [ ] Press Send with remaining L1/L2 hits → **existing modal** still hard-gates
 - [ ] Ignore-with-reason in modal types correctly on Claude (Enter in the reason field is not treated as Send)
 
-### Phase 4 — deferred (not this ship)
+### Phase 4 — Send-time per-span review (ADR 0025) — IMPLEMENTED
 
-Send-time per-span Accept / Ignore-with-reason / Accept all / word-by-word animation — after typing UX is accepted. Do not implement until Phase 3 live boxes pass.
+- [ ] Enter on dirty prompt → **Review before send** popup (not bulk Approve modal)
+- [ ] Sensitive spans underlined rose/red; hover → why + recommendation + Accept / Ignore
+- [ ] Ignore requires a reason; Proceed disabled until every span is Accept or Ignore
+- [ ] Accept all → masks all + Proceed (composer updated; you press Send)
+- [ ] Ignore field keystrokes stay in the popup (not the Claude/ChatGPT composer)
+- [ ] Typing underlines (Slice 1.5) still L1-only and never block Send

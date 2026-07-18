@@ -5,7 +5,7 @@ import { scanInto } from '../src/detection/scan';
 import { VerdictCache } from '../src/detection/verdict-cache';
 import { ApprovalStore } from '../src/gate/approval-token';
 import { installGate } from '../src/gate/gate';
-import { rewrite, SessionNumbering } from '../src/mask/placeholder';
+import { SessionNumbering } from '../src/mask/placeholder';
 import { createComposerHints } from '../src/ui/composer-hints';
 import {
   hideModal,
@@ -68,28 +68,22 @@ export default defineContentScript({
         const verdict = cache.getSync(hashes.get(text) ?? '');
         if (!verdict || verdict.state !== 'DIRTY') return;
 
-        const { rewritten } = rewrite(text, verdict.findings, numbering);
         showModal({
-          rewritten,
-          summary: summarise(verdict.findings),
-          onApprove: async () => {
-            adapter.writeText(rewritten);
-            const approvedText = adapter.readText() ?? rewritten;
+          text,
+          findings: verdict.findings,
+          numbering,
+          onProceed: async ({ finalText, ignored }) => {
+            for (const row of ignored) {
+              await recordIgnore([row.finding], row.reason);
+            }
+            adapter.writeText(finalText);
+            const approvedText = adapter.readText() ?? finalText;
             const hash = await sha256Hex(approvedText);
             approvals.approve(hash, 60_000);
             hashes.set(approvedText, hash);
+            // Approval covers ignored originals still present (gate matches hash).
+            void scan(approvedText);
             hints.update(approvedText);
-            hideModal();
-          },
-          onIgnore: async (reason) => {
-            await recordIgnore(verdict.findings, reason);
-            // Ignore keeps the original text; mint a short-lived approval so the user's
-            // next Send passes (ACCEPTANCE: "Ignore … → sends unrewritten"). Without this
-            // the cache stays DIRTY and the modal reopens forever.
-            const ignoredText = adapter.readText() ?? text;
-            const hash = await sha256Hex(ignoredText);
-            approvals.approve(hash, 60_000);
-            hashes.set(ignoredText, hash);
             hideModal();
           },
         });
@@ -129,10 +123,3 @@ export default defineContentScript({
   },
 });
 
-function summarise(findings: Array<{ cls: string }>) {
-  const counts = new Map<string, number>();
-  for (const finding of findings) {
-    counts.set(finding.cls, (counts.get(finding.cls) ?? 0) + 1);
-  }
-  return [...counts].map(([cls, count]) => ({ cls, count }));
-}

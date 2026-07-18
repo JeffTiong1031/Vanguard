@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render } from '@testing-library/preact';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { SessionNumbering } from '../src/mask/placeholder';
 import { Modal } from '../src/ui/modal';
 import {
   hideModal,
@@ -9,6 +10,7 @@ import {
   showModal,
   showProtectionDegraded,
 } from '../src/ui/mount';
+import type { Finding } from '../src/detection/l1/types';
 
 afterEach(() => {
   cleanup();
@@ -17,128 +19,112 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('Modal', () => {
-  it('shows only the finding summary and rewritten preview', () => {
-    const { getByText } = render(
+const emailFinding: Finding = {
+  cls: 'EMAIL',
+  start: 9,
+  end: 22,
+  text: 'a@example.com',
+};
+
+describe('Modal (Send review)', () => {
+  it('shows review copy and disables Proceed until spans are resolved', () => {
+    const numbering = new SessionNumbering();
+    const { getByRole, getByText } = render(
       <Modal
-        rewritten="call PERSON_1 at ORG_1"
-        summary={[
-          { cls: 'PERSON', count: 1 },
-          { cls: 'ORG', count: 2 },
-        ]}
-        onApprove={() => {}}
-        onIgnore={() => {}}
+        text="email me a@example.com"
+        findings={[emailFinding]}
+        numbering={numbering}
+        onProceed={() => {}}
       />,
     );
 
-    expect(getByText('PERSON: 1')).toBeTruthy();
-    expect(getByText('ORG: 2')).toBeTruthy();
-    expect(getByText('call PERSON_1 at ORG_1')).toBeTruthy();
+    expect(getByText(/Review before send/i)).toBeTruthy();
+    expect((getByRole('button', { name: /^Proceed$/i }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
   });
 
-  it('calls onApprove without submitting anything', () => {
-    const onApprove = vi.fn();
-    const { getByRole } = render(
+  it('Accept enables Proceed and reports masked text', async () => {
+    const numbering = new SessionNumbering();
+    const onProceed = vi.fn();
+    const { getByRole, getByText } = render(
       <Modal
-        rewritten="call PERSON_1"
-        summary={[{ cls: 'PERSON', count: 1 }]}
-        onApprove={onApprove}
-        onIgnore={() => {}}
+        text="email me a@example.com"
+        findings={[emailFinding]}
+        numbering={numbering}
+        onProceed={onProceed}
       />,
     );
 
-    const approve = getByRole('button', { name: /approve/i });
-    expect(approve.getAttribute('type')).toBe('button');
-    fireEvent.click(approve);
+    fireEvent.click(getByText('a@example.com'));
+    fireEvent.click(getByRole('button', { name: /^Accept$/i }));
 
-    expect(onApprove).toHaveBeenCalledOnce();
+    const proceed = getByRole('button', { name: /^Proceed$/i }) as HTMLButtonElement;
+    await waitFor(() => expect(proceed.disabled).toBe(false));
+    fireEvent.click(proceed);
+
+    expect(onProceed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        finalText: 'email me EMAIL_1',
+        ignored: [],
+      }),
+    );
   });
 
-  it('disables Ignore until a reason is entered', () => {
-    const onIgnore = vi.fn();
-    const { getByPlaceholderText, getByRole } = render(
+  it('Ignore requires a reason and keeps the original span', async () => {
+    const numbering = new SessionNumbering();
+    const onProceed = vi.fn();
+    const { getByRole, getByText, getByPlaceholderText } = render(
       <Modal
-        rewritten="x"
-        summary={[]}
-        onApprove={() => {}}
-        onIgnore={onIgnore}
+        text="email me a@example.com"
+        findings={[emailFinding]}
+        numbering={numbering}
+        onProceed={onProceed}
       />,
     );
-    const ignore = getByRole('button', { name: /^ignore$/i }) as HTMLButtonElement;
 
+    fireEvent.click(getByText('a@example.com'));
+    const ignore = getByRole('button', { name: /^Ignore$/i }) as HTMLButtonElement;
     expect(ignore.disabled).toBe(true);
-    fireEvent.click(ignore);
-    expect(onIgnore).not.toHaveBeenCalled();
 
-    fireEvent.input(getByPlaceholderText(/reason/i), {
-      target: { value: 'false positive' },
+    fireEvent.input(getByPlaceholderText(/Reason required/i), {
+      target: { value: 'public support alias' },
     });
     expect(ignore.disabled).toBe(false);
     fireEvent.click(ignore);
 
-    expect(onIgnore).toHaveBeenCalledWith('false positive');
-  });
+    const proceed = getByRole('button', { name: /^Proceed$/i }) as HTMLButtonElement;
+    await waitFor(() => expect(proceed.disabled).toBe(false));
+    fireEvent.click(proceed);
 
-  it('does not call onIgnore for whitespace-only reasons', () => {
-    const onIgnore = vi.fn();
-    const { getByPlaceholderText, getByRole } = render(
-      <Modal
-        rewritten="x"
-        summary={[]}
-        onApprove={() => {}}
-        onIgnore={onIgnore}
-      />,
+    expect(onProceed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        finalText: 'email me a@example.com',
+        ignored: [expect.objectContaining({ reason: 'public support alias' })],
+      }),
     );
-    const ignore = getByRole('button', { name: /^ignore$/i }) as HTMLButtonElement;
-
-    fireEvent.input(getByPlaceholderText(/reason/i), {
-      target: { value: '   ' },
-    });
-    expect(ignore.disabled).toBe(true);
-    fireEvent.click(ignore);
-    expect(onIgnore).not.toHaveBeenCalled();
   });
 
-  it('passes trimmed reason to onIgnore', () => {
-    const onIgnore = vi.fn();
-    const { getByPlaceholderText, getByRole } = render(
+  it('Accept all proceeds with every span masked', async () => {
+    const numbering = new SessionNumbering();
+    const onProceed = vi.fn();
+    const { getByRole } = render(
       <Modal
-        rewritten="x"
-        summary={[]}
-        onApprove={() => {}}
-        onIgnore={onIgnore}
+        text="email me a@example.com"
+        findings={[emailFinding]}
+        numbering={numbering}
+        onProceed={onProceed}
       />,
     );
 
-    fireEvent.input(getByPlaceholderText(/reason/i), {
-      target: { value: '  false positive  ' },
-    });
-    fireEvent.click(getByRole('button', { name: /^ignore$/i }));
-
-    expect(onIgnore).toHaveBeenCalledWith('false positive');
-  });
-
-  it('resets reason when remounted via key', () => {
-    const props = {
-      rewritten: 'x',
-      summary: [] as Array<{ cls: string; count: number }>,
-      onApprove: () => {},
-      onIgnore: () => {},
-    };
-    const { getByPlaceholderText, rerender } = render(<Modal {...props} key={1} />);
-
-    fireEvent.input(getByPlaceholderText(/reason/i), {
-      target: { value: 'stale reason' },
-    });
-
-    rerender(<Modal {...props} key={2} />);
-
-    expect((getByPlaceholderText(/reason/i) as HTMLInputElement).value).toBe('');
+    fireEvent.click(getByRole('button', { name: /Accept all/i }));
+    await waitFor(() => expect(onProceed).toHaveBeenCalled());
+    expect(onProceed.mock.calls[0]![0].finalText).toBe('email me EMAIL_1');
   });
 });
 
 describe('modal mount', () => {
-  it('renders into a closed shadow root and removes its host', () => {
+  it('renders into an open shadow root with focus trap host marker', () => {
     const attachShadow = Element.prototype.attachShadow;
     let capturedRoot: ShadowRoot | undefined;
     const attachSpy = vi
@@ -148,20 +134,20 @@ describe('modal mount', () => {
         return capturedRoot;
       });
 
+    const numbering = new SessionNumbering();
     showModal({
-      rewritten: 'PERSON_1',
-      summary: [{ cls: 'PERSON', count: 1 }],
-      onApprove: () => {},
-      onIgnore: () => {},
+      text: 'x',
+      findings: [],
+      numbering,
+      onProceed: () => {},
     });
 
     const host = document.body.lastElementChild as HTMLElement;
-    expect(attachSpy).toHaveBeenCalledWith({ mode: 'closed' });
-    expect(host.shadowRoot).toBeNull();
+    expect(attachSpy).toHaveBeenCalledWith({ mode: 'open' });
+    expect(host.getAttribute('data-vanguard-ui')).toBe('modal');
     expect(capturedRoot?.querySelector('[role="dialog"]')).not.toBeNull();
 
     hideModal();
-
     expect(host.isConnected).toBe(false);
   });
 

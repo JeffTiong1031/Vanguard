@@ -6,16 +6,15 @@ Taste: **in-composer privacy guidance for enterprise** — Grammarly-like langua
 
 ```css
 :root {
-  --vg-hint-underline: #e11d48; /* rose-600 — strong, 突出 */
+  --vg-hint-underline: #e11d48; /* rose-600 — strong */
   --vg-hint-underline-hover: #be123c; /* rose-700 */
-  --vg-popover-bg: #ffffff;
-  --vg-popover-fg: #0f172a; /* slate-900 */
-  --vg-popover-muted: #64748b; /* slate-500 */
-  --vg-popover-border: #e2e8f0; /* slate-200 */
-  --vg-btn-primary-bg: #0f172a;
+  --vg-hint-wash: rgba(225, 29, 72, 0.16);
+  --vg-hint-glow: rgba(225, 29, 72, 0.28);
+  --vg-btn-primary-bg: #e11d48;
   --vg-btn-primary-fg: #ffffff;
-  --vg-btn-secondary-bg: transparent;
-  --vg-btn-secondary-fg: #475569; /* slate-600 */
+  --vg-btn-secondary-fg: #9f1239;
+  --vg-popover-border: #fecdd3;
+
   --vg-radius: 8px;
   --vg-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
   --vg-font: "Segoe UI", system-ui, -apple-system, sans-serif;

@@ -17,24 +17,25 @@ const STYLE = `
 .mark {
   position: absolute;
   pointer-events: auto;
-  height: 2.5px;
+  height: 3.5px;
   background: #e11d48;
-  border-radius: 1px;
+  border-radius: 2px;
   opacity: 0;
   animation: vgFade 120ms ease-out forwards;
   cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.18);
 }
-.mark:hover, .mark[data-active="1"] { background: #be123c; height: 3px; }
+.mark:hover, .mark[data-active="1"] { background: #be123c; height: 4px; box-shadow: 0 0 0 4px rgba(225, 29, 72, 0.28); }
 @keyframes vgFade { from { opacity: 0; } to { opacity: 1; } }
 .popover {
   position: absolute;
   pointer-events: auto;
-  width: 280px;
+  width: 300px;
   background: #fff;
   color: #0f172a;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  border: 1px solid #fecdd3;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(225, 29, 72, 0.18);
   padding: 12px 14px;
   font: 13px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif;
   animation: vgPop 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -71,13 +72,13 @@ button {
 }
 button.primary {
   border: none;
-  background: #0f172a;
+  background: #e11d48;
   color: #fff;
 }
 button.secondary {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #fecdd3;
   background: transparent;
-  color: #475569;
+  color: #9f1239;
 }
 `;
 
