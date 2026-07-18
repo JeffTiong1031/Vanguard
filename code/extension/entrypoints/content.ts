@@ -3,10 +3,17 @@ import { recordFindings, recordIgnore } from '../src/audit/audit';
 import { sha256Hex } from '../src/detection/hash';
 import { scanInto } from '../src/detection/scan';
 import { VerdictCache } from '../src/detection/verdict-cache';
+import { attachFiles } from '../src/files/attach';
+import { buildCleanedFile } from '../src/files/cleaned';
+import { installFileCapture } from '../src/files/capture';
+import { CLIENT_LIMITS } from '../src/files/config';
+import { defaultDeps, processFile } from '../src/files/pipeline';
+import { FileStore } from '../src/files/store';
 import { ApprovalStore } from '../src/gate/approval-token';
 import { installGate } from '../src/gate/gate';
 import { SessionNumbering } from '../src/mask/placeholder';
 import { createComposerHints } from '../src/ui/composer-hints';
+import { clearChips, renderChips, showRedactionFailure } from '../src/ui/file-chip';
 import {
   hideModal,
   hideProtectionDegraded,
@@ -34,6 +41,24 @@ export default defineContentScript({
     const approvals = new ApprovalStore();
     const numbering = new SessionNumbering();
     const hashes = new Map<string, string>();
+    const files = new FileStore();
+
+    files.subscribe(() => renderChips(files.list(), (id) => files.remove(id)));
+
+    const scanText = (text: string) =>
+      scanInto(new VerdictCache(), text, { l2TimeoutMs: CLIENT_LIMITS.fileScanTimeoutMs });
+
+    installFileCapture({
+      onFiles: (picked) => {
+        for (const file of picked) {
+          const id = files.add(file);
+          // Scan starts at ATTACH, not at Send. By the time the user finishes
+          // typing, the File pane is usually already populated -- the
+          // progressive UI is a consequence of the interception, not extra work.
+          void processFile(files, id, defaultDeps(scanText));
+        }
+      },
+    });
 
     const hints = createComposerHints({
       numbering,
@@ -63,28 +88,88 @@ export default defineContentScript({
         || adapter.isSendControl(path),
       hashOf: (text) => hashes.get(text) ?? COLD_HASH,
       approvedHash: () => approvals.currentHash(),
+      filesResolved: () => files.allResolved(),
       onBlocked: async (text) => {
         if (cache.getSync(hashes.get(text) ?? '') == null) await scan(text);
         const verdict = cache.getSync(hashes.get(text) ?? '');
-        if (!verdict || verdict.state !== 'DIRTY') return;
+        const promptDirty = verdict?.state === 'DIRTY';
+        if (!promptDirty && files.allResolved()) return;
 
         showModal({
           text,
-          findings: verdict.findings,
+          findings: promptDirty ? verdict!.findings : [],
           numbering,
-          onProceed: async ({ finalText, ignored }) => {
+          files: files.list(),
+          onAcknowledgeFileError: (id, reason) => {
+            const held = files.get(id);
+            if (!held || held.status.kind !== 'error') return;
+            files.update(id, {
+              status: { ...held.status, kind: 'error_acknowledged', reason },
+            });
+            // I3: the class and the reason, never the file bytes or its name.
+            void recordIgnore(
+              [{ cls: 'PERSON', start: 0, end: 0, text: '' }],
+              `file_unchecked:${held.status.code}: ${reason}`,
+            );
+          },
+          onProceed: async ({ finalText, ignored, files: fileResults }) => {
             for (const row of ignored) {
               await recordIgnore([row.finding], row.reason);
             }
+
+            for (const result of fileResults) {
+              const held = files.get(result.id);
+              if (!held) continue;
+              for (const row of result.ignored) await recordIgnore([row.finding], row.reason);
+              if (held.findings?.length) await recordFindings(held.findings);
+            }
+
+            // Redaction is a network round trip now (Task 5B), so this can
+            // FAIL. It must not fail into "attach the original" (a leak) or
+            // into "attach a .txt" (a surprise edit in a format nobody asked
+            // for). It fails into "nothing is attached and you are told".
+            const outgoing: File[] = [];
+            try {
+              for (const result of fileResults) {
+                const held = files.get(result.id);
+                if (!held) continue;
+                outgoing.push(
+                  await buildCleanedFile(held, result.decisions, numbering),
+                );
+              }
+            } catch (err) {
+              const message =
+                err instanceof Error
+                  ? err.message
+                  : 'Your files could not be prepared, so nothing was attached.';
+              showRedactionFailure(message);
+              return; // modal stays open; the user retries, removes the file, or edits
+            }
+
+            const input = adapter.fileInputs()[0];
+            if (outgoing.length > 0 && input) attachFiles(input, outgoing);
+            if (outgoing.length > 0 && !input) {
+              // The provider's file input vanished (D4). Do NOT proceed as if
+              // the attachment landed -- ADR 0014 degrades to advisory, and an
+              // attachment silently dropped is worse than a visible failure.
+              showRedactionFailure(
+                "Vanguard couldn't attach the cleaned file to this page. Please reload " +
+                  'the tab and attach it again.',
+              );
+              return;
+            }
+
             adapter.writeText(finalText);
             const approvedText = adapter.readText() ?? finalText;
             const hash = await sha256Hex(approvedText);
             approvals.approve(hash, 60_000);
             hashes.set(approvedText, hash);
-            // Approval covers ignored originals still present (gate matches hash).
             void scan(approvedText);
             hints.update(approvedText);
             hideModal();
+            // Files are handed off. Nothing readable outlives the send.
+            files.clear();
+            clearChips();
           },
         });
       },
@@ -122,4 +207,3 @@ export default defineContentScript({
     });
   },
 });
-

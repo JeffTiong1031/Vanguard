@@ -19,6 +19,8 @@ export type FileProceed = {
   id: string;
   finalText: string;
   ignored: Array<{ finding: Finding; reason: string }>;
+  /** Span decisions for redaction — accepted placeholders bind to /v1/redact. */
+  decisions: SpanDecisionMap;
   /** True when nothing was accepted -- the ORIGINAL bytes may be re-attached
    *  and the user keeps their formatting. */
   unchanged: boolean;
@@ -289,6 +291,7 @@ export function Modal({
         id: held.id,
         finalText: finalFileText,
         ignored: fileIgnored,
+        decisions: map,
         unchanged: !hasAccepted,
       });
     }

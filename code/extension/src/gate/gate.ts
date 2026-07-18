@@ -13,6 +13,8 @@ export type GateDeps = {
   isSendIntent: (e: Event, path: EventTarget[]) => boolean;
   hashOf: (text: string) => string;          // sync hash lookup memoized by the scanner
   approvedHash: () => string | null;
+  /** When false, block even on a clean approved prompt — a held file still scanning. */
+  filesResolved?: () => boolean;
   onBlocked: (text: string) => void;
 };
 
@@ -51,6 +53,12 @@ export function installGate(deps: GateDeps): void {
     if (!deps.isSendIntent(e, path)) return;
     const text = deps.getComposerText(path);
     if (text == null) return;
+    if (deps.filesResolved && !deps.filesResolved()) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      deps.onBlocked(text);
+      return;
+    }
     const decision = decideGate({ hash: deps.hashOf(text), cache: deps.cache, approvedHash: deps.approvedHash() });
     if (decision === 'BLOCK') {
       e.stopImmediatePropagation();
