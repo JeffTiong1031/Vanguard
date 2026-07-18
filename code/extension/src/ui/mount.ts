@@ -9,6 +9,7 @@ let degradedHost: HTMLElement | null = null;
 export function showModal(props: ModalProps): void {
   if (!host) {
     host = document.createElement('div');
+    host.setAttribute('data-vanguard-ui', 'modal');
     host.style.cssText =
       'position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:rgba(0,0,0,.35)';
     (document.body || document.documentElement).appendChild(host);
@@ -32,6 +33,7 @@ export function showProtectionDegraded(): void {
   if (degradedHost) return;
 
   degradedHost = document.createElement('div');
+  degradedHost.setAttribute('data-vanguard-ui', 'degraded');
   degradedHost.style.cssText =
     'position:fixed;top:16px;right:16px;z-index:2147483647;pointer-events:none';
   const root = degradedHost.attachShadow({ mode: 'closed' });

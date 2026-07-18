@@ -15,7 +15,11 @@ import {
 import { debounce } from '../src/util/debounce';
 
 const COLD_HASH = '\0cold';
-const L2_TIMEOUT_MS = 4_000; // (estimate) team-test value; U6-b measures the curve
+// First-run weight download (quantized mBERT NER) routinely exceeds a few seconds on a
+// cold cache. 4s caused lasting "protection degraded" with no CSP error — the race lost
+// to the download, then every follow-up scan also timed out until a lucky fast hit.
+// (estimate) team-test value; U6-b still measures the real curve later.
+const L2_TIMEOUT_MS = 120_000;
 
 export default defineContentScript({
   matches: ['https://chatgpt.com/*', 'https://claude.ai/*'],
@@ -66,6 +70,13 @@ export default defineContentScript({
           },
           onIgnore: async (reason) => {
             await recordIgnore(verdict.findings, reason);
+            // Ignore keeps the original text; mint a short-lived approval so the user's
+            // next Send passes (ACCEPTANCE: "Ignore … → sends unrewritten"). Without this
+            // the cache stays DIRTY and the modal reopens forever.
+            const ignoredText = adapter.readText() ?? text;
+            const hash = await sha256Hex(ignoredText);
+            approvals.approve(hash, 60_000);
+            hashes.set(ignoredText, hash);
             hideModal();
           },
         });
