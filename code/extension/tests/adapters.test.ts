@@ -10,7 +10,7 @@ describe('adapter registry', () => {
 });
 
 describe('adapter shape', () => {
-  const methods = ['getComposer', 'readText', 'writeText', 'isSendControl', 'onPaste'] as const;
+  const methods = ['getComposer', 'readText', 'writeText', 'isSendControl', 'onPaste', 'fileInputs'] as const;
 
   it('chatgptAdapter exposes the expected host and methods', () => {
     expect(chatgptAdapter.host).toBe('chatgpt.com');
