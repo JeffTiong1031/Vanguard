@@ -1,0 +1,3 @@
+{"id":"fx-einstein","text":"Explain Einstein's theory of relativity.","lang":"en","spans":[{"start":8,"end":16,"surface":"Einstein","entity_type":"PER","label":"KEEP"}],"provenance":"llm_synthetic","split":"train","source":"fixture"}
+{"id":"fx-ahmad","text":"Email Ahmad bin Ali about the overdue invoice.","lang":"en","spans":[{"start":6,"end":19,"surface":"Ahmad bin Ali","entity_type":"PER","label":"MASK"}],"provenance":"llm_synthetic","split":"train","source":"fixture"}
+{"id":"fx-math","text":"What is 1 + 1?","lang":"en","spans":[],"provenance":"llm_synthetic","split":"train","source":"fixture","tags":["math_no_mask"]}
