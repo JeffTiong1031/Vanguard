@@ -1,0 +1,32 @@
+[
+  {
+    "t": 1784389136036,
+    "evt": "installed",
+    "href": "https://claude.ai/",
+    "tip": "Console context must be \"U27 file-capture spike\" for __u27_reattach"
+  },
+  {
+    "t": 1784389186713,
+    "evt": "change",
+    "at": "window",
+    "phase": "capture",
+    "names": [
+      {
+        "name": "vanguard-test.txt",
+        "size": 19,
+        "type": "text/plain"
+      }
+    ],
+    "blocked": false,
+    "reason": "u28-passthrough"
+  },
+  {
+    "t": 1784389186745,
+    "evt": "reattach",
+    "ok": true,
+    "name": "vanguard-test.txt",
+    "size": 19,
+    "inputCount": 1,
+    "allowFlagCleared": true
+  }
+]

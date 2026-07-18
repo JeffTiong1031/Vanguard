@@ -16,16 +16,21 @@ Three claims, reported separately (doc 05 §1: never test or report as one claim
 | **U27-b** | The same for drag-and-drop (`dragover` + `drop`) and for clipboard paste of a file. |
 | **U28** | Setting `input.files` from a synthesized `DataTransfer` and dispatching `change` causes the provider to accept and upload *our* file. |
 
-## Results (awaiting live run)
+## Results (live run 2026-07-18, founder)
 
-🔴 **All verdicts PENDING.** Fill this table after Step 3 on real ChatGPT and Claude sessions.
-**Network tab evidence wins over visual signals** — if a log row says `blocked: true` but Network shows an upload, the Network tab wins (CLAUDE.md §2 ledger #11).
+**Network tab evidence wins over visual signals.** Scope: **two websites, one date, Windows** — moves on the D4 clock. Captures: `captures/chatgpt-2026-07-18.json`, `captures/claude-2026-07-18.json` (U28 dumps; U27-a/b evidence was founder Network observation + console `blocked:true`).
 
 | Claim | ChatGPT | Claude | Network evidence |
 |---|---|---|---|
-| **U27-a** (file picker / `change`) | PENDING | PENDING | — |
-| **U27-b** (drop + paste) | PENDING | PENDING | — |
-| **U28** (`__u27_reattach()`) | PENDING | PENDING | — |
+| **U27-a** (file picker / `change`) | ✅ PASS | ✅ PASS | Console `blocked:true`; no file chip; Network only small telemetry (`library`/`prepare`/`t`) — no file upload |
+| **U27-b** (drop + paste) | ✅ PASS (block) | ✅ PASS (block) | Console `blocked:true` for `drop` and `paste`; no provider upload. ⚠️ Spike UX: drop overlay can hang / paste shows nothing — **product Task 8 must own chip + overlay dismiss**; not a silent fail-open |
+| **U28** (`__u27_reattach()`) | ✅ PASS | ✅ PASS | After harness passthrough fix: `ok:true`, chip for `vanguard-test.txt`. ChatGPT: `files` / `raw?…` **201** / `process_upload_stream`. Claude: `upload-file` **200** |
+
+🔴 **U29** (providers upload on attach, not only on Send) is supported by U28’s immediate upload after reattach and by U27-a’s need to block at attach — recorded in `ASSUMPTIONS.md`.
+
+## After the live run
+
+Steps 4–5 done 2026-07-18: results table above; **U27 / U28 / U29** registered in `ASSUMPTIONS.md` §3.
 
 ## Step 3 protocol — run by hand on both surfaces
 
@@ -59,10 +64,4 @@ If **U27-a fails on either surface**, STOP. The plan's shape is wrong and remain
 |---|---|
 | `manifest.json` | MV3 content script on ChatGPT + Claude, `document_start`, isolated world, all frames. |
 | `capture.js` | Window-capture listeners for `change`, `drop`, `dragover`, `paste`. Logs filenames and sizes only — never file content (U26). |
-| `captures/` | Save live-run JSON dumps here. |
-
-## After the live run (Steps 4–5 — not done yet)
-
-1. Read the raw capture before writing verdicts.
-2. Update the results table above with PASS/FAIL and network evidence.
-3. Register **U27** and **U28** in `ASSUMPTIONS.md` §3 with verdicts and scope (two websites on one date — moves on the D4 clock).
+| `captures/` | Live-run JSON dumps. |

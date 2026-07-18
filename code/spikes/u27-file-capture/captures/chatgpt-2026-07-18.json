@@ -1,0 +1,32 @@
+[
+  {
+    "t": 1784388885092,
+    "evt": "installed",
+    "href": "https://chatgpt.com/",
+    "tip": "Console context must be \"U27 file-capture spike\" for __u27_reattach"
+  },
+  {
+    "t": 1784388932848,
+    "evt": "change",
+    "at": "window",
+    "phase": "capture",
+    "names": [
+      {
+        "name": "vanguard-test.txt",
+        "size": 19,
+        "type": "text/plain"
+      }
+    ],
+    "blocked": false,
+    "reason": "u28-passthrough"
+  },
+  {
+    "t": 1784388932852,
+    "evt": "reattach",
+    "ok": true,
+    "name": "vanguard-test.txt",
+    "size": 19,
+    "inputCount": 3,
+    "allowFlagCleared": true
+  }
+]
