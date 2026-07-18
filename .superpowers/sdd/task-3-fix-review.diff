@@ -1,0 +1,289 @@
+﻿BASE ab384ce HEAD bbcc575 (fix re-review; dist excluded)
+bbcc575 fix(ext): correct L2 char-offset reconstruction on recurring substrings; harden client/bg/pin
+ code/extension/dist/chrome-mv3/background.js       |   2 +-
+ ...offscreen-I_WCJZZc.js => offscreen-DmbA2OmB.js} | 604 ++++++++++-----------
+ code/extension/dist/chrome-mv3/offscreen.html      |   2 +-
+ code/extension/entrypoints/background.ts           |  12 +-
+ code/extension/entrypoints/offscreen/main.ts       |   9 +-
+ code/extension/src/detection/l2/client.ts          |  11 +-
+ code/extension/src/detection/l2/messages.ts        |  20 +-
+ code/extension/src/detection/l2/pin.ts             |  18 +-
+ code/extension/tests/l2-messages.test.ts           |  48 ++
+ 9 files changed, 404 insertions(+), 322 deletions(-)
+
+## Source diff
+diff --git a/code/extension/entrypoints/background.ts b/code/extension/entrypoints/background.ts
+index 0914553..289e1df 100644
+--- a/code/extension/entrypoints/background.ts
++++ b/code/extension/entrypoints/background.ts
+@@ -11,19 +11,25 @@ async function ensureOffscreen(): Promise<void> {
+     url: OFFSCREEN_URL,
+     reasons: [chrome.offscreen.Reason.WORKERS],
+     justification: 'Run on-device NER inference in a WASM worker; no data leaves the device.',
+   });
+ }
+ 
+ export default defineBackground(() => {
+   console.info('[vanguard] background alive');
+ 
+   chrome.runtime.onMessage.addListener((msg: ScanRequest, _s, sendResponse) => {
+     if (msg?.kind !== 'l2-scan') return;
+     (async () => {
+-      await ensureOffscreen();
+-      const res = (await chrome.runtime.sendMessage(msg)) as ScanResponse;
+-      sendResponse(res);
++      try {
++        await ensureOffscreen();
++        const res = (await chrome.runtime.sendMessage(msg)) as ScanResponse;
++        sendResponse(res);
++      } catch (e) {
++        // Without this, a throw becomes an unhandled rejection and the content side only
++        // sees a timeout ΓåÆ 'degraded'. Surface the real failure as an l2-result error.
++        sendResponse({ kind: 'l2-result', id: msg.id, ok: false, error: String(e) } satisfies ScanResponse);
++      }
+     })();
+     return true;
+   });
+ });
+diff --git a/code/extension/entrypoints/offscreen/main.ts b/code/extension/entrypoints/offscreen/main.ts
+index 421f930..ca6057c 100644
+--- a/code/extension/entrypoints/offscreen/main.ts
++++ b/code/extension/entrypoints/offscreen/main.ts
+@@ -49,24 +49,27 @@ async function getNer(): Promise<TokenClassificationPipeline> {
+         throw e;
+       }
+     })();
+   }
+   return nerPromise;
+ }
+ 
+ chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) => {
+   if (msg?.kind !== 'l2-scan') return;
+   (async () => {
+     try {
+       const ner = await getNer();
+-      const raw = (await ner(msg.text)) as unknown as PipelineNerToken[];
+-      // [finding] the pipeline never populates start/end (see messages.ts); reconstruct them
+-      // from the prompt text before merging into whole-entity spans.
++      // CRITICAL: default ignore_labels:['O'] drops non-entity tokens and leaves
++      // attachCharOffsets's cursor stranded on recurring substrings (wrong span). Pass
++      // ignore_labels:[] so the FULL ordered stream (entity + O) advances the cursor.
++      // Verified against transformers@3.8.1 src/pipelines.js (TokenClassificationPipeline._call
++      // and the documented example at line ~370). mergeNerTokens drops O afterward.
++      const raw = (await ner(msg.text, { ignore_labels: [] })) as unknown as PipelineNerToken[];
+       const withOffsets = attachCharOffsets(msg.text, raw);
+       const entities = mergeNerTokens(withOffsets);
+       sendResponse({ kind: 'l2-result', id: msg.id, ok: true, entities } satisfies ScanResponse);
+     } catch (e) {
+       sendResponse({ kind: 'l2-result', id: msg.id, ok: false, error: String(e) } satisfies ScanResponse);
+     }
+   })();
+   return true; // async sendResponse
+ });
+diff --git a/code/extension/src/detection/l2/client.ts b/code/extension/src/detection/l2/client.ts
+index 7352302..1ad092b 100644
+--- a/code/extension/src/detection/l2/client.ts
++++ b/code/extension/src/detection/l2/client.ts
+@@ -1,16 +1,23 @@
+ // src/detection/l2/client.ts
+ //
+ // Content-side client. Never imports `@huggingface/transformers` (resolution #7) ΓÇö only the
+ // typed message contract.
+ import type { L2Entity, ScanRequest, ScanResponse } from './messages';
+ 
+ export async function l2Scan(text: string, timeoutMs: number): Promise<L2Entity[] | 'degraded'> {
+   const id = crypto.randomUUID();
+   const req: ScanRequest = { kind: 'l2-scan', id, text };
+-  const timeout = new Promise<'degraded'>((r) => setTimeout(() => r('degraded'), timeoutMs));
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  const timeout = new Promise<'degraded'>((r) => {
++    timer = setTimeout(() => r('degraded'), timeoutMs);
++  });
+   const call = chrome.runtime
+     .sendMessage(req)
+     .then((res: ScanResponse) => (res.ok ? res.entities : ('degraded' as const)))
+     .catch(() => 'degraded' as const);
+-  return Promise.race([call, timeout]);
++  try {
++    return await Promise.race([call, timeout]);
++  } finally {
++    if (timer !== undefined) clearTimeout(timer);
++  }
+ }
+diff --git a/code/extension/src/detection/l2/messages.ts b/code/extension/src/detection/l2/messages.ts
+index f9df7e8..7c6cc15 100644
+--- a/code/extension/src/detection/l2/messages.ts
++++ b/code/extension/src/detection/l2/messages.ts
+@@ -45,35 +45,39 @@ export function mergeNerTokens(tokens: RawNerToken[]): L2Entity[] {
+ // --- Character-offset reconstruction ------------------------------------------------------
+ //
+ // [finding, verified against node_modules @huggingface/transformers@3.8.1 source] The installed
+ // transformers.js v3 token-classification pipeline's `_call` (src/pipelines.js) never sets
+ // `start`/`end` on its output tokens ΓÇö the two fields are declared `start?`/`end?` in its own
+ // typedef and the implementation still carries the literal comment
+ // `// TODO: Add support for start and end`. The tokenizer has no `return_offsets_mapping` support
+ // either. So the raw pipeline output is `{ entity, score, index, word }` ΓÇö no character
+ // positions ΓÇö even though `mergeNerTokens` above (and everything downstream that masks by
+ // position rather than by `text`) needs real offsets.
+ //
+ // This reconstructs them by walking the prompt text left-to-right and locating each decoded
+-// token's text, stripping the WordPiece continuation prefix ("##") before searching. It is the
+-// same fallback technique used when a fast tokenizer's offset mapping isn't available. Known
+-// limitation: `text.indexOf` can misalign on a token that recurs before its true position, or on
+-// tokenizer-side Unicode normalization that changes a character's byte form (rare for a *cased*
+-// tokenizer, which ΓÇö unlike an uncased one ΓÇö does not lowercase or strip accents). A token whose
+-// search fails is dropped rather than guessed: silent recall loss on one mention, never a wrong
+-// span written back into the composer.
++// token's text, stripping the WordPiece continuation prefix ("##") before searching.
++//
++// ≡ƒö┤ CRITICAL invariant: `tokens` MUST be the FULL ordered stream (entity + O + subword), in
++// sequence order. The pipeline defaults to `ignore_labels: ['O']`, which drops non-entity tokens
++// and leaves the cursor stranded ΓÇö `indexOf(piece, cursor)` then lands on the FIRST occurrence of
++// a recurring word even when the tagged mention is a later one (wrong span reported as ok). The
++// offscreen caller passes `ignore_labels: []` so O tokens advance the cursor between entities.
++// Special tokens whose `word` is not a text substring (`[CLS]`/`[SEP]`) return -1 and are dropped
++// WITHOUT advancing the cursor ΓÇö they sit at boundaries and are not text content.
++// `mergeNerTokens` then drops non-KEEP labels (including O) after offsets are attached.
+ export type PipelineNerToken = { entity: string; word: string };
+ 
+ export function attachCharOffsets(text: string, tokens: PipelineNerToken[]): RawNerToken[] {
+   const out: RawNerToken[] = [];
+   let cursor = 0;
+   for (const t of tokens) {
+     const isContinuation = t.word.startsWith('##');
+     const piece = isContinuation ? t.word.slice(2) : t.word;
+     if (!piece) continue;
+     const idx = text.indexOf(piece, cursor);
+-    if (idx === -1) continue; // can't align this token to the text; drop rather than guess a span
++    // Unalignable (special tokens, normalization misses): drop WITHOUT advancing cursor.
++    if (idx === -1) continue;
+     out.push({ entity: t.entity, start: idx, end: idx + piece.length, word: t.word });
+     cursor = idx + piece.length;
+   }
+   return out;
+ }
+diff --git a/code/extension/src/detection/l2/pin.ts b/code/extension/src/detection/l2/pin.ts
+index 47a0217..3804be9 100644
+--- a/code/extension/src/detection/l2/pin.ts
++++ b/code/extension/src/detection/l2/pin.ts
+@@ -1,38 +1,52 @@
+ // src/detection/l2/pin.ts
+ //
+ // Verify each pinned model file's SHA-256 BEFORE transformers.js loads it, then seed the browser
+ // Cache so transformers.js reads our verified bytes instead of re-fetching (doc 05 ┬º7; ADR 0017
+-// weights row). Hash-pinning is the security invariant here: this function fetches, hashes, and
+-// THROWS on mismatch, fail-closed. It never silently downgrades to "load anyway".
++// weights row). Hash-pinning is the security invariant here: this function hashes and THROWS on
++// mismatch, fail-closed. It never silently downgrades to "load anyway".
++//
++// Offscreen documents get reclaimed (ADR 0006); on respawn we re-verify. Prefer the already-
++// seeded transformers-cache entry when present ΓÇö hash the cached bytes (still fail-closed) and
++// skip the network fetch. Network fetch only on a cache miss.
+ import manifest from '../../../models.manifest.json';
+ 
+ // VERIFIED against node_modules/@huggingface/transformers@3.8.1/src/{env.js,utils/hub.js}:
+ //   env.remoteHost = 'https://huggingface.co/'
+ //   env.remotePathTemplate = '{model}/resolve/{revision}/'   (revision defaults to 'main')
+ // hub.js builds `remoteURL = pathJoin(remoteHost, remotePathTemplate..., filename)`, and ΓÇö when
+ // `env.useBrowserCache = true` and the cache is not a FileCache (i.e. it's the browser Cache API
+ // via `caches.open('transformers-cache')`) ΓÇö that exact `remoteURL` string is the cache key
+ // (`proposedCacheKey`) it looks up with `cache.match(...)`. So `fileUrl` below must byte-for-byte
+ // match `pathJoin('https://huggingface.co/', '{model}/resolve/main/', file)`, which it does.
+ const HOST = 'https://huggingface.co';
+ const fileUrl = (modelId: string, file: string) => `${HOST}/${modelId}/resolve/main/${file}`;
+ 
+ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
+   const d = await crypto.subtle.digest('SHA-256', buf);
+   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+ }
+ 
+ export async function verifyPinnedModel(modelId: string): Promise<void> {
+   const files = (manifest as Record<string, Record<string, string>>)[modelId];
+   if (!files) throw new Error(`no pin manifest for ${modelId}`);
+   const cache = await caches.open('transformers-cache');
+   for (const [file, expected] of Object.entries(files)) {
+     const url = fileUrl(modelId, file);
++
++    const cached = await cache.match(url);
++    if (cached) {
++      const bytes = await cached.arrayBuffer();
++      const got = await sha256Hex(bytes);
++      if (got !== expected) throw new Error(`hash mismatch for ${file} (cached): ${got} != ${expected}`);
++      // Cached bytes verified ΓÇö do not re-fetch. transformers.js will reuse the same cache key.
++      continue;
++    }
++
+     const res = await fetch(url, { cache: 'no-store' });
+     if (!res.ok) throw new Error(`fetch ${file} failed: ${res.status}`);
+     const bytes = await res.clone().arrayBuffer();
+     const got = await sha256Hex(bytes);
+     if (got !== expected) throw new Error(`hash mismatch for ${file}: ${got} != ${expected}`);
+     await cache.put(url, new Response(bytes, { headers: res.headers }));
+   }
+ }
+diff --git a/code/extension/tests/l2-messages.test.ts b/code/extension/tests/l2-messages.test.ts
+index 14716fc..6c8fdb6 100644
+--- a/code/extension/tests/l2-messages.test.ts
++++ b/code/extension/tests/l2-messages.test.ts
+@@ -49,13 +49,61 @@ describe('attachCharOffsets', () => {
+       { entity: 'B-ORG', start: 29, end: 34, word: 'Apple' },
+     ]);
+   });
+ 
+   it('drops a token it cannot align rather than guessing a span', () => {
+     const tokens = attachCharOffsets('hello world', [
+       { entity: 'O', word: 'hello' },
+       { entity: 'O', word: 'nowhere-in-text' },
+       { entity: 'O', word: 'world' },
+     ]);
+     expect(tokens.map((t) => t.word)).toEqual(['hello', 'world']);
+   });
++
++  // CRITICAL regression: recurring substring + entity-only stream (pipeline default
++  // ignore_labels:['O']) mislocates the tagged mention onto the FIRST occurrence.
++  // Production must pass the FULL ordered stream (ignore_labels:[]) so O tokens advance
++  // the cursor. This test uses the production-shaped full stream and asserts the LATER
++  // occurrence; the companion check below documents that entity-only is wrong.
++  it('points at the later occurrence of a recurring word when given the full ordered stream', () => {
++    // "I love Apple and my friend has an apple; call Apple Inc"
++    //  indices:         ^7                           ^46
++    const text = 'I love Apple and my friend has an apple; call Apple Inc';
++    const firstApple = text.indexOf('Apple'); // 7
++    const lastApple = text.lastIndexOf('Apple'); // 46
++    expect(firstApple).toBe(7);
++    expect(lastApple).toBe(46);
++
++    // Entity-only stream (old production shape) ΓÇö MUST land on the WRONG (first) span.
++    const entityOnly = attachCharOffsets(text, [{ entity: 'B-ORG', word: 'Apple' }]);
++    expect(entityOnly[0]!.start).toBe(firstApple);
++    expect(entityOnly[0]!.start).not.toBe(lastApple);
++
++    // Full ordered stream as the real pipeline emits with ignore_labels:[] ΓÇö O tokens
++    // between the three "Apple"/"apple" mentions advance the cursor past the early ones.
++    const fullStream = attachCharOffsets(text, [
++      { entity: 'O', word: 'I' },
++      { entity: 'O', word: 'love' },
++      { entity: 'O', word: 'Apple' }, // first Apple ΓÇö not the tagged entity
++      { entity: 'O', word: 'and' },
++      { entity: 'O', word: 'my' },
++      { entity: 'O', word: 'friend' },
++      { entity: 'O', word: 'has' },
++      { entity: 'O', word: 'an' },
++      { entity: 'O', word: 'apple' }, // lowercase apple ΓÇö not the tagged entity
++      { entity: 'O', word: ';' },
++      { entity: 'O', word: 'call' },
++      { entity: 'B-ORG', word: 'Apple' }, // the tagged mention ΓÇö LATER occurrence
++      { entity: 'I-ORG', word: 'Inc' },
++    ]);
++    const orgTokens = fullStream.filter((t) => t.entity.endsWith('ORG'));
++    expect(orgTokens).toEqual([
++      { entity: 'B-ORG', start: lastApple, end: lastApple + 5, word: 'Apple' },
++      { entity: 'I-ORG', start: lastApple + 6, end: lastApple + 9, word: 'Inc' },
++    ]);
++    // End-to-end: merge must also land on the later span, not the first.
++    const merged = mergeNerTokens(fullStream);
++    expect(merged).toEqual([
++      { type: 'ORG', start: lastApple, end: lastApple + 9, text: 'Apple Inc' },
++    ]);
++  });
+ });

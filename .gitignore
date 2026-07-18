@@ -1,5 +1,5 @@
 .claude/settings.local.json
-
+.superdesign/tmp/
 .worktrees/
 
 ml/artifacts/
@@ -7,4 +7,3 @@ ml/artifacts/
 *.pt
 *.bin
 *.safetensors
-

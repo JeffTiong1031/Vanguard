@@ -7,7 +7,7 @@
 |---|---|---|
 | [`spikes/u12-harness/`](spikes/u12-harness/) | 🔴 **U12-a/b/c against real ChatGPT + Claude.** Raw MV3, **zero build, zero dependencies.** | ✅ **LIVE. Run it.** |
 | [`spikes/u21a-fertility/`](spikes/u21a-fertility/) | 🟢 **U21-a — stock-vocabulary fertility.** Public raw text, an afternoon. | ✅ **LIVE. Verified end-to-end.** |
-| [`extension/`](extension/) | The doc 01 §2 component skeleton. WXT + TypeScript. | ⬜ **STUBS.** Shape only. |
+| [`extension/`](extension/) | Slice 1 chat-text extension (WXT). L1 + L2, committed `dist/`. | ✅ **TEAM-TEST BUILD** — see [`extension/README.md`](extension/README.md) |
 | [`backend/`](backend/) | ADR 0007's FastAPI service — policy, dictionary, hashed audit ingest. | ⬜ **STUB.** |
 
 ---

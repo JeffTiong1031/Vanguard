@@ -1,0 +1,64 @@
+BASE: a444251197f44751faf49706a2f362f5cd45dbba
+HEAD: c564499ccb776b61aa4b45fdc2bdd87e3602d747
+
+=== COMMITS ===
+c564499 feat(ext): single-use hash-bound approval token with TTL and edit invalidation
+
+=== STAT ===
+ code/extension/src/gate/approval-token.ts   | 19 +++++++++++++++++++
+ code/extension/tests/approval-token.test.ts | 21 +++++++++++++++++++++
+ 2 files changed, 40 insertions(+)
+
+=== DIFF -U10 ===
+diff --git a/code/extension/src/gate/approval-token.ts b/code/extension/src/gate/approval-token.ts
+new file mode 100644
+index 0000000..b30bd7e
+--- /dev/null
++++ b/code/extension/src/gate/approval-token.ts
+@@ -0,0 +1,19 @@
++export class ApprovalStore {
++  private hash: string | null = null;
++  private expiresAt = 0;
++  approve(rewrittenHash: string, ttlMs: number): void {
++    this.hash = rewrittenHash;
++    this.expiresAt = Date.now() + ttlMs;
++  }
++  private live(): boolean {
++    if (this.hash && Date.now() > this.expiresAt) this.hash = null;
++    return this.hash != null;
++  }
++  currentHash(): string | null { return this.live() ? this.hash : null; }
++  consumeIfMatch(hash: string): boolean {
++    if (!this.live() || this.hash !== hash) return false;
++    this.hash = null; // burn: single-use
++    return true;
++  }
++  invalidate(): void { this.hash = null; } // called on any composer edit
++}
+diff --git a/code/extension/tests/approval-token.test.ts b/code/extension/tests/approval-token.test.ts
+new file mode 100644
+index 0000000..b5eebc1
+--- /dev/null
++++ b/code/extension/tests/approval-token.test.ts
+@@ -0,0 +1,21 @@
++import { describe, it, expect, vi } from 'vitest';
++import { ApprovalStore } from '../src/gate/approval-token';
++
++describe('ApprovalStore', () => {
++  it('matches once then is consumed', () => {
++    const s = new ApprovalStore(); s.approve('h', 60_000);
++    expect(s.consumeIfMatch('h')).toBe(true);
++    expect(s.consumeIfMatch('h')).toBe(false); // single-use
++  });
++  it('does not match a different hash (an edit changes the hash)', () => {
++    const s = new ApprovalStore(); s.approve('h', 60_000);
++    expect(s.consumeIfMatch('h2')).toBe(false);
++    expect(s.currentHash()).toBe('h'); // unconsumed by a miss
++  });
++  it('expires after its TTL', () => {
++    vi.useFakeTimers(); const s = new ApprovalStore(); s.approve('h', 1000);
++    vi.advanceTimersByTime(1001);
++    expect(s.consumeIfMatch('h')).toBe(false);
++    vi.useRealTimers();
++  });
++});

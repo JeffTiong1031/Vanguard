@@ -1,0 +1,80 @@
+﻿BASE 2788d28 HEAD 93c26b4
+93c26b4 feat(ext): synchronous verdict cache, monotonic toward dirty
+ code/extension/src/detection/hash.ts          |  7 ++++++
+ code/extension/src/detection/verdict-cache.ts | 17 ++++++++++++++
+ code/extension/tests/verdict-cache.test.ts    | 32 +++++++++++++++++++++++++++
+ 3 files changed, 56 insertions(+)
+diff --git a/code/extension/src/detection/hash.ts b/code/extension/src/detection/hash.ts
+new file mode 100644
+index 0000000..22fb59a
+--- /dev/null
++++ b/code/extension/src/detection/hash.ts
+@@ -0,0 +1,7 @@
++export async function sha256Hex(s: string): Promise<string> {
++  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
++  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
++}
++export async function saltedFingerprint(text: string, salt: string): Promise<string> {
++  return (await sha256Hex(salt + '\0' + text)).slice(0, 16); // 64-bit prefix; never reversible to text
++}
+diff --git a/code/extension/src/detection/verdict-cache.ts b/code/extension/src/detection/verdict-cache.ts
+new file mode 100644
+index 0000000..736433b
+--- /dev/null
++++ b/code/extension/src/detection/verdict-cache.ts
+@@ -0,0 +1,17 @@
++import type { Finding } from './l1/types';
++export type Verdict = { state: 'CLEAN' | 'DIRTY'; findings: Finding[]; complete: boolean };
++
++export class VerdictCache {
++  private m = new Map<string, Verdict>();
++  getSync(hash: string): Verdict | undefined { return this.m.get(hash); }
++  setDirty(hash: string, findings: Finding[]): void {
++    this.m.set(hash, { state: 'DIRTY', findings, complete: false });
++  }
++  setClean(hash: string, findings: Finding[]): void {
++    if (this.m.get(hash)?.state === 'DIRTY') return; // monotonic: never DIRTY -> CLEAN except via full scan
++    this.m.set(hash, { state: 'CLEAN', findings, complete: true });
++  }
++  markComplete(hash: string): void {
++    const v = this.m.get(hash); if (v) v.complete = true;
++  }
++}
+diff --git a/code/extension/tests/verdict-cache.test.ts b/code/extension/tests/verdict-cache.test.ts
+new file mode 100644
+index 0000000..3c557af
+--- /dev/null
++++ b/code/extension/tests/verdict-cache.test.ts
+@@ -0,0 +1,32 @@
++import { describe, it, expect } from 'vitest';
++import { VerdictCache } from '../src/detection/verdict-cache';
++import { saltedFingerprint } from '../src/detection/hash';
++
++describe('VerdictCache monotonic-toward-dirty', () => {
++  it('setClean does not overwrite an existing DIRTY (ADR 0013)', () => {
++    const c = new VerdictCache();
++    c.setDirty('h', [{ cls: 'NRIC', start: 0, end: 1, text: 'x' }]);
++    c.setClean('h', []);
++    expect(c.getSync('h')!.state).toBe('DIRTY');
++  });
++  it('a fresh hash is undefined (cold cache -> caller must treat as unknown)', () => {
++    expect(new VerdictCache().getSync('nope')).toBeUndefined();
++  });
++  it('setClean on a cold hash sets CLEAN with complete:true', () => {
++    const c = new VerdictCache();
++    c.setClean('cold', []);
++    const v = c.getSync('cold')!;
++    expect(v.state).toBe('CLEAN');
++    expect(v.complete).toBe(true);
++  });
++});
++
++describe('saltedFingerprint', () => {
++  it('returns a 16-char hex string and different salts yield different fingerprints', async () => {
++    const fp1 = await saltedFingerprint('hello', 'salt-a');
++    const fp2 = await saltedFingerprint('hello', 'salt-b');
++    expect(fp1).toMatch(/^[0-9a-f]{16}$/);
++    expect(fp2).toMatch(/^[0-9a-f]{16}$/);
++    expect(fp1).not.toBe(fp2);
++  });
++});

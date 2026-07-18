@@ -1,0 +1,149 @@
+BASE: a2866822ac7034d531c84f9325953508ac4d1d34
+HEAD: 602d04e42c1381964201dd1cd0df57393d2e8b8b
+
+=== COMMITS ===
+602d04e fix(ext): redact ignore reasons and serialize audit storage writes
+9ba13c8 feat(ext): local salted-hash audit and Ignore-rate-per-class (no raw values)
+
+=== STAT ===
+ code/extension/src/audit/audit.ts  | 54 +++++++++++++++++++++++++++++
+ code/extension/tests/audit.test.ts | 70 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 124 insertions(+)
+
+=== DIFF -U10 ===
+diff --git a/code/extension/src/audit/audit.ts b/code/extension/src/audit/audit.ts
+new file mode 100644
+index 0000000..695d6d0
+--- /dev/null
++++ b/code/extension/src/audit/audit.ts
+@@ -0,0 +1,54 @@
++import type { Finding } from '../detection/l1/types';
++import { saltedFingerprint } from '../detection/hash';
++
++type Row = { cls: string; fp: string; ignored: boolean; reason?: string; t: number };
++const KEY = 'vg_audit';
++let saltInitialization: Promise<string> | undefined;
++let appendChain: Promise<void> = Promise.resolve();
++
++function salt(): Promise<string> {
++  if (!saltInitialization) {
++    saltInitialization = (async () => {
++      const got = (await chrome.storage.local.get('vg_salt')).vg_salt as string | undefined;
++      if (got) return got;
++      const s = crypto.randomUUID();
++      await chrome.storage.local.set({ vg_salt: s });
++      return s;
++    })().finally(() => { saltInitialization = undefined; });
++  }
++  return saltInitialization;
++}
++function append(rows: Row[]): Promise<void> {
++  const operation = appendChain.then(async () => {
++    const cur = ((await chrome.storage.local.get(KEY))[KEY] as Row[] | undefined) ?? [];
++    await chrome.storage.local.set({ [KEY]: [...cur, ...rows] });
++  });
++  appendChain = operation.catch(() => undefined);
++  return operation;
++}
++async function toRows(findings: Finding[], ignored: boolean, reason?: string): Promise<Row[]> {
++  const s = await salt();
++  return Promise.all(findings.map(async (f) => ({
++    cls: f.cls, fp: await saltedFingerprint(f.text, s), ignored, reason, t: Date.now(),
++  })));
++}
++function redactReason(reason: string, findings: Finding[]): string {
++  return findings.reduce(
++    (redacted, finding) => finding.text ? redacted.split(finding.text).join('') : redacted,
++    reason,
++  );
++}
++export async function recordFindings(findings: Finding[]): Promise<void> { await append(await toRows(findings, false)); }
++export async function recordIgnore(findings: Finding[], reason: string): Promise<void> {
++  await append(await toRows(findings, true, redactReason(reason, findings)));
++}
++export async function ignoreRateByClass(): Promise<Record<string, { flagged: number; ignored: number }>> {
++  const rows = ((await chrome.storage.local.get(KEY))[KEY] as Row[] | undefined) ?? [];
++  const out: Record<string, { flagged: number; ignored: number }> = {};
++  for (const r of rows) {
++    out[r.cls] ??= { flagged: 0, ignored: 0 };
++    if (r.ignored) out[r.cls]!.ignored++;
++    else out[r.cls]!.flagged++;
++  }
++  return out;
++}
+diff --git a/code/extension/tests/audit.test.ts b/code/extension/tests/audit.test.ts
+new file mode 100644
+index 0000000..b3244b2
+--- /dev/null
++++ b/code/extension/tests/audit.test.ts
+@@ -0,0 +1,70 @@
++import { describe, it, expect, beforeEach, vi } from 'vitest';
++
++const store: Record<string, unknown> = {};
++const writes: Record<string, unknown>[] = [];
++let overlapAuditGets = false;
++let auditGetCount = 0;
++let releaseAuditGets: (() => void) | undefined;
++vi.stubGlobal('chrome', {
++  storage: { local: {
++    get: async (k: string) => {
++      if (overlapAuditGets && k === 'vg_audit') {
++        auditGetCount++;
++        if (auditGetCount === 2) releaseAuditGets?.();
++        else await new Promise<void>((resolve) => {
++          releaseAuditGets = resolve;
++          setTimeout(resolve, 10);
++        });
++      }
++      return { [k]: store[k] };
++    },
++    set: async (o: Record<string, unknown>) => {
++      writes.push(o);
++      Object.assign(store, o);
++    },
++  } },
++});
++
++import { recordFindings, recordIgnore, ignoreRateByClass } from '../src/audit/audit';
++
++describe('audit', () => {
++  beforeEach(() => {
++    for (const k of Object.keys(store)) delete store[k];
++    writes.length = 0;
++    overlapAuditGets = false;
++    auditGetCount = 0;
++    releaseAuditGets = undefined;
++  });
++  it('never persists the raw finding text', async () => {
++    await recordFindings([{ cls: 'PERSON', start: 0, end: 5, text: 'Ahmad' }]);
++    expect(JSON.stringify(store)).not.toContain('Ahmad');
++  });
++  it('redacts raw finding text from an ignore reason', async () => {
++    await recordIgnore(
++      [{ cls: 'PERSON', start: 0, end: 5, text: 'Ahmad' }],
++      'Ahmad is a public figure',
++    );
++    expect(JSON.stringify(store)).not.toContain('Ahmad');
++  });
++  it('initializes one salt for concurrent callers', async () => {
++    await Promise.all([
++      recordFindings([{ cls: 'PERSON', start: 0, end: 5, text: 'Ahmad' }]),
++      recordFindings([{ cls: 'ORG', start: 0, end: 5, text: 'Apple' }]),
++    ]);
++    expect(writes.filter((write) => 'vg_salt' in write)).toHaveLength(1);
++  });
++  it('preserves rows from overlapping audit calls', async () => {
++    overlapAuditGets = true;
++    await Promise.all([
++      recordFindings([{ cls: 'PERSON', start: 0, end: 5, text: 'Ahmad' }]),
++      recordIgnore([{ cls: 'ORG', start: 0, end: 5, text: 'Apple' }], 'public company'),
++    ]);
++    expect(store.vg_audit).toHaveLength(2);
++  });
++  it('computes ignore-rate per class', async () => {
++    await recordFindings([{ cls: 'ORG', start: 0, end: 5, text: 'Apple' }]);
++    await recordIgnore([{ cls: 'ORG', start: 0, end: 5, text: 'Apple' }], 'public company');
++    const r = await ignoreRateByClass();
++    expect(r.ORG).toEqual({ flagged: 1, ignored: 1 });
++  });
++});
