@@ -30,6 +30,11 @@ export class FileStore {
     return [...this.items.values()];
   }
 
+  /** True while we still hold bytes the provider has not been given. */
+  hasHeld(): boolean {
+    return this.items.size > 0;
+  }
+
   update(id: string, patch: Partial<Omit<HeldFile, 'id' | 'file'>>): void {
     const cur = this.items.get(id);
     if (!cur) return;

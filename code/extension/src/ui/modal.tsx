@@ -351,7 +351,9 @@ export function Modal({
           </h2>
           <p style={shell.sub}>
             {totalPending === 0
-              ? 'All items resolved. Proceed writes the result into the composer — you press Send.'
+              ? panes.every((p) => p.state === 'clean')
+                ? 'Prompt and files look clean. Proceed attaches them — you press Send.'
+                : 'All items resolved. Proceed writes the result into the composer — you press Send.'
               : `${totalPending} item${totalPending === 1 ? '' : 's'} still need Accept or Ignore. Hover a red underline.`}
           </p>
         </header>

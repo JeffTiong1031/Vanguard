@@ -16,8 +16,10 @@ import { createComposerHints } from '../src/ui/composer-hints';
 import { clearChips, renderChips, showRedactionFailure } from '../src/ui/file-chip';
 import {
   hideModal,
+  hideOversizedDialog,
   hideProtectionDegraded,
   showModal,
+  showOversizedDialog,
   showProtectionDegraded,
 } from '../src/ui/mount';
 import { debounce } from '../src/util/debounce';
@@ -51,6 +53,34 @@ export default defineContentScript({
     installFileCapture({
       onFiles: (picked) => {
         for (const file of picked) {
+          // Oversize: never enter the FileStore / "Not checked" chip path.
+          // Ask immediately; Proceed re-attaches unchecked, Decline drops it.
+          // Either way Send later only reviews the prompt (and any other held files).
+          if (file.size > CLIENT_LIMITS.maxUploadBytes) {
+            showOversizedDialog({
+              fileName: file.name,
+              sizeBytes: file.size,
+              onProceed: () => {
+                hideOversizedDialog();
+                const input = adapter.fileInputs()[0];
+                if (input) attachFiles(input, [file]);
+                else {
+                  showRedactionFailure(
+                    "Vanguard couldn't attach this file to the page. Please reload the tab and try again.",
+                  );
+                }
+                void recordIgnore(
+                  [{ cls: 'PERSON', start: 0, end: 0, text: '' }],
+                  'file_unchecked:too_large: user trusted and attached without scan',
+                );
+              },
+              onDecline: () => {
+                hideOversizedDialog();
+              },
+            });
+            continue;
+          }
+
           const id = files.add(file);
           // Scan starts at ATTACH, not at Send. By the time the user finishes
           // typing, the File pane is usually already populated -- the
@@ -88,12 +118,16 @@ export default defineContentScript({
         || adapter.isSendControl(path),
       hashOf: (text) => hashes.get(text) ?? COLD_HASH,
       approvedHash: () => approvals.currentHash(),
-      filesResolved: () => files.allResolved(),
+      hasHeldFiles: () => files.hasHeld(),
       onBlocked: async (text) => {
         if (cache.getSync(hashes.get(text) ?? '') == null) await scan(text);
         const verdict = cache.getSync(hashes.get(text) ?? '');
         const promptDirty = verdict?.state === 'DIRTY';
-        if (!promptDirty && files.allResolved()) return;
+
+        // Always open review when we hold a file — including the all-clean
+        // case. Silent re-attach felt like "nothing happened" and skipped the
+        // same Proceed confirmation dirty files get. Attach only on Proceed.
+        if (!promptDirty && !files.hasHeld()) return;
 
         showModal({
           text,

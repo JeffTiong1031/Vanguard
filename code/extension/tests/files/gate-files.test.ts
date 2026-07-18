@@ -47,12 +47,36 @@ describe('the gate with files held', () => {
       isSendIntent: () => true,
       hashOf: () => 'h',
       approvedHash: () => null,
-      filesResolved: () => store.allResolved(),
+      hasHeldFiles: () => store.hasHeld(),
       onBlocked,
     });
 
     const event = fireEnter();
 
+    expect(onBlocked).toHaveBeenCalled();
+    expect(event.preventDefault).toHaveBeenCalled();
+  });
+
+  it('blocks Send on a CLEAN prompt when a clean file is Checked but not yet handed off', () => {
+    const cache = new VerdictCache();
+    const store = new FileStore();
+    const id = store.add(new File(['hello'], 'clean.txt'));
+    store.update(id, { status: { kind: 'scanned' }, findings: [], decisions: new Map() });
+
+    const onBlocked = vi.fn();
+    cache.setClean('h', []);
+
+    installGate({
+      cache,
+      getComposerText: () => 'a clean prompt',
+      isSendIntent: () => true,
+      hashOf: () => 'h',
+      approvedHash: () => null,
+      hasHeldFiles: () => store.hasHeld(),
+      onBlocked,
+    });
+
+    const event = fireEnter();
     expect(onBlocked).toHaveBeenCalled();
     expect(event.preventDefault).toHaveBeenCalled();
   });
@@ -68,7 +92,7 @@ describe('the gate with files held', () => {
       isSendIntent: () => true,
       hashOf: () => 'h',
       approvedHash: () => null,
-      filesResolved: () => true,
+      hasHeldFiles: () => false,
       onBlocked,
     });
 

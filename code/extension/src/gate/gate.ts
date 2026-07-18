@@ -13,8 +13,12 @@ export type GateDeps = {
   isSendIntent: (e: Event, path: EventTarget[]) => boolean;
   hashOf: (text: string) => string;          // sync hash lookup memoized by the scanner
   approvedHash: () => string | null;
-  /** When false, block even on a clean approved prompt — a held file still scanning. */
-  filesResolved?: () => boolean;
+  /**
+   * When true, block even on a CLEAN prompt. Held files were intercepted at
+   * attach and the provider never received them — Send must hand them off
+   * (reattach) first. Covers scanning, review, AND clean-checked files.
+   */
+  hasHeldFiles?: () => boolean;
   onBlocked: (text: string) => void;
 };
 
@@ -53,7 +57,10 @@ export function installGate(deps: GateDeps): void {
     if (!deps.isSendIntent(e, path)) return;
     const text = deps.getComposerText(path);
     if (text == null) return;
-    if (deps.filesResolved && !deps.filesResolved()) {
+    // Files first: a clean prompt + clean file used to PASS the gate and send
+    // with nothing attached (provider never got the intercept). Handoff lives
+    // in onBlocked — including the no-modal path for all-clean files.
+    if (deps.hasHeldFiles?.()) {
       e.stopImmediatePropagation();
       e.preventDefault();
       deps.onBlocked(text);

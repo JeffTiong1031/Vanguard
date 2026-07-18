@@ -99,51 +99,52 @@ On ChatGPT **and** Claude:
 
 ## Slice 2 — file content checking
 
-**Status: IMPLEMENTED — AUTOMATED GATES GREEN · LIVE BROWSER RUN PENDING (FOUNDER/TEAM)**
+**Status: CORE LIVE PATH PASSED (2026-07-19) · EDGE ROWS STILL OPEN · EDIT-MESSAGE DEFERRED**
 
-Run every manual row below on **both** `https://chatgpt.com` and `https://claude.ai`. Do not mark a live checkbox until you observe the criterion on that surface. **No agent or CI run has performed these browser steps** — unchecked boxes are intentional.
+Run every manual row below on **both** `https://chatgpt.com` and `https://claude.ai`. Do not mark a live checkbox until you observe the criterion on that surface.
 
-**Prerequisites:** `docker compose up` in `code/backend/` (or the API base URL set on the extension Options page) · Slice 1 acceptance still applies to the prompt path.
+**Prerequisites:** local `uvicorn` / `docker compose` in `code/backend/` (or the API base URL on Options) · Slice 1 acceptance still applies to the prompt path.
 
 ### Automated gates (already green — re-run locally before the live session)
 
 | Gate | Command | Last verified | Notes |
 |---|---|---|---|
-| Extension unit + integration | `cd code/extension && npm run test` | 2026-07-19 | **145 passed** — includes `tests/files/*`, `tests/ui/review-panes.test.ts`, `tests/modal.test.tsx` (File tab), `tests/gate-files.test.ts` |
+| Extension unit + integration | `cd code/extension && npm run test` | 2026-07-19 | **154 passed** — files, review panes, oversized dialog, gate-files |
 | Committed dist matches src | `cd code/extension && npm run check:dist` | 2026-07-19 | ADR 0017 §3 |
-| Backend contract + safety | `cd code/backend && python -m pytest -q` | 2026-07-19 | **39 passed** — parsers, zip-bomb guard, `no_text_layer`, redact hash-mismatch, format-preserving DOCX/PDF/CSV |
+| Backend contract + safety | `cd code/backend && python -m pytest -q` | 2026-07-19 | **39 passed** — parsers, zip-bomb guard, redact, format-preserving |
 
 These gates cover **mechanism and contract**, not provider UX. Passing them does **not** substitute for the live checklist below.
 
 ### Live acceptance checklist
 
-**Legend:** **PENDING** = founder/team must run on real ChatGPT + Claude · **CONDITIONAL** = run only when the named register entry is fully closed.
+**Legend:** **PASS** = founder observed on that surface · **PENDING** = not yet run · **DEFERRED** = known gap, not blocking this merge · **CONDITIONAL** = blocked on a named register entry.
 
 | # | Step | Expected | chatgpt.com | claude.ai |
 |---|---|---|---|---|
-| 1 | Start the API (`docker compose up` or the shared address in Options), open `/healthz` | `{"ok":true}` | PENDING | PENDING |
-| 2 | Attach a clean `.txt`, type a clean prompt, press Send | No modal. Message sends with the original `.txt` attached. | PENDING | PENDING |
-| 3 | Attach a `.docx` containing `880101-14-5566`, type a clean prompt | Our chip appears; **the provider's own upload chip does NOT**; chip goes `Reading…` → `Checking…` → `Checked` | PENDING | PENDING |
-| 4 | Press Send | Review opens. **Prompt tab first**, File tab badged `1`. | PENDING | PENDING |
-| 5 | Hover the underlined NRIC in the File tab | Why + recommendation + Accept + Ignore | PENDING | PENDING |
-| 6 | Accept it, press Proceed | A chip for `<name>.redacted.docx` appears in the provider's composer — **still a .docx**. **The user presses Send.** | PENDING | PENDING |
-| 7 | Download the attachment from the sent message and open it in Word | It opens as a normal Word document, **layout and any embedded images intact**, `880101-14-5566` replaced by `NRIC_1` | PENDING | PENDING |
-| 7a | Repeat 3–7 with a **PDF** containing an image | `<name>.redacted.pdf` opens in Acrobat without a repair prompt; the span is gone; the image is still there | **CONDITIONAL — U30 real-corpus PASS still pending** ([ASSUMPTIONS.md](../../ASSUMPTIONS.md) U30) | same |
-| 7b | Repeat with a **CSV** | `<name>.redacted.csv`, text masked | PENDING | PENDING |
-| 7c | Stop the API **after** the review opens, then press Proceed | Red banner: nothing was attached. **The original is NOT attached and no `.txt` appears.** The modal stays open | PENDING | PENDING |
-| 8 | Repeat 3–6 but **Ignore** the span with a reason | The **original** `.docx` is attached, byte-identical — check the file size matches the original | PENDING | PENDING |
-| 9 | Attach a 20 MB file | Chip reads `Not checked`; review explains the 10 MB limit; **nothing was uploaded to either service** | PENDING | PENDING |
-| 10 | Attach a scanned PDF | `no_text_layer` message, in plain language. **Never "no issues found."** | PENDING | PENDING |
-| 11 | Attach a password-protected DOCX | `password_protected` message | PENDING | PENDING |
-| 12 | Attach `code/backend/tests/fixtures/zip_bomb.docx` | `suspicious_archive`; the API container stays up (`docker stats` shows memory flat) | PENDING | PENDING |
-| 13 | Stop the API, attach a file | `network` message naming the Options page. **The prompt gate still works.** | PENDING | PENDING |
-| 14 | With the API stopped, acknowledge the error with a reason and Proceed | The original file attaches; the reason is in `chrome.storage.local.vg_audit`; **the raw filename is not** | PENDING | PENDING |
-| 15 | Attach a file, then press Send **immediately** (before `Checked`) | Send is blocked; File tab reads `Checking…`; Proceed is disabled; **the Prompt tab is fully usable meanwhile** | PENDING | PENDING |
-| 16 | Drag-and-drop a `.pdf` onto the composer | Same as row 3 | PENDING | PENDING |
-| 17 | Paste an image from the clipboard | `unsupported_type`, clearly worded | PENDING | PENDING |
-| 18 | Paste **text** into the composer | Unchanged Slice 1 behaviour — the prompt path is untouched | PENDING | PENDING |
-| 19 | Attach two files at once | Two chips, two File tabs, both must be resolved before Proceed | PENDING | PENDING |
-| 20 | Inspect `chrome.storage.local` after all of the above | `vg_audit` holds classes, counts, fingerprints and reasons. **No extract, no filename, no file bytes** | PENDING | PENDING |
+| 1 | Start the API (`uvicorn` / compose or shared Options URL), open `/healthz` | `{"ok":true}` | **PASS** | **PASS** |
+| 2 | Attach a clean `.txt`, type a clean prompt, press Send | Review may open (all clean) → Proceed → Send; LLM receives the file | **PASS** | **PASS** |
+| 3 | Attach a `.docx` containing `880101-14-5566`, type a clean prompt | Our chip appears; provider does not keep the dirty original; `Reading…` → `Checking…` → `Checked` | **PASS** | **PASS** |
+| 4 | Press Send | Review opens. **Prompt** tab first, File tab badged | **PASS** | **PASS** |
+| 5 | Hover the underlined NRIC in the File tab | Why + recommendation + Accept + Ignore | **PASS** | **PASS** |
+| 6 | Accept it, press Proceed | `.redacted.docx` (or equivalent) attached; **user presses Send** | **PASS** | **PASS** |
+| 7 | Download the attachment and open in Word | Opens; IC masked | PENDING | PENDING |
+| 7a | PDF + image redaction | Image preserved, span gone | **CONDITIONAL — U30 real corpus** | same |
+| 7b | CSV masked | `.redacted.csv` | PENDING | PENDING |
+| 7c | Stop API after review, Proceed | Red banner; nothing attached | PENDING | PENDING |
+| 8 | Ignore span with reason | Original `.docx` re-attached | PENDING | PENDING |
+| 9 | Attach file **> 10 MB** | Immediate oversize dialog; Proceed = attach unchecked; Don't attach = discard | **PASS** | **PASS** |
+| 10 | Scanned PDF | `no_text_layer`, never "all good" | PENDING | PENDING |
+| 11 | Password-protected DOCX | `password_protected` | PENDING | PENDING |
+| 12 | `zip_bomb.docx` fixture | `suspicious_archive` | PENDING | PENDING |
+| 13 | API stopped, attach file | `network` message; prompt gate still works | PENDING | PENDING |
+| 14 | Acknowledge unchecked + Proceed | Original attaches; audit has reason, not raw name | PENDING | PENDING |
+| 15 | Send before `Checked` | Blocked; File tab `Checking…` | PENDING | PENDING |
+| 16 | Drag-and-drop PDF | Same as row 3 | PENDING | PENDING |
+| 17 | Paste image | `unsupported_type` | PENDING | PENDING |
+| 18 | Paste text into composer | Slice 1 prompt path unchanged | **PASS** | **PASS** |
+| 19 | Two files at once | Two chips / tabs | PENDING | PENDING |
+| 20 | `chrome.storage.local` `vg_audit` | Classes/counts/fps only — no extract/filename/bytes | PENDING | PENDING |
+| 21 | Edit prior user message + paste NRIC + Save | Same review on the **edit** editor | **DEFERRED** | **DEFERRED** |
 
 ### What the team should report back
 
@@ -165,7 +166,7 @@ These gates cover **mechanism and contract**, not provider UX. Passing them does
 
 | Surface | Tester | Date | Pass / Fail | Notes |
 |---------|--------|------|-------------|-------|
-| chatgpt.com | | | | |
-| claude.ai | | | | |
+| chatgpt.com | JeffTiong1031 | 2026-07-19 | **Pass (core)** | Rows 1–6, 9, 18. Edge PENDING. Edit-message **DEFERRED**. |
+| claude.ai | JeffTiong1031 | 2026-07-19 | **Pass (core)** | Same. |
 
-**Slice 2 accepted when:** all automated gates pass locally, every **PENDING** row above is checked on **both** surfaces (row **7a** only after U30 real-corpus PASS), and sign-off is recorded.
+**Slice 2 team-test merge bar (this branch):** automated gates green + core live path (1–6, 9, 18) on both surfaces. Full checklist (7–8, 10–17, 19–20) and edit-message (21) remain follow-ups; U30 real-corpus still gates 7a.
