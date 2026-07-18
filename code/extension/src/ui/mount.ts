@@ -3,6 +3,7 @@ import { Modal, type ModalProps } from './modal';
 
 let host: HTMLElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
+let showKey = 0;
 
 export function showModal(props: ModalProps): void {
   if (!host) {
@@ -13,7 +14,8 @@ export function showModal(props: ModalProps): void {
     shadowRoot = host.attachShadow({ mode: 'closed' });
   }
 
-  render(h(Modal, props), shadowRoot!);
+  showKey += 1;
+  render(h(Modal, { ...props, key: showKey }), shadowRoot!);
 }
 
 export function hideModal(): void {

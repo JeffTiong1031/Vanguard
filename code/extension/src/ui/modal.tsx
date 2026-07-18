@@ -14,10 +14,15 @@ export function Modal({
   onIgnore,
 }: ModalProps) {
   const [reason, setReason] = useState('');
+  const trimmedReason = reason.trim();
 
   return (
-    <div role="dialog" style="all:initial;font:14px system-ui;color:#111">
-      <h2>Sensitive content detected</h2>
+    <div
+      role="dialog"
+      aria-labelledby="modal-title"
+      style="all:initial;font:14px system-ui;color:#111"
+    >
+      <h2 id="modal-title">Sensitive content detected</h2>
       <ul>
         {summary.map(({ cls, count }) => (
           <li key={cls}>
@@ -40,8 +45,8 @@ export function Modal({
       />
       <button
         type="button"
-        disabled={!reason}
-        onClick={() => reason && onIgnore(reason)}
+        disabled={!trimmedReason}
+        onClick={() => trimmedReason && onIgnore(trimmedReason)}
       >
         Ignore
       </button>

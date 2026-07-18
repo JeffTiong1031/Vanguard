@@ -72,6 +72,63 @@ describe('Modal', () => {
 
     expect(onIgnore).toHaveBeenCalledWith('false positive');
   });
+
+  it('does not call onIgnore for whitespace-only reasons', () => {
+    const onIgnore = vi.fn();
+    const { getByPlaceholderText, getByRole } = render(
+      <Modal
+        rewritten="x"
+        summary={[]}
+        onApprove={() => {}}
+        onIgnore={onIgnore}
+      />,
+    );
+    const ignore = getByRole('button', { name: /^ignore$/i }) as HTMLButtonElement;
+
+    fireEvent.input(getByPlaceholderText(/reason/i), {
+      target: { value: '   ' },
+    });
+    expect(ignore.disabled).toBe(true);
+    fireEvent.click(ignore);
+    expect(onIgnore).not.toHaveBeenCalled();
+  });
+
+  it('passes trimmed reason to onIgnore', () => {
+    const onIgnore = vi.fn();
+    const { getByPlaceholderText, getByRole } = render(
+      <Modal
+        rewritten="x"
+        summary={[]}
+        onApprove={() => {}}
+        onIgnore={onIgnore}
+      />,
+    );
+
+    fireEvent.input(getByPlaceholderText(/reason/i), {
+      target: { value: '  false positive  ' },
+    });
+    fireEvent.click(getByRole('button', { name: /^ignore$/i }));
+
+    expect(onIgnore).toHaveBeenCalledWith('false positive');
+  });
+
+  it('resets reason when remounted via key', () => {
+    const props = {
+      rewritten: 'x',
+      summary: [] as Array<{ cls: string; count: number }>,
+      onApprove: () => {},
+      onIgnore: () => {},
+    };
+    const { getByPlaceholderText, rerender } = render(<Modal {...props} key={1} />);
+
+    fireEvent.input(getByPlaceholderText(/reason/i), {
+      target: { value: 'stale reason' },
+    });
+
+    rerender(<Modal {...props} key={2} />);
+
+    expect((getByPlaceholderText(/reason/i) as HTMLInputElement).value).toBe('');
+  });
 });
 
 describe('modal mount', () => {
