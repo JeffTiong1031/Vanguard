@@ -10,7 +10,7 @@
 | [`spikes/u27-file-capture/`](spikes/u27-file-capture/) | 🔴 **U27/U28/U29 — attach-time file interception + synthetic re-attach.** Raw MV3, zero build. | ✅ **LIVE. PASS 2026-07-18** — captures in `captures/` |
 | [`spikes/u30-pdf-redact/`](spikes/u30-pdf-redact/) | 🔴 **U30 — format-preserving PDF text redaction.** Python spike; real corpus still owed. | ✅ **LIVE (smoke).** Ship gate: commercial licence or pikepdf real-corpus PASS |
 | [`extension/`](extension/) | Slice 1 chat-text + **Slice 2 file checking** (WXT). L1 + L2, committed `dist/`. | 🔴 **SLICE 2 IN PROGRESS** — live acceptance: [`extension/ACCEPTANCE.md`](extension/ACCEPTANCE.md) |
-| [`backend/`](backend/) | ADR 0007 FastAPI — **`/v1/extract` + `/v1/redact` only** (parse + format-preserving mask; **no detection**). | ✅ **LIVE (extract/redact).** `docker compose up` for team test |
+| [`backend/`](backend/) | ADR 0007 FastAPI — **`/v1/extract` + `/v1/redact` only** (parse + format-preserving mask; **no detection**). | ✅ **LIVE (extract/redact).** Team test: local `uvicorn` (see [`../README.md`](../README.md)) |
 
 ---
 

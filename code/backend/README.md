@@ -44,40 +44,56 @@ Doc 01 §6 calls this **"the stack decision I'd defend hardest"**:
 
 ## Running it (Slice 2 team test)
 
-**Default — founder-hosted shared API.** For the team test, use the shared instance the founder
-runs rather than building locally:
+**Default — run it locally.** No shared/cloud API is required for the team test. Full walkthrough
+(extension + API): [`../../README.md`](../../README.md) §Quick start.
 
-- **Base URL:** `https://vanguard-extract.example.com` *(replace with the live team-test origin
-  before the test — the extension's `wxt.config.ts` host permission must match)*
-- **Extension:** open **Options → File checking API URL**, paste that URL, save. No rebuild needed.
+### Preferred — uvicorn (Python 3.11+)
 
-**Fallback — run it yourself** *(B3-style self-hosting; only if you cannot reach the shared
-instance or need to debug the backend):*
+```bash
+cd code/backend
+python -m venv .venv
+
+# Windows (PowerShell):  .\.venv\Scripts\Activate.ps1
+# macOS / Linux:         source .venv/bin/activate
+
+pip install -e ".[dev]"
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+### Optional — Docker
 
 ```bash
 cd code/backend
 docker compose up --build
 ```
 
-Verify:
+### Verify
 
 ```bash
-curl -s http://localhost:8000/healthz
-curl -s -F "file=@tests/fixtures/zip_bomb.docx" http://localhost:8000/v1/extract
+curl -s http://127.0.0.1:8000/healthz
+curl -s -F "file=@tests/fixtures/zip_bomb.docx" http://127.0.0.1:8000/v1/extract
 ```
 
-Expected: `{"ok":true}` then `{"error":{"code":"suspicious_archive",…}}`. Point the extension
-Options page at `http://localhost:8000` if you use this path.
+Expected: `{"ok":true}` then `{"error":{"code":"suspicious_archive",…}}`.
+
+Point the extension **Options → File checking API URL** at `http://localhost:8000` (that is already
+the default). Host permission for localhost is in `code/extension/wxt.config.ts`.
+
+### Optional later — founder-hosted shared API
+
+Only if several non-engineers cannot run Python/Docker. Stand up an HTTPS origin, put the URL in
+Options, and extend `host_permissions` to match. Placeholder: `https://vanguard-extract.example.com`.
+Until then, **do not block the team test on a shared instance.**
 
 ## What testers should know
 
-On the **shared instance**, your real work files **leave your machine** and are parsed on a server
-the founder runs. That is the product's file posture (ADR 0008 — files go to the cloud, in-region,
-zero-retention, under DPA). The team is not a customer with a DPA; saying this upfront is the point.
+**Local default:** file bytes go to `127.0.0.1` on **your** machine and are not kept after the
+request. Prompt text never leaves the browser either way.
 
-**Your typing stays local; the file goes to the checker and is not kept.** Prompt text never leaves
-your browser. Only file bytes are sent for parsing; the backend does not retain them after the
-request completes.
+If you later use a **shared** instance, real work files leave the tester’s machine and are parsed on
+a server the founder runs. That matches the commercial file posture (ADR 0008 — cloud parse,
+in-region, zero-retention, under DPA), but the informal team is not a customer with a DPA — say so
+up front.
 
 **PDF redaction uses PyMuPDF** (`app/redact/pdf.py`). That is fine for pitch demos and Load unpacked
 team tests. **Before Chrome Web Store submission or paying customers, resolve the licence** —
