@@ -46,28 +46,34 @@ const shell: Record<string, string> = {
   markAccepted: 'background:rgba(15,23,42,.06);border-bottom:2px solid #64748b;border-radius:2px;padding:0 1px;font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#334155',
   markIgnored: 'background:transparent;border-bottom:2px dashed #94a3b8;border-radius:2px;padding:0 1px;color:#64748b',
   popover:
-    'position:fixed;z-index:2147483647;width:300px;background:#fff;color:#0f172a;border:1px solid #fecdd3;border-radius:10px;box-shadow:0 12px 32px rgba(225,29,72,.22);padding:12px 14px;font:13px/1.4 Segoe UI,system-ui,sans-serif;animation:vgPop 160ms cubic-bezier(0.34,1.56,0.64,1)',
+    'position:fixed;z-index:2147483647;width:300px;box-sizing:border-box;background:#fff;color:#0f172a;border:1px solid #fecdd3;border-radius:10px;box-shadow:0 12px 32px rgba(225,29,72,.22);padding:12px 14px;font:13px/1.4 Segoe UI,system-ui,sans-serif;animation:vgPop 160ms cubic-bezier(0.34,1.56,0.64,1);',
   cls: 'font-size:11px;font-weight:700;letter-spacing:.04em;color:#e11d48;text-transform:uppercase;margin-bottom:6px',
   rec: 'font-family:ui-monospace,Consolas,monospace;font-size:13px;background:#fff1f2;padding:8px 10px;border-radius:6px;margin:8px 0 10px;border:1px solid #fecdd3',
   reason: 'width:100%;box-sizing:border-box;border:1.5px solid #fda4af;border-radius:6px;padding:8px 10px;font:13px Segoe UI,system-ui,sans-serif;margin-bottom:8px;outline:none',
 };
 
-/** Place the card near the word; flip above/left if it would leave the viewport. */
+/**
+ * Prefer LEFT of the word (founder). Flip to the right if no room.
+ * Vertically align with the word; clamp into the viewport.
+ */
 export function placePopover(
   anchor: DOMRect,
   vw = typeof window !== 'undefined' ? window.innerWidth : 800,
   vh = typeof window !== 'undefined' ? window.innerHeight : 600,
 ): { top: number; left: number } {
-  let top = anchor.bottom + POPOVER_GAP;
-  let left = anchor.left;
-
-  if (top + POPOVER_EST_H > vh - 8) {
-    top = Math.max(8, anchor.top - POPOVER_EST_H - POPOVER_GAP);
-  }
-  if (left + POPOVER_W > vw - 8) {
-    left = Math.max(8, vw - POPOVER_W - 8);
+  // Left of the span first.
+  let left = anchor.left - POPOVER_W - POPOVER_GAP;
+  if (left < 8) {
+    // Not enough room on the left → sit to the right of the word.
+    left = Math.min(anchor.right + POPOVER_GAP, vw - POPOVER_W - 8);
   }
   if (left < 8) left = 8;
+
+  // Align top with the word; keep the card on-screen.
+  let top = anchor.top;
+  if (top + POPOVER_EST_H > vh - 8) {
+    top = Math.max(8, vh - POPOVER_EST_H - 8);
+  }
   if (top < 8) top = 8;
   return { top, left };
 }
@@ -283,7 +289,7 @@ export function Modal({ text, findings, numbering, onProceed }: ModalProps) {
         <div
           role="dialog"
           aria-label="Span review"
-          style={`${shell.popover}top:${popPos.top}px;left:${popPos.left}px`}
+          style={`${shell.popover}top:${popPos.top}px;left:${popPos.left}px;`}
           onMouseEnter={clearHide}
           onMouseLeave={scheduleHide}
           onMouseDown={(e) => e.stopPropagation()}

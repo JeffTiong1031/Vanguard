@@ -80,12 +80,20 @@ function installFocusTrap(hostEl: HTMLElement, root: ShadowRoot): () => void {
 }
 
 export function showModal(props: ModalProps): void {
+  if (host && !host.isConnected) {
+    tearDownFocusTrap?.();
+    tearDownFocusTrap = null;
+    host = null;
+    shadowRoot = null;
+  }
+
   if (!host) {
     host = document.createElement('div');
     host.setAttribute('data-vanguard-ui', 'modal');
     host.setAttribute('tabindex', '-1');
     host.style.cssText =
-      'position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:rgba(15,23,42,.45);backdrop-filter:blur(2px)';
+      'position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:rgba(15,23,42,.45)';
+    // No backdrop-filter: it creates a containing block that breaks position:fixed popovers.
     (document.body || document.documentElement).appendChild(host);
     // open mode so focus/devtools behave; page still cannot style us (shadow boundary).
     shadowRoot = host.attachShadow({ mode: 'open' });

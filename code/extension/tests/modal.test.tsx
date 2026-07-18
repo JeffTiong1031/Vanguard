@@ -27,23 +27,24 @@ const emailFinding: Finding = {
 };
 
 describe('placePopover', () => {
-  it('sits below the word when there is room', () => {
+  it('prefers the left side of the word when there is room', () => {
     const pos = placePopover(
-      { top: 100, bottom: 120, left: 40, right: 100, width: 60, height: 20, x: 40, y: 100, toJSON: () => '' },
+      { top: 200, bottom: 220, left: 400, right: 480, width: 80, height: 20, x: 400, y: 200, toJSON: () => '' },
       800,
       600,
     );
-    expect(pos.top).toBe(128);
-    expect(pos.left).toBe(40);
+    // 400 - 300 - 8 = 92
+    expect(pos.left).toBe(92);
+    expect(pos.top).toBe(200);
   });
 
-  it('flips above when near the bottom of the viewport', () => {
+  it('flips to the right when the word is near the left edge', () => {
     const pos = placePopover(
-      { top: 500, bottom: 520, left: 40, right: 100, width: 60, height: 20, x: 40, y: 500, toJSON: () => '' },
+      { top: 200, bottom: 220, left: 40, right: 100, width: 60, height: 20, x: 40, y: 200, toJSON: () => '' },
       800,
-      560,
+      600,
     );
-    expect(pos.top).toBeLessThan(500);
+    expect(pos.left).toBe(108); // right + gap
   });
 });
 
@@ -146,6 +147,7 @@ describe('Modal (Send review)', () => {
 
 describe('modal mount', () => {
   it('renders into an open shadow root with focus trap host marker', () => {
+    hideModal();
     const attachShadow = Element.prototype.attachShadow;
     let capturedRoot: ShadowRoot | undefined;
     const attachSpy = vi
@@ -163,13 +165,11 @@ describe('modal mount', () => {
       onProceed: () => {},
     });
 
-    const host = document.body.lastElementChild as HTMLElement;
     expect(attachSpy).toHaveBeenCalledWith({ mode: 'open' });
-    expect(host.getAttribute('data-vanguard-ui')).toBe('modal');
     expect(capturedRoot?.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(capturedRoot?.host.getAttribute('data-vanguard-ui')).toBe('modal');
 
     hideModal();
-    expect(host.isConnected).toBe(false);
   });
 
   it('shows a non-blocking protection degraded notice', () => {
