@@ -1,0 +1,433 @@
+﻿BASE 6e6e0c6 HEAD ab384ce (source-scoped: dist/ and public/ort binaries excluded)
+ab384ce feat(ext): hash-pinned transformers.js NER in an offscreen document
+
+## Full stat (incl. dist/binaries)
+ code/extension/dist/chrome-mv3/background.js       |    2 +-
+ .../dist/chrome-mv3/chunks/offscreen-I_WCJZZc.js   | 2896 ++++++++++++++++++++
+ .../dist/chrome-mv3/content-scripts/content.js     |    2 +-
+ code/extension/dist/chrome-mv3/offscreen.html      |    9 +
+ .../chrome-mv3/ort/ort-wasm-simd-threaded.jsep.mjs |  125 +
+ .../ort/ort-wasm-simd-threaded.jsep.wasm           |  Bin 0 -> 21596019 bytes
+ code/extension/entrypoints/background.ts           |   26 +
+ code/extension/entrypoints/content.ts              |    5 +
+ code/extension/entrypoints/offscreen/index.html    |    9 +
+ code/extension/entrypoints/offscreen/main.ts       |   72 +
+ code/extension/models.manifest.json                |    8 +
+ .../public/ort/ort-wasm-simd-threaded.jsep.mjs     |  125 +
+ .../public/ort/ort-wasm-simd-threaded.jsep.wasm    |  Bin 0 -> 21596019 bytes
+ code/extension/scripts/build-model-manifest.mjs    |   25 +
+ code/extension/src/detection/l2/client.ts          |   16 +
+ code/extension/src/detection/l2/messages.ts        |   79 +
+ code/extension/src/detection/l2/pin.ts             |   38 +
+ code/extension/tests/l2-messages.test.ts           |   61 +
+ 18 files changed, 3496 insertions(+), 2 deletions(-)
+
+## Source diff
+diff --git a/code/extension/entrypoints/background.ts b/code/extension/entrypoints/background.ts
+index 83fad19..0914553 100644
+--- a/code/extension/entrypoints/background.ts
++++ b/code/extension/entrypoints/background.ts
+@@ -1,3 +1,29 @@
++import type { ScanRequest, ScanResponse } from '../src/detection/l2/messages';
++
++// [verify] WXT output path for entrypoints/offscreen/index.html ΓÇö confirmed by inspecting a real
++// build (dist/chrome-mv3/); see .superpowers/sdd/task-3-report.md for the check.
++const OFFSCREEN_URL = 'offscreen.html';
++
++async function ensureOffscreen(): Promise<void> {
++  const has = await chrome.offscreen.hasDocument?.();
++  if (has) return;
++  await chrome.offscreen.createDocument({
++    url: OFFSCREEN_URL,
++    reasons: [chrome.offscreen.Reason.WORKERS],
++    justification: 'Run on-device NER inference in a WASM worker; no data leaves the device.',
++  });
++}
++
+ export default defineBackground(() => {
+   console.info('[vanguard] background alive');
++
++  chrome.runtime.onMessage.addListener((msg: ScanRequest, _s, sendResponse) => {
++    if (msg?.kind !== 'l2-scan') return;
++    (async () => {
++      await ensureOffscreen();
++      const res = (await chrome.runtime.sendMessage(msg)) as ScanResponse;
++      sendResponse(res);
++    })();
++    return true;
++  });
+ });
+diff --git a/code/extension/entrypoints/content.ts b/code/extension/entrypoints/content.ts
+index 07df639..dc41705 100644
+--- a/code/extension/entrypoints/content.ts
++++ b/code/extension/entrypoints/content.ts
+@@ -1,8 +1,13 @@
+ export default defineContentScript({
+   matches: ['https://chatgpt.com/*', 'https://claude.ai/*'],
+   runAt: 'document_start',
+   world: 'ISOLATED',
+   main() {
+     console.info('[vanguard] content script alive on', location.hostname);
++
++    // TEMPORARY dev hook for manual smoke-testing the L2 scan end to end (removed in Phase 3 ΓÇö
++    // see .superpowers/sdd/task-3-report.md for the console steps). Not wired to any UI.
++    (window as unknown as { __vgScan: (t: string) => Promise<unknown> }).__vgScan = (t: string) =>
++      chrome.runtime.sendMessage({ kind: 'l2-scan', id: '1', text: t });
+   },
+ });
+diff --git a/code/extension/entrypoints/offscreen/index.html b/code/extension/entrypoints/offscreen/index.html
+new file mode 100644
+index 0000000..a099e9d
+--- /dev/null
++++ b/code/extension/entrypoints/offscreen/index.html
+@@ -0,0 +1,9 @@
++<!doctype html>
++<html>
++  <head>
++    <meta charset="utf-8" />
++  </head>
++  <body>
++    <script type="module" src="./main.ts"></script>
++  </body>
++</html>
+diff --git a/code/extension/entrypoints/offscreen/main.ts b/code/extension/entrypoints/offscreen/main.ts
+new file mode 100644
+index 0000000..421f930
+--- /dev/null
++++ b/code/extension/entrypoints/offscreen/main.ts
+@@ -0,0 +1,72 @@
++// entrypoints/offscreen/main.ts
++//
++// ADR 0006: ONE offscreen instance, all tabs. This is the ONLY module in the extension that
++// imports `@huggingface/transformers` (resolution #7) ΓÇö the background SW and content scripts
++// never load the model runtime.
++import { pipeline, env, type TokenClassificationPipeline } from '@huggingface/transformers';
++import type { PipelineNerToken, ScanRequest, ScanResponse } from '../../src/detection/l2/messages';
++import { attachCharOffsets, mergeNerTokens } from '../../src/detection/l2/messages';
++import { verifyPinnedModel } from '../../src/detection/l2/pin';
++
++const MODEL_ID = 'Xenova/bert-base-multilingual-cased-ner-hrl';
++
++env.allowLocalModels = false;
++env.useBrowserCache = true;
++
++// [decision] Self-host the ONNX Runtime Web WASM/mjs pair from `public/ort/` instead of the
++// library's default fallback (jsdelivr CDN ΓÇö see node_modules/@huggingface/transformers/src/
++// backends/onnx.js: `ONNX_ENV.wasm.wasmPaths = 'https://cdn.jsdelivr.net/...'` when unset and not
++// in a service worker). MV3's default `extension_pages` CSP is `script-src 'self'
++// 'wasm-unsafe-eval'; object-src 'self'`, which would block that CDN's `.mjs` loader module.
++// Same-origin (`chrome-extension://<id>/ort/...`) avoids the question entirely. `[verify]` in a
++// real browser ΓÇö this is a design decision made from reading the CSP and the library's fallback
++// path, not a live-tested one (Step 8 is DEFERRED_MANUAL).
++// Non-null: transformers.js unconditionally populates `env.backends.onnx.wasm` when the wasm
++// backend is registered (backends/onnx.js), which happens on import; the type is `Partial<...>`
++// only because `env.backends.onnx` itself is generically typed to also allow other backends.
++const wasmEnv = env.backends.onnx.wasm!;
++wasmEnv.wasmPaths = chrome.runtime.getURL('ort/');
++// U22 baseline (ADR 0017 ┬ºConsequences): single-thread WASM, no COOP/COEP, no SharedArrayBuffer.
++wasmEnv.numThreads = 1;
++
++let nerPromise: Promise<TokenClassificationPipeline> | null = null;
++async function getNer(): Promise<TokenClassificationPipeline> {
++  if (!nerPromise) {
++    nerPromise = (async () => {
++      try {
++        await verifyPinnedModel(MODEL_ID); // throws on hash mismatch; seeds the browser cache
++        // transformers.js v3: quantization is selected via `dtype`, not the v2 `quantized: true`
++        // option. `dtype: 'q8'` on `device: 'wasm'` selects the `_quantized` file suffix, i.e.
++        // `onnx/model_quantized.onnx` ΓÇö verified against node_modules source (utils/dtypes.js,
++        // models.js) and exactly the file models.manifest.json pins.
++        const ner = await pipeline<'token-classification'>('token-classification', MODEL_ID, {
++          device: 'wasm',
++          dtype: 'q8',
++        });
++        return ner;
++      } catch (e) {
++        nerPromise = null; // don't cache a permanent failure; the next scan may retry
++        throw e;
++      }
++    })();
++  }
++  return nerPromise;
++}
++
++chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) => {
++  if (msg?.kind !== 'l2-scan') return;
++  (async () => {
++    try {
++      const ner = await getNer();
++      const raw = (await ner(msg.text)) as unknown as PipelineNerToken[];
++      // [finding] the pipeline never populates start/end (see messages.ts); reconstruct them
++      // from the prompt text before merging into whole-entity spans.
++      const withOffsets = attachCharOffsets(msg.text, raw);
++      const entities = mergeNerTokens(withOffsets);
++      sendResponse({ kind: 'l2-result', id: msg.id, ok: true, entities } satisfies ScanResponse);
++    } catch (e) {
++      sendResponse({ kind: 'l2-result', id: msg.id, ok: false, error: String(e) } satisfies ScanResponse);
++    }
++  })();
++  return true; // async sendResponse
++});
+diff --git a/code/extension/models.manifest.json b/code/extension/models.manifest.json
+new file mode 100644
+index 0000000..3db389b
+--- /dev/null
++++ b/code/extension/models.manifest.json
+@@ -0,0 +1,8 @@
++{
++  "Xenova/bert-base-multilingual-cased-ner-hrl": {
++    "config.json": "7aa891abae067f95a40f5e2005b3de44824a083f256802934a993d301ec25076",
++    "tokenizer.json": "bf1b59b7b11c95f194f51708d918eea378e09d05f84c0e1656dc5180e8117088",
++    "tokenizer_config.json": "e6f3b96db926a37d4039995fbf5ad17de158dfb8f6343d607e4dbaad18d75f5a",
++    "onnx/model_quantized.onnx": "5b65139844be260b624a2a13782b01d122e613d64ce16ed0ba4d82e0b816f1a9"
++  }
++}
+diff --git a/code/extension/scripts/build-model-manifest.mjs b/code/extension/scripts/build-model-manifest.mjs
+new file mode 100644
+index 0000000..0045378
+--- /dev/null
++++ b/code/extension/scripts/build-model-manifest.mjs
+@@ -0,0 +1,25 @@
++// scripts/build-model-manifest.mjs ΓÇö run once to pin, re-run to re-pin on a deliberate model bump.
++//
++// Files pinned here MUST be exactly the files the running pipeline loads (verified against
++// node_modules/@huggingface/transformers@3.8.1 source, see .superpowers/sdd/task-3-report.md):
++//   - config.json                 (model config; PretrainedConfig.from_pretrained)
++//   - tokenizer.json               (fast tokenizer; PreTrainedTokenizer.from_pretrained)
++//   - tokenizer_config.json        (ditto ΓÇö fetched alongside tokenizer.json, always)
++//   - onnx/model_quantized.onnx    (dtype: 'q8' on device 'wasm' -> suffix '_quantized')
++// `vocab.txt` is deliberately NOT pinned: transformers.js's tokenizer loader never fetches it
++// (only tokenizer.json/tokenizer_config.json), so pinning it would be dead weight, not security.
++import { createHash } from 'node:crypto';
++import { writeFileSync } from 'node:fs';
++
++const MODEL = 'Xenova/bert-base-multilingual-cased-ner-hrl';
++const FILES = ['config.json', 'tokenizer.json', 'tokenizer_config.json', 'onnx/model_quantized.onnx'];
++const HOST = 'https://huggingface.co';
++
++const out = { [MODEL]: {} };
++for (const f of FILES) {
++  const r = await fetch(`${HOST}/${MODEL}/resolve/main/${f}`);
++  if (!r.ok) throw new Error(`${f}: ${r.status}`);
++  out[MODEL][f] = createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex');
++  console.log(f, out[MODEL][f]);
++}
++writeFileSync('models.manifest.json', JSON.stringify(out, null, 2) + '\n');
+diff --git a/code/extension/src/detection/l2/client.ts b/code/extension/src/detection/l2/client.ts
+new file mode 100644
+index 0000000..7352302
+--- /dev/null
++++ b/code/extension/src/detection/l2/client.ts
+@@ -0,0 +1,16 @@
++// src/detection/l2/client.ts
++//
++// Content-side client. Never imports `@huggingface/transformers` (resolution #7) ΓÇö only the
++// typed message contract.
++import type { L2Entity, ScanRequest, ScanResponse } from './messages';
++
++export async function l2Scan(text: string, timeoutMs: number): Promise<L2Entity[] | 'degraded'> {
++  const id = crypto.randomUUID();
++  const req: ScanRequest = { kind: 'l2-scan', id, text };
++  const timeout = new Promise<'degraded'>((r) => setTimeout(() => r('degraded'), timeoutMs));
++  const call = chrome.runtime
++    .sendMessage(req)
++    .then((res: ScanResponse) => (res.ok ? res.entities : ('degraded' as const)))
++    .catch(() => 'degraded' as const);
++  return Promise.race([call, timeout]);
++}
+diff --git a/code/extension/src/detection/l2/messages.ts b/code/extension/src/detection/l2/messages.ts
+new file mode 100644
+index 0000000..f9df7e8
+--- /dev/null
++++ b/code/extension/src/detection/l2/messages.ts
+@@ -0,0 +1,79 @@
++// src/detection/l2/messages.ts
++//
++// The typed content<->offscreen contract for L2 (stock multilingual NER). Pure ΓÇö no
++// `@huggingface/transformers` import here, so content scripts, the background SW, and this
++// file's own tests can all use it without pulling in the model runtime (resolution #7).
++
++export type L2Entity = { type: 'PERSON' | 'ORG'; start: number; end: number; text: string };
++export type ScanRequest = { kind: 'l2-scan'; id: string; text: string };
++export type ScanResponse =
++  | { kind: 'l2-result'; id: string; ok: true; entities: L2Entity[] }
++  | { kind: 'l2-result'; id: string; ok: false; error: string };
++
++// mBERT-NER emits PER/ORG/LOC/MISC. Slice 1 keeps PER->PERSON and ORG only (ADR 0017 ┬º5: LOC off).
++const KEEP: Record<string, L2Entity['type'] | undefined> = { PER: 'PERSON', ORG: 'ORG' };
++
++export type RawNerToken = { entity: string; start: number; end: number; word: string };
++
++// Merge B-/I- token tags into whole-entity spans. transformers.js token-classification with
++// `aggregation_strategy` can do this, but we merge ourselves so the contract is stable across versions.
++export function mergeNerTokens(tokens: RawNerToken[]): L2Entity[] {
++  const out: L2Entity[] = [];
++  let cur: L2Entity | null = null;
++  for (const t of tokens) {
++    const [tag, rawLabel] = t.entity.split('-') as ['B' | 'I', string];
++    const label = KEEP[rawLabel];
++    if (!label) {
++      cur = null;
++      continue;
++    }
++    if (tag === 'B' || !cur || cur.type !== label) {
++      cur = { type: label, start: t.start, end: t.end, text: t.word };
++      out.push(cur);
++    } else {
++      cur.end = t.end;
++      // [RED caught this] A wordpiece continuation ("##foo") glues directly onto the previous
++      // piece; a same-type I-tag token that is a whole new word (no "##") is a separate word and
++      // needs a space, or "Ahmad"+"Ali" renders as "AhmadAli". `text` is the audit/preview
++      // fingerprint only ΓÇö masking downstream uses start/end, never this string.
++      cur.text += t.word.startsWith('##') ? t.word.slice(2) : ` ${t.word}`;
++    }
++  }
++  return out;
++}
++
++// --- Character-offset reconstruction ------------------------------------------------------
++//
++// [finding, verified against node_modules @huggingface/transformers@3.8.1 source] The installed
++// transformers.js v3 token-classification pipeline's `_call` (src/pipelines.js) never sets
++// `start`/`end` on its output tokens ΓÇö the two fields are declared `start?`/`end?` in its own
++// typedef and the implementation still carries the literal comment
++// `// TODO: Add support for start and end`. The tokenizer has no `return_offsets_mapping` support
++// either. So the raw pipeline output is `{ entity, score, index, word }` ΓÇö no character
++// positions ΓÇö even though `mergeNerTokens` above (and everything downstream that masks by
++// position rather than by `text`) needs real offsets.
++//
++// This reconstructs them by walking the prompt text left-to-right and locating each decoded
++// token's text, stripping the WordPiece continuation prefix ("##") before searching. It is the
++// same fallback technique used when a fast tokenizer's offset mapping isn't available. Known
++// limitation: `text.indexOf` can misalign on a token that recurs before its true position, or on
++// tokenizer-side Unicode normalization that changes a character's byte form (rare for a *cased*
++// tokenizer, which ΓÇö unlike an uncased one ΓÇö does not lowercase or strip accents). A token whose
++// search fails is dropped rather than guessed: silent recall loss on one mention, never a wrong
++// span written back into the composer.
++export type PipelineNerToken = { entity: string; word: string };
++
++export function attachCharOffsets(text: string, tokens: PipelineNerToken[]): RawNerToken[] {
++  const out: RawNerToken[] = [];
++  let cursor = 0;
++  for (const t of tokens) {
++    const isContinuation = t.word.startsWith('##');
++    const piece = isContinuation ? t.word.slice(2) : t.word;
++    if (!piece) continue;
++    const idx = text.indexOf(piece, cursor);
++    if (idx === -1) continue; // can't align this token to the text; drop rather than guess a span
++    out.push({ entity: t.entity, start: idx, end: idx + piece.length, word: t.word });
++    cursor = idx + piece.length;
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l2/pin.ts b/code/extension/src/detection/l2/pin.ts
+new file mode 100644
+index 0000000..47a0217
+--- /dev/null
++++ b/code/extension/src/detection/l2/pin.ts
+@@ -0,0 +1,38 @@
++// src/detection/l2/pin.ts
++//
++// Verify each pinned model file's SHA-256 BEFORE transformers.js loads it, then seed the browser
++// Cache so transformers.js reads our verified bytes instead of re-fetching (doc 05 ┬º7; ADR 0017
++// weights row). Hash-pinning is the security invariant here: this function fetches, hashes, and
++// THROWS on mismatch, fail-closed. It never silently downgrades to "load anyway".
++import manifest from '../../../models.manifest.json';
++
++// VERIFIED against node_modules/@huggingface/transformers@3.8.1/src/{env.js,utils/hub.js}:
++//   env.remoteHost = 'https://huggingface.co/'
++//   env.remotePathTemplate = '{model}/resolve/{revision}/'   (revision defaults to 'main')
++// hub.js builds `remoteURL = pathJoin(remoteHost, remotePathTemplate..., filename)`, and ΓÇö when
++// `env.useBrowserCache = true` and the cache is not a FileCache (i.e. it's the browser Cache API
++// via `caches.open('transformers-cache')`) ΓÇö that exact `remoteURL` string is the cache key
++// (`proposedCacheKey`) it looks up with `cache.match(...)`. So `fileUrl` below must byte-for-byte
++// match `pathJoin('https://huggingface.co/', '{model}/resolve/main/', file)`, which it does.
++const HOST = 'https://huggingface.co';
++const fileUrl = (modelId: string, file: string) => `${HOST}/${modelId}/resolve/main/${file}`;
++
++async function sha256Hex(buf: ArrayBuffer): Promise<string> {
++  const d = await crypto.subtle.digest('SHA-256', buf);
++  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
++}
++
++export async function verifyPinnedModel(modelId: string): Promise<void> {
++  const files = (manifest as Record<string, Record<string, string>>)[modelId];
++  if (!files) throw new Error(`no pin manifest for ${modelId}`);
++  const cache = await caches.open('transformers-cache');
++  for (const [file, expected] of Object.entries(files)) {
++    const url = fileUrl(modelId, file);
++    const res = await fetch(url, { cache: 'no-store' });
++    if (!res.ok) throw new Error(`fetch ${file} failed: ${res.status}`);
++    const bytes = await res.clone().arrayBuffer();
++    const got = await sha256Hex(bytes);
++    if (got !== expected) throw new Error(`hash mismatch for ${file}: ${got} != ${expected}`);
++    await cache.put(url, new Response(bytes, { headers: res.headers }));
++  }
++}
+diff --git a/code/extension/tests/l2-messages.test.ts b/code/extension/tests/l2-messages.test.ts
+new file mode 100644
+index 0000000..14716fc
+--- /dev/null
++++ b/code/extension/tests/l2-messages.test.ts
+@@ -0,0 +1,61 @@
++// tests/l2-messages.test.ts
++import { describe, it, expect } from 'vitest';
++import { attachCharOffsets, mergeNerTokens } from '../src/detection/l2/messages';
++
++describe('mergeNerTokens', () => {
++  it('merges B-/I- PER tokens into one PERSON span and drops LOC', () => {
++    const merged = mergeNerTokens([
++      { entity: 'B-PER', start: 13, end: 18, word: 'Ahmad' },
++      { entity: 'I-PER', start: 19, end: 22, word: 'Ali' },
++      { entity: 'B-LOC', start: 30, end: 36, word: 'Penang' },
++    ]);
++    expect(merged).toEqual([{ type: 'PERSON', start: 13, end: 22, text: 'Ahmad Ali' }]);
++  });
++
++  it('keeps ORG and separates adjacent entities of different type', () => {
++    const merged = mergeNerTokens([
++      { entity: 'B-ORG', start: 0, end: 5, word: 'Apple' },
++      { entity: 'B-PER', start: 6, end: 9, word: 'Tim' },
++    ]);
++    expect(merged.map((m) => m.type)).toEqual(['ORG', 'PERSON']);
++  });
++
++  it('merges a wordpiece continuation ("##") into the preceding entity without the marker', () => {
++    const merged = mergeNerTokens([
++      { entity: 'B-PER', start: 0, end: 4, word: 'Ahm' },
++      { entity: 'I-PER', start: 4, end: 6, word: '##ad' },
++    ]);
++    expect(merged).toEqual([{ type: 'PERSON', start: 0, end: 6, text: 'Ahmad' }]);
++  });
++});
++
++describe('attachCharOffsets', () => {
++  it('locates each decoded token in the source text and strips "##" before searching', () => {
++    const text = 'Please email Ahmad about the Apple deal';
++    const tokens = attachCharOffsets(text, [
++      { entity: 'O', word: 'Please' },
++      { entity: 'O', word: 'email' },
++      { entity: 'B-PER', word: 'Ahm' },
++      { entity: 'I-PER', word: '##ad' },
++      { entity: 'O', word: 'about' },
++      { entity: 'B-ORG', word: 'Apple' },
++    ]);
++    expect(tokens).toEqual([
++      { entity: 'O', start: 0, end: 6, word: 'Please' },
++      { entity: 'O', start: 7, end: 12, word: 'email' },
++      { entity: 'B-PER', start: 13, end: 16, word: 'Ahm' },
++      { entity: 'I-PER', start: 16, end: 18, word: '##ad' },
++      { entity: 'O', start: 19, end: 24, word: 'about' },
++      { entity: 'B-ORG', start: 29, end: 34, word: 'Apple' },
++    ]);
++  });
++
++  it('drops a token it cannot align rather than guessing a span', () => {
++    const tokens = attachCharOffsets('hello world', [
++      { entity: 'O', word: 'hello' },
++      { entity: 'O', word: 'nowhere-in-text' },
++      { entity: 'O', word: 'world' },
++    ]);
++    expect(tokens.map((t) => t.word)).toEqual(['hello', 'world']);
++  });
++});

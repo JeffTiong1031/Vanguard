@@ -1,0 +1,292 @@
+﻿BASE bbcc575 HEAD 2788d28
+2788d28 feat(ext): L1 detectors (NRIC/SSM+ambiguous/TIN/email/card) with the 1+1 guardrail
+ code/extension/src/detection/l1/card.ts   | 21 +++++++++++++++++++++
+ code/extension/src/detection/l1/email.ts  |  5 +++++
+ code/extension/src/detection/l1/index.ts  | 21 +++++++++++++++++++++
+ code/extension/src/detection/l1/nric.ts   | 15 +++++++++++++++
+ code/extension/src/detection/l1/ssm.ts    | 19 +++++++++++++++++++
+ code/extension/src/detection/l1/tin.ts    |  6 ++++++
+ code/extension/src/detection/l1/types.ts  |  3 +++
+ code/extension/tests/l1/card.test.ts      | 12 ++++++++++++
+ code/extension/tests/l1/email.test.ts     |  9 +++++++++
+ code/extension/tests/l1/guardrail.test.ts | 25 +++++++++++++++++++++++++
+ code/extension/tests/l1/nric.test.ts      | 11 +++++++++++
+ code/extension/tests/l1/runl1.test.ts     | 24 ++++++++++++++++++++++++
+ code/extension/tests/l1/ssm.test.ts       | 11 +++++++++++
+ code/extension/tests/l1/tin.test.ts       |  9 +++++++++
+ 14 files changed, 191 insertions(+)
+diff --git a/code/extension/src/detection/l1/card.ts b/code/extension/src/detection/l1/card.ts
+new file mode 100644
+index 0000000..cf5a7d8
+--- /dev/null
++++ b/code/extension/src/detection/l1/card.ts
+@@ -0,0 +1,21 @@
++// src/detection/l1/card.ts ΓÇö 13-19 digit runs (optionally spaced/dashed) that pass Luhn.
++import type { Finding } from './types';
++const CAND_RE = /\b(?:\d[ -]?){13,19}\b/g;
++function luhnOk(digits: string): boolean {
++  let sum = 0, alt = false;
++  for (let i = digits.length - 1; i >= 0; i--) {
++    let n = digits.charCodeAt(i) - 48;
++    if (alt) { n *= 2; if (n > 9) n -= 9; }
++    sum += n; alt = !alt;
++  }
++  return sum % 10 === 0;
++}
++export function detectCard(text: string): Finding[] {
++  const out: Finding[] = [];
++  for (const m of text.matchAll(CAND_RE)) {
++    const digits = m[0].replace(/[ -]/g, '');
++    if (digits.length < 13 || digits.length > 19 || !luhnOk(digits)) continue;
++    out.push({ cls: 'CARD', start: m.index!, end: m.index! + m[0].length, text: m[0] });
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l1/email.ts b/code/extension/src/detection/l1/email.ts
+new file mode 100644
+index 0000000..9da1c01
+--- /dev/null
++++ b/code/extension/src/detection/l1/email.ts
+@@ -0,0 +1,5 @@
++import type { Finding } from './types';
++const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
++export function detectEmail(text: string): Finding[] {
++  return [...text.matchAll(EMAIL_RE)].map((m) => ({ cls: 'EMAIL', start: m.index!, end: m.index! + m[0].length, text: m[0] }));
++}
+diff --git a/code/extension/src/detection/l1/index.ts b/code/extension/src/detection/l1/index.ts
+new file mode 100644
+index 0000000..baccd62
+--- /dev/null
++++ b/code/extension/src/detection/l1/index.ts
+@@ -0,0 +1,21 @@
++import type { Finding } from './types';
++import { detectNric } from './nric';
++import { detectSsm } from './ssm';
++import { detectTin } from './tin';
++import { detectEmail } from './email';
++import { detectCard } from './card';
++
++export type { Finding, FindingClass } from './types';
++
++export function runL1(text: string): Finding[] {
++  const all = [detectNric, detectSsm, detectTin, detectEmail, detectCard].flatMap((f) => f(text));
++  all.sort((a, b) => a.start - b.start || b.end - a.end);
++  // Drop a finding fully contained in an earlier, longer one (e.g. SSM's 12-digit inside a card run).
++  const out: Finding[] = [];
++  let lastEnd = -1;
++  for (const f of all) {
++    if (f.start < lastEnd) continue;
++    out.push(f); lastEnd = f.end;
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l1/nric.ts b/code/extension/src/detection/l1/nric.ts
+new file mode 100644
+index 0000000..4e4cf71
+--- /dev/null
++++ b/code/extension/src/detection/l1/nric.ts
+@@ -0,0 +1,15 @@
++// src/detection/l1/nric.ts ΓÇö YYMMDD-PB-###G. No checksum (U1). Day/month sanity only; PB open-set.
++import type { Finding } from './types';
++const NRIC_RE = /\b(\d{2})(\d{2})(\d{2})-(\d{2})-(\d{4})\b/g;
++const UNASSIGNED_PB = new Set(['00','17','18','19','20','69','70','73','80','81','94','95','96','97']);
++
++export function detectNric(text: string): Finding[] {
++  const out: Finding[] = [];
++  for (const m of text.matchAll(NRIC_RE)) {
++    const [, , mm, dd, pb] = m;
++    if (+mm < 1 || +mm > 12 || +dd < 1 || +dd > 31) continue; // structural (doc 03 ┬º2.2)
++    if (UNASSIGNED_PB.has(pb!)) continue;                      // 14 unassigned PB codes (U2)
++    out.push({ cls: 'NRIC', start: m.index!, end: m.index! + m[0].length, text: m[0] });
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l1/ssm.ts b/code/extension/src/detection/l1/ssm.ts
+new file mode 100644
+index 0000000..348968f
+--- /dev/null
++++ b/code/extension/src/detection/l1/ssm.ts
+@@ -0,0 +1,19 @@
++// src/detection/l1/ssm.ts ΓÇö 12 bare digits. ~86% of 2001-2012 incorporations also parse as NRIC.
++// The day filter is defeated by construction, so a 12-digit number that ALSO parses as an NRIC-shaped
++// string is AMBIGUOUS, not decidable from digits alone (doc 03 ┬º2.3).
++import type { Finding } from './types';
++const SSM_RE = /\b(\d{12})\b/g;
++
++export function detectSsm(text: string): Finding[] {
++  const out: Finding[] = [];
++  for (const m of text.matchAll(SSM_RE)) {
++    const d = m[1]!;
++    const mm = +d.slice(2, 4), dd = +d.slice(4, 6);
++    const looksNric = mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31;
++    out.push({
++      cls: looksNric ? 'NRIC_OR_SSM_AMBIGUOUS' : 'SSM',
++      start: m.index!, end: m.index! + 12, text: d,
++    });
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l1/tin.ts b/code/extension/src/detection/l1/tin.ts
+new file mode 100644
+index 0000000..df9c553
+--- /dev/null
++++ b/code/extension/src/detection/l1/tin.ts
+@@ -0,0 +1,6 @@
++// src/detection/l1/tin.ts ΓÇö LHDN TIN: IG (current) + legacy SG/OG (pre-2023 docs get pasted; doc 03 ┬ºU3).
++import type { Finding } from './types';
++const TIN_RE = /\b(IG|SG|OG)\d{9,11}\b/gi;
++export function detectTin(text: string): Finding[] {
++  return [...text.matchAll(TIN_RE)].map((m) => ({ cls: 'TIN', start: m.index!, end: m.index! + m[0].length, text: m[0] }));
++}
+diff --git a/code/extension/src/detection/l1/types.ts b/code/extension/src/detection/l1/types.ts
+new file mode 100644
+index 0000000..8a6363f
+--- /dev/null
++++ b/code/extension/src/detection/l1/types.ts
+@@ -0,0 +1,3 @@
++export type FindingClass =
++  | 'NRIC' | 'SSM' | 'NRIC_OR_SSM_AMBIGUOUS' | 'TIN' | 'EMAIL' | 'CARD' | 'PERSON' | 'ORG';
++export type Finding = { cls: FindingClass; start: number; end: number; text: string };
+diff --git a/code/extension/tests/l1/card.test.ts b/code/extension/tests/l1/card.test.ts
+new file mode 100644
+index 0000000..d2c375b
+--- /dev/null
++++ b/code/extension/tests/l1/card.test.ts
+@@ -0,0 +1,12 @@
++import { describe, it, expect } from 'vitest';
++import { detectCard } from '../../src/detection/l1/card';
++
++describe('card', () => {
++  it('detects a Luhn-valid test PAN', () => expect(detectCard('4111 1111 1111 1111')[0]?.cls).toBe('CARD'));
++  it('ignores a Luhn-invalid 16-digit run', () => expect(detectCard('4111 1111 1111 1112')).toEqual([]));
++  it('ignores a 12-digit run (too short for a card)', () => expect(detectCard('4111 1111 1111')).toEqual([]));
++  it('detects a Luhn-valid 19-digit PAN', () =>
++    expect(detectCard('4111 1111 1111 1111 110')[0]?.cls).toBe('CARD'));
++  it('does not fire on a 20-digit run whose 19-digit prefix fails Luhn', () =>
++    expect(detectCard('12345678901234567890')).toEqual([]));
++});
+diff --git a/code/extension/tests/l1/email.test.ts b/code/extension/tests/l1/email.test.ts
+new file mode 100644
+index 0000000..40a7c22
+--- /dev/null
++++ b/code/extension/tests/l1/email.test.ts
+@@ -0,0 +1,9 @@
++import { describe, it, expect } from 'vitest';
++import { detectEmail } from '../../src/detection/l1/email';
++
++describe('email', () => {
++  it('detects a normal address', () =>
++    expect(detectEmail('reach me at alice@example.com thanks')[0]?.cls).toBe('EMAIL'));
++  it('does not fire on not an @ mention', () => expect(detectEmail('not an @ mention')).toEqual([]));
++  it('does not fire on a@b without TLD', () => expect(detectEmail('a@b')).toEqual([]));
++});
+diff --git a/code/extension/tests/l1/guardrail.test.ts b/code/extension/tests/l1/guardrail.test.ts
+new file mode 100644
+index 0000000..14437ad
+--- /dev/null
++++ b/code/extension/tests/l1/guardrail.test.ts
+@@ -0,0 +1,25 @@
++import { describe, it, expect } from 'vitest';
++import { runL1 } from '../../src/detection/l1';
++
++describe('L1 fires on identifier grammars, never on bare numbers', () => {
++  for (const clean of [
++    '1+1',
++    '1 + 1 = 2',
++    'the year 2024',
++    'chapter 12',
++    'I need 3 apples',
++    '100%',
++    '$4.50',
++    'page 42 of 100',
++    '2024-01-01 is a date',
++    'call me at 3pm',
++    '12345',
++    'order #7890',
++    'v1.2.3',
++    'aisle 9',
++    'RM 250',
++    '-5 degrees',
++  ]) {
++    it(`no finding: ${clean}`, () => expect(runL1(clean)).toEqual([]));
++  }
++});
+diff --git a/code/extension/tests/l1/nric.test.ts b/code/extension/tests/l1/nric.test.ts
+new file mode 100644
+index 0000000..f2eeef8
+--- /dev/null
++++ b/code/extension/tests/l1/nric.test.ts
+@@ -0,0 +1,11 @@
++import { describe, it, expect } from 'vitest';
++import { detectNric } from '../../src/detection/l1/nric';
++
++describe('NRIC', () => {
++  it('detects a valid NRIC', () => expect(detectNric('IC 890101-14-5555 ok')[0]?.cls).toBe('NRIC'));
++  it('rejects an impossible month', () => expect(detectNric('991301-14-5555')).toEqual([]));
++  it('rejects an unassigned PB code', () => expect(detectNric('890101-17-5555')).toEqual([]));
++  it('does not fire on a bare 12-digit run without dashes', () => expect(detectNric('890101145555')).toEqual([]));
++  it('rejects impossible day 00', () => expect(detectNric('890100-14-5555')).toEqual([]));
++  it('rejects impossible day 32', () => expect(detectNric('890132-14-5555')).toEqual([]));
++});
+diff --git a/code/extension/tests/l1/runl1.test.ts b/code/extension/tests/l1/runl1.test.ts
+new file mode 100644
+index 0000000..526de39
+--- /dev/null
++++ b/code/extension/tests/l1/runl1.test.ts
+@@ -0,0 +1,24 @@
++import { describe, it, expect } from 'vitest';
++import { runL1 } from '../../src/detection/l1';
++
++describe('runL1', () => {
++  it('returns only NRIC for a dashed NRIC, not SSM/AMBIGUOUS on the same string', () => {
++    const findings = runL1('IC 890101-14-5555 ok');
++    expect(findings).toHaveLength(1);
++    expect(findings[0]?.cls).toBe('NRIC');
++  });
++
++  it('dedupes overlapping findings, keeping the longer span', () => {
++    // 16-digit Luhn-valid PAN; SSM would match a 12-digit prefix if boundaries allowed overlap.
++    const text = '4111111111111111';
++    const findings = runL1(text);
++    expect(findings.filter((f) => f.cls === 'CARD')).toHaveLength(1);
++    expect(findings.filter((f) => f.cls === 'SSM' || f.cls === 'NRIC_OR_SSM_AMBIGUOUS')).toHaveLength(0);
++  });
++
++  it('merges non-overlapping findings from multiple detectors', () => {
++    const findings = runL1('IC 890101-14-5555 email alice@example.com TIN IG123456789');
++    const classes = findings.map((f) => f.cls).sort();
++    expect(classes).toEqual(['EMAIL', 'NRIC', 'TIN']);
++  });
++});
+diff --git a/code/extension/tests/l1/ssm.test.ts b/code/extension/tests/l1/ssm.test.ts
+new file mode 100644
+index 0000000..b7e0680
+--- /dev/null
++++ b/code/extension/tests/l1/ssm.test.ts
+@@ -0,0 +1,11 @@
++import { describe, it, expect } from 'vitest';
++import { detectSsm } from '../../src/detection/l1/ssm';
++
++describe('SSM', () => {
++  it('flags a 12-digit that cannot be an NRIC as SSM', () =>
++    expect(detectSsm('201501234567')[0]?.cls).toBe('SSM')); // month=15 -> not NRIC-shaped
++  it('flags an NRIC-shaped 12-digit as AMBIGUOUS', () =>
++    expect(detectSsm('890101145555')[0]?.cls).toBe('NRIC_OR_SSM_AMBIGUOUS'));
++  it('does not fire on an 11-digit run', () => expect(detectSsm('20150123456')).toEqual([]));
++  it('does not fire on a 13-digit run', () => expect(detectSsm('2015012345678')).toEqual([]));
++});
+diff --git a/code/extension/tests/l1/tin.test.ts b/code/extension/tests/l1/tin.test.ts
+new file mode 100644
+index 0000000..c5589d5
+--- /dev/null
++++ b/code/extension/tests/l1/tin.test.ts
+@@ -0,0 +1,9 @@
++import { describe, it, expect } from 'vitest';
++import { detectTin } from '../../src/detection/l1/tin';
++
++describe('TIN', () => {
++  it('detects a valid IG TIN', () => expect(detectTin('TIN IG123456789 here')[0]?.cls).toBe('TIN'));
++  it('does not fire on a lone SG prefix without digits', () => expect(detectTin('country SG only')).toEqual([]));
++  it('does not fire on OG inside a word without 9-11 trailing digits', () =>
++    expect(detectTin('cognitive reasoning')).toEqual([]));
++});

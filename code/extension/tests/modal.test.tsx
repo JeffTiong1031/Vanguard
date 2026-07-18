@@ -27,24 +27,25 @@ const emailFinding: Finding = {
 };
 
 describe('placePopover', () => {
-  it('prefers the left side of the word when there is room', () => {
+  it('prefers the right side of the word when there is room', () => {
     const pos = placePopover(
-      { top: 200, bottom: 220, left: 400, right: 480, width: 80, height: 20, x: 400, y: 200, toJSON: () => '' },
+      { top: 200, bottom: 220, left: 100, right: 180, width: 80, height: 20, x: 100, y: 200, toJSON: () => '' },
       800,
       600,
     );
-    // 400 - 300 - 8 = 92
-    expect(pos.left).toBe(92);
+    // 180 + 8 = 188
+    expect(pos.left).toBe(188);
     expect(pos.top).toBe(200);
   });
 
-  it('flips to the right when the word is near the left edge', () => {
+  it('flips to the left when the word is near the right edge', () => {
     const pos = placePopover(
-      { top: 200, bottom: 220, left: 40, right: 100, width: 60, height: 20, x: 40, y: 200, toJSON: () => '' },
+      { top: 200, bottom: 220, left: 700, right: 780, width: 80, height: 20, x: 700, y: 200, toJSON: () => '' },
       800,
       600,
     );
-    expect(pos.left).toBe(108); // right + gap
+    // 700 - 300 - 8 = 392
+    expect(pos.left).toBe(392);
   });
 });
 

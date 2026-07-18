@@ -1,0 +1,108 @@
+﻿BASE 8e4a8d8 HEAD b5cc31d
+b5cc31d feat(ext): L1+L2 scan orchestration with ADR 0013/0014 rules
+ code/extension/src/detection/scan.ts | 23 ++++++++++++
+ code/extension/tests/scan.test.ts    | 68 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 91 insertions(+)
+diff --git a/code/extension/src/detection/scan.ts b/code/extension/src/detection/scan.ts
+new file mode 100644
+index 0000000..a166eea
+--- /dev/null
++++ b/code/extension/src/detection/scan.ts
+@@ -0,0 +1,23 @@
++import type { Finding } from './l1/types';
++import { runL1 } from './l1';
++import { l2Scan } from './l2/client';
++import { sha256Hex } from './hash';
++import { VerdictCache, type Verdict } from './verdict-cache';
++
++export async function scanInto(cache: VerdictCache, text: string, opts: { l2TimeoutMs: number }): Promise<Verdict> {
++  const hash = await sha256Hex(text);
++  const l1 = runL1(text);
++  if (l1.length > 0) cache.setDirty(hash, l1); // ADR 0013: gate the dangerous input now
++
++  const l2 = await l2Scan(text, opts.l2TimeoutMs);
++  if (l2 === 'degraded') {
++    // ADR 0014: never fabricate CLEAN. Keep any L1 dirtiness; if L1 was empty, leave the hash unknown.
++    return cache.getSync(hash) ?? { state: 'CLEAN', findings: [], complete: false };
++  }
++  const l2Findings: Finding[] = l2.map((e) => ({ cls: e.type, start: e.start, end: e.end, text: e.text }));
++  const findings = [...l1, ...l2Findings];
++  if (findings.length > 0) cache.setDirty(hash, findings);
++  else cache.setClean(hash, []);
++  cache.markComplete(hash);
++  return cache.getSync(hash)!;
++}
+diff --git a/code/extension/tests/scan.test.ts b/code/extension/tests/scan.test.ts
+new file mode 100644
+index 0000000..647821d
+--- /dev/null
++++ b/code/extension/tests/scan.test.ts
+@@ -0,0 +1,68 @@
++import { describe, it, expect, vi, beforeEach } from 'vitest';
++import { scanInto } from '../src/detection/scan';
++import { VerdictCache } from '../src/detection/verdict-cache';
++import { sha256Hex } from '../src/detection/hash';
++import { l2Scan } from '../src/detection/l2/client';
++
++vi.mock('../src/detection/l2/client', () => ({
++  l2Scan: vi.fn(async () => [{ type: 'PERSON', start: 0, end: 5, text: 'Ahmad' }]),
++}));
++
++describe('scanInto', () => {
++  it('an L1 hit makes it DIRTY even before L2', async () => {
++    const c = new VerdictCache();
++    const v = await scanInto(c, 'IC 890101-14-5555', { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('DIRTY');
++    expect(v.findings.some((f) => f.cls === 'NRIC')).toBe(true);
++  });
++  it('L1-clean + L2 PERSON is DIRTY', async () => {
++    const c = new VerdictCache();
++    const v = await scanInto(c, 'call Ahmad', { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('DIRTY');
++    expect(v.findings.some((f) => f.cls === 'PERSON')).toBe(true);
++  });
++});
++
++describe('scanInto degraded path (ADR 0014)', () => {
++  beforeEach(() => {
++    vi.mocked(l2Scan).mockReset();
++  });
++
++  it('L1 hit + L2 degraded: verdict stays DIRTY and cache is DIRTY', async () => {
++    vi.mocked(l2Scan).mockResolvedValueOnce('degraded');
++    const c = new VerdictCache();
++    const text = 'IC 890101-14-5555';
++    const hash = await sha256Hex(text);
++    const v = await scanInto(c, text, { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('DIRTY');
++    expect(c.getSync(hash)!.state).toBe('DIRTY');
++  });
++
++  it('L1 clean + L2 degraded: CLEAN incomplete, cache has no entry', async () => {
++    vi.mocked(l2Scan).mockResolvedValueOnce('degraded');
++    const c = new VerdictCache();
++    const text = 'hello world';
++    const hash = await sha256Hex(text);
++    const v = await scanInto(c, text, { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('CLEAN');
++    expect(v.complete).toBe(false);
++    expect(c.getSync(hash)).toBeUndefined();
++  });
++});
++
++describe('scanInto L1-clean + L2 empty', () => {
++  beforeEach(() => {
++    vi.mocked(l2Scan).mockReset();
++  });
++
++  it('state CLEAN, complete:true, cache cached CLEAN', async () => {
++    vi.mocked(l2Scan).mockResolvedValueOnce([]);
++    const c = new VerdictCache();
++    const text = 'hello world';
++    const hash = await sha256Hex(text);
++    const v = await scanInto(c, text, { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('CLEAN');
++    expect(v.complete).toBe(true);
++    expect(c.getSync(hash)!.state).toBe('CLEAN');
++  });
++});

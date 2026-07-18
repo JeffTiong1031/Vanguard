@@ -53,7 +53,7 @@ const shell: Record<string, string> = {
 };
 
 /**
- * Prefer LEFT of the word (founder). Flip to the right if no room.
+ * Prefer RIGHT of the word (founder). Flip to the left if no room.
  * Vertically align with the word; clamp into the viewport.
  */
 export function placePopover(
@@ -61,13 +61,12 @@ export function placePopover(
   vw = typeof window !== 'undefined' ? window.innerWidth : 800,
   vh = typeof window !== 'undefined' ? window.innerHeight : 600,
 ): { top: number; left: number } {
-  // Left of the span first.
-  let left = anchor.left - POPOVER_W - POPOVER_GAP;
-  if (left < 8) {
-    // Not enough room on the left → sit to the right of the word.
-    left = Math.min(anchor.right + POPOVER_GAP, vw - POPOVER_W - 8);
+  // Right of the span first.
+  let left = anchor.right + POPOVER_GAP;
+  if (left + POPOVER_W > vw - 8) {
+    // Not enough room on the right → sit to the left of the word.
+    left = Math.max(8, anchor.left - POPOVER_W - POPOVER_GAP);
   }
-  if (left < 8) left = 8;
 
   // Align top with the word; keep the card on-screen.
   let top = anchor.top;
