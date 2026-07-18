@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Vanguard — L1 composer hints (Slice 1.5)</title>
+  <style>
+    :root {
+      --vg-hint-underline: #e11d48;
+      --vg-hint-underline-hover: #be123c;
+      --vg-popover-bg: #ffffff;
+      --vg-popover-fg: #0f172a;
+      --vg-popover-muted: #64748b;
+      --vg-popover-border: #e2e8f0;
+      --vg-btn-primary-bg: #0f172a;
+      --vg-btn-primary-fg: #ffffff;
+      --vg-btn-secondary-fg: #475569;
+      --vg-radius: 8px;
+      --vg-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+      --vg-font: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--vg-font);
+      background: linear-gradient(160deg, #f8fafc 0%, #e2e8f0 100%);
+      color: var(--vg-popover-fg);
+      display: grid;
+      place-items: center;
+      padding: 48px 24px;
+    }
+    .stage {
+      width: min(560px, 100%);
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: var(--vg-shadow);
+      padding: 28px 24px 36px;
+      position: relative;
+    }
+    h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; color: var(--vg-popover-muted); letter-spacing: 0.02em; text-transform: uppercase; }
+    p.lead { margin: 0 0 20px; font-size: 13px; color: var(--vg-popover-muted); }
+    .composer {
+      border: 1px solid var(--vg-popover-border);
+      border-radius: var(--vg-radius);
+      padding: 14px 16px;
+      font-size: 15px;
+      line-height: 1.55;
+      min-height: 72px;
+    }
+    .mark {
+      text-decoration: underline;
+      text-decoration-color: var(--vg-hint-underline);
+      text-decoration-thickness: 2.5px;
+      text-underline-offset: 3px;
+      cursor: pointer;
+      animation: fadeIn 120ms ease-out;
+    }
+    .mark:hover { text-decoration-color: var(--vg-hint-underline-hover); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .popover {
+      position: absolute;
+      left: 48px;
+      top: 118px;
+      width: 280px;
+      background: var(--vg-popover-bg);
+      color: var(--vg-popover-fg);
+      border: 1px solid var(--vg-popover-border);
+      border-radius: var(--vg-radius);
+      box-shadow: var(--vg-shadow);
+      padding: 12px 14px;
+      animation: pop 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(4px) scale(0.96); }
+      to { opacity: 1; transform: none; }
+    }
+    .cls { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--vg-hint-underline); text-transform: uppercase; margin-bottom: 6px; }
+    .why { font-size: 13px; margin: 0 0 8px; color: var(--vg-popover-fg); }
+    .rec { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: #f1f5f9; padding: 8px 10px; border-radius: 6px; margin-bottom: 12px; }
+    .actions { display: flex; gap: 8px; }
+    button.primary {
+      flex: 1;
+      border: none;
+      background: var(--vg-btn-primary-bg);
+      color: var(--vg-btn-primary-fg);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font: 600 13px var(--vg-font);
+      cursor: pointer;
+    }
+    button.secondary {
+      flex: 1;
+      border: 1px solid var(--vg-popover-border);
+      background: transparent;
+      color: var(--vg-btn-secondary-fg);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font: 600 13px var(--vg-font);
+      cursor: pointer;
+    }
+    .note { margin-top: 28px; font-size: 12px; color: var(--vg-popover-muted); }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <h1>Typing hints · L1 only</h1>
+    <p class="lead">Advisory underlines — never blocks Send. PERSON/ORG off.</p>
+    <div class="composer">
+      Please check IC <span class="mark">890101-14-5555</span> and email me at alice@example.com
+    </div>
+    <div class="popover" role="dialog" aria-label="Privacy tip">
+      <div class="cls">NRIC</div>
+      <p class="why">Looks like a Malaysian identity card number.</p>
+      <div class="rec">Recommend: NRIC_1</div>
+      <div class="actions">
+        <button type="button" class="primary">Accept</button>
+        <button type="button" class="secondary">Dismiss</button>
+      </div>
+    </div>
+    <p class="note">On Enter/Send: existing L1+L2 modal still hard-gates. Phase 4 later: per-span Send UX.</p>
+  </div>
+</body>
+</html>

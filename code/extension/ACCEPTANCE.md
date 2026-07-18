@@ -69,3 +69,23 @@ These augment the checklist above; they do not replace any brief item.
 | claude.ai | | | | |
 
 **Slice 1 accepted when:** all Setup + Real flow + Invariants boxes are checked on **both** surfaces, residual risks R1/R2/Task 8/Task 12 minors are verified or explicitly noted, and sign-off is recorded.
+
+---
+
+## Slice 1.5 — L1 Grammarly-while-typing (ADR 0024)
+
+**Status: IMPLEMENTED — LIVE RUN DEFERRED_MANUAL**
+
+Unit coverage: `tests/hint-logic.test.ts` (L1-only, Accept one span, Dismiss prune, arithmetic guardrail). Gate UI skip: `tests/gate.test.ts`. Live boxes below need a human on both surfaces.
+
+On ChatGPT **and** Claude:
+
+- [ ] Type/paste an IC or email → rose underline appears; Send is **not** blocked by the tip alone
+- [ ] Hover → popover with class + recommendation; Accept → that span becomes `NRIC_1` / `EMAIL_1`; can still edit
+- [ ] Dismiss → underline gone for that span until the span text changes
+- [ ] Press Send with remaining L1/L2 hits → **existing modal** still hard-gates
+- [ ] Ignore-with-reason in modal types correctly on Claude (Enter in the reason field is not treated as Send)
+
+### Phase 4 — deferred (not this ship)
+
+Send-time per-span Accept / Ignore-with-reason / Accept all / word-by-word animation — after typing UX is accepted. Do not implement until Phase 3 live boxes pass.

@@ -6,6 +6,7 @@ import { VerdictCache } from '../src/detection/verdict-cache';
 import { ApprovalStore } from '../src/gate/approval-token';
 import { installGate } from '../src/gate/gate';
 import { rewrite, SessionNumbering } from '../src/mask/placeholder';
+import { createComposerHints } from '../src/ui/composer-hints';
 import {
   hideModal,
   hideProtectionDegraded,
@@ -33,6 +34,17 @@ export default defineContentScript({
     const approvals = new ApprovalStore();
     const numbering = new SessionNumbering();
     const hashes = new Map<string, string>();
+
+    const hints = createComposerHints({
+      numbering,
+      onRewrite: (rewritten) => {
+        adapter.writeText(rewritten);
+        approvals.invalidate();
+        const text = adapter.readText() ?? rewritten;
+        hints.update(text);
+        void scan(text);
+      },
+    });
 
     const scan = async (text: string) => {
       const verdict = await scanInto(cache, text, { l2TimeoutMs: L2_TIMEOUT_MS });
@@ -66,6 +78,7 @@ export default defineContentScript({
             const hash = await sha256Hex(approvedText);
             approvals.approve(hash, 60_000);
             hashes.set(approvedText, hash);
+            hints.update(approvedText);
             hideModal();
           },
           onIgnore: async (reason) => {
@@ -87,19 +100,32 @@ export default defineContentScript({
     const onInput = () => {
       approvals.invalidate();
       const text = adapter.readText();
-      if (text) debouncedScan(text);
+      if (text) {
+        // L1 hints: sync, no L2 (ADR 0024). Gate scan stays debounced.
+        hints.update(text);
+        debouncedScan(text);
+      } else {
+        hints.clear();
+      }
     };
     const bindComposer = () => {
       const composer = adapter.getComposer();
       if (composer === boundComposer) return;
       boundComposer?.removeEventListener('input', onInput);
       boundComposer = composer;
+      hints.attach(composer);
       boundComposer?.addEventListener('input', onInput);
+      const text = adapter.readText();
+      if (text) hints.update(text);
+      else hints.clear();
     };
     bindComposer();
     new MutationObserver(bindComposer).observe(document, { childList: true, subtree: true });
 
-    adapter.onPaste((text) => void scan(text));
+    adapter.onPaste((text) => {
+      hints.update(text);
+      void scan(text);
+    });
   },
 });
 
