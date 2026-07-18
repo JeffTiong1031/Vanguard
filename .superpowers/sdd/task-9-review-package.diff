@@ -1,0 +1,102 @@
+BASE: 5998b135c28ccb11533e4df625b66316972c997f
+HEAD: a444251197f44751faf49706a2f362f5cd45dbba
+
+=== COMMITS ===
+a444251 fix(ext): NUL-delimit SessionNumbering keys; assert rewrite map privacy shape
+690639f feat(ext): in-memory monotonic numbering and placeholder rewrite (no rehydration)
+
+=== STAT ===
+ code/extension/src/mask/numbering.ts   | 17 +++++++++++++++
+ code/extension/src/mask/placeholder.ts | 15 ++++++++++++++
+ code/extension/tests/mask.test.ts      | 38 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 70 insertions(+)
+
+=== DIFF -U10 ===
+diff --git a/code/extension/src/mask/numbering.ts b/code/extension/src/mask/numbering.ts
+new file mode 100644
+index 0000000..aa928ca
+--- /dev/null
++++ b/code/extension/src/mask/numbering.ts
+@@ -0,0 +1,17 @@
++import type { FindingClass } from '../detection/l1/types';
++
++export class SessionNumbering {
++  private counters = new Map<FindingClass, number>();
++  private assigned = new Map<string, string>(); // `${cls}\0${text}` -> placeholder (IN MEMORY ONLY)
++
++  placeholderFor(cls: FindingClass, text: string): string {
++    const key = `${cls}\0${text}`;
++    const seen = this.assigned.get(key);
++    if (seen) return seen;
++    const next = (this.counters.get(cls) ?? 0) + 1;
++    this.counters.set(cls, next);
++    const ph = `${cls}_${next}`;
++    this.assigned.set(key, ph);
++    return ph;
++  }
++}
+diff --git a/code/extension/src/mask/placeholder.ts b/code/extension/src/mask/placeholder.ts
+new file mode 100644
+index 0000000..b453aa4
+--- /dev/null
++++ b/code/extension/src/mask/placeholder.ts
+@@ -0,0 +1,15 @@
++import type { Finding, FindingClass } from '../detection/l1/types';
++export { SessionNumbering } from './numbering';
++import { SessionNumbering } from './numbering';
++
++export function rewrite(text: string, findings: Finding[], numbering: SessionNumbering) {
++  const sorted = [...findings].sort((a, b) => b.start - a.start); // right-to-left keeps offsets valid
++  let rewritten = text;
++  const map: Array<{ placeholder: string; cls: FindingClass }> = [];
++  for (const f of sorted) {
++    const ph = numbering.placeholderFor(f.cls, text.slice(f.start, f.end));
++    rewritten = rewritten.slice(0, f.start) + ph + rewritten.slice(f.end);
++    map.push({ placeholder: ph, cls: f.cls });
++  }
++  return { rewritten, map };
++}
+diff --git a/code/extension/tests/mask.test.ts b/code/extension/tests/mask.test.ts
+new file mode 100644
+index 0000000..9d20bb1
+--- /dev/null
++++ b/code/extension/tests/mask.test.ts
+@@ -0,0 +1,38 @@
++import { describe, it, expect } from 'vitest';
++import { SessionNumbering, rewrite } from '../src/mask/placeholder';
++
++describe('masking', () => {
++  it('same original -> same placeholder within a session', () => {
++    const n = new SessionNumbering();
++    expect(n.placeholderFor('PERSON', 'Ahmad')).toBe('PERSON_1');
++    expect(n.placeholderFor('PERSON', 'Ahmad')).toBe('PERSON_1');
++    expect(n.placeholderFor('PERSON', 'Rachel')).toBe('PERSON_2');
++  });
++  it('rewrites right-to-left so offsets stay valid', () => {
++    const n = new SessionNumbering();
++    const { rewritten } = rewrite('call Ahmad about Apple', [
++      { cls: 'PERSON', start: 5, end: 10, text: 'Ahmad' },
++      { cls: 'ORG', start: 17, end: 22, text: 'Apple' },
++    ], n);
++    expect(rewritten).toBe('call PERSON_1 about ORG_1');
++  });
++  it('distinct classes with colliding concatenation get distinct placeholders', () => {
++    const n = new SessionNumbering();
++    expect(n.placeholderFor('NRIC', '_OR_SSM_AMBIGUOUSfoo')).toBe('NRIC_1');
++    expect(n.placeholderFor('NRIC_OR_SSM_AMBIGUOUS', 'foo')).toBe('NRIC_OR_SSM_AMBIGUOUS_1');
++  });
++  it('rewrite map has privacy-safe shape with no original text', () => {
++    const n = new SessionNumbering();
++    const { map } = rewrite('call Ahmad about Apple', [
++      { cls: 'PERSON', start: 5, end: 10, text: 'Ahmad' },
++      { cls: 'ORG', start: 17, end: 22, text: 'Apple' },
++    ], n);
++    for (const entry of map) {
++      expect(Object.keys(entry).sort()).toEqual(['cls', 'placeholder']);
++      expect(entry).toEqual({ placeholder: entry.placeholder, cls: entry.cls });
++    }
++    const serialized = JSON.stringify(map);
++    expect(serialized).not.toContain('Ahmad');
++    expect(serialized).not.toContain('Apple');
++  });
++});

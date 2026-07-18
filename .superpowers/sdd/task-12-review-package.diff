@@ -1,0 +1,168 @@
+BASE: 602d04e42c1381964201dd1cd0df57393d2e8b8b
+HEAD: de790dc556e49a9863127f7fadaea4b6b1424a77
+
+=== COMMITS ===
+de790dc fix(ext): verify dist drift in production mode
+1511c7a feat(ext): wire the full block -> modal -> rewrite -> user-sends flow
+
+=== STAT (all) ===
+ .../dist/chrome-mv3/content-scripts/content.js     |  2 +-
+ code/extension/entrypoints/content.ts              | 90 ++++++++++++++++++++--
+ code/extension/scripts/check-dist-drift.mjs        |  5 +-
+ code/extension/src/util/debounce.ts                | 10 +++
+ 4 files changed, 100 insertions(+), 7 deletions(-)
+
+=== STAT (dist only) ===
+ code/extension/dist/chrome-mv3/content-scripts/content.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+=== DIFF -U10 (source/config; dist omitted — verify via build + check:dist in report) ===
+diff --git a/code/extension/entrypoints/content.ts b/code/extension/entrypoints/content.ts
+index dc41705..ce2e8e9 100644
+--- a/code/extension/entrypoints/content.ts
++++ b/code/extension/entrypoints/content.ts
+@@ -1,13 +1,93 @@
++import { pickAdapter } from '../src/adapters/registry';
++import { recordFindings, recordIgnore } from '../src/audit/audit';
++import { sha256Hex } from '../src/detection/hash';
++import { scanInto } from '../src/detection/scan';
++import { VerdictCache } from '../src/detection/verdict-cache';
++import { ApprovalStore } from '../src/gate/approval-token';
++import { installGate } from '../src/gate/gate';
++import { rewrite, SessionNumbering } from '../src/mask/placeholder';
++import { hideModal, showModal } from '../src/ui/mount';
++import { debounce } from '../src/util/debounce';
++
++const COLD_HASH = '\0cold';
++const L2_TIMEOUT_MS = 4_000; // (estimate) team-test value; U6-b measures the curve
++
+ export default defineContentScript({
+   matches: ['https://chatgpt.com/*', 'https://claude.ai/*'],
+   runAt: 'document_start',
+   world: 'ISOLATED',
+   main() {
+-    console.info('[vanguard] content script alive on', location.hostname);
++    const adapter = pickAdapter(location.hostname);
++    if (!adapter) return;
++
++    const cache = new VerdictCache();
++    const approvals = new ApprovalStore();
++    const numbering = new SessionNumbering();
++    const hashes = new Map<string, string>();
++
++    const scan = async (text: string) => {
++      const verdict = await scanInto(cache, text, { l2TimeoutMs: L2_TIMEOUT_MS });
++      hashes.set(text, await sha256Hex(text));
++      if (verdict.state === 'DIRTY') await recordFindings(verdict.findings);
++    };
++    const debouncedScan = debounce((text: string) => void scan(text), 250);
+ 
+-    // TEMPORARY dev hook for manual smoke-testing the L2 scan end to end (removed in Phase 3 â€”
+-    // see .superpowers/sdd/task-3-report.md for the console steps). Not wired to any UI.
+-    (window as unknown as { __vgScan: (t: string) => Promise<unknown> }).__vgScan = (t: string) =>
+-      chrome.runtime.sendMessage({ kind: 'l2-scan', id: '1', text: t });
++    installGate({
++      cache,
++      getComposerText: (_path) => adapter.readText(),
++      isSendIntent: (event, path) =>
++        (event instanceof KeyboardEvent && event.key === 'Enter' && !event.shiftKey)
++        || adapter.isSendControl(path),
++      hashOf: (text) => hashes.get(text) ?? COLD_HASH,
++      approvedHash: () => approvals.currentHash(),
++      onBlocked: async (text) => {
++        if (cache.getSync(hashes.get(text) ?? '') == null) await scan(text);
++        const verdict = cache.getSync(hashes.get(text) ?? '');
++        if (!verdict || verdict.state === 'CLEAN') return;
++
++        const { rewritten } = rewrite(text, verdict.findings, numbering);
++        showModal({
++          rewritten,
++          summary: summarise(verdict.findings),
++          onApprove: async () => {
++            adapter.writeText(rewritten);
++            const hash = await sha256Hex(rewritten);
++            approvals.approve(hash, 60_000);
++            hashes.set(rewritten, hash);
++            hideModal();
++          },
++          onIgnore: async (reason) => {
++            await recordIgnore(verdict.findings, reason);
++            hideModal();
++          },
++        });
++      },
++    });
++
++    let boundComposer: HTMLElement | null = null;
++    const onInput = () => {
++      approvals.invalidate();
++      const text = adapter.readText();
++      if (text) debouncedScan(text);
++    };
++    const bindComposer = () => {
++      const composer = adapter.getComposer();
++      if (composer === boundComposer) return;
++      boundComposer?.removeEventListener('input', onInput);
++      boundComposer = composer;
++      boundComposer?.addEventListener('input', onInput);
++    };
++    bindComposer();
++    new MutationObserver(bindComposer).observe(document, { childList: true, subtree: true });
++
++    adapter.onPaste((text) => void scan(text));
+   },
+ });
++
++function summarise(findings: Array<{ cls: string }>) {
++  const counts = new Map<string, number>();
++  for (const finding of findings) {
++    counts.set(finding.cls, (counts.get(finding.cls) ?? 0) + 1);
++  }
++  return [...counts].map(([cls, count]) => ({ cls, count }));
++}
+diff --git a/code/extension/scripts/check-dist-drift.mjs b/code/extension/scripts/check-dist-drift.mjs
+index e9216e4..0636148 100644
+--- a/code/extension/scripts/check-dist-drift.mjs
++++ b/code/extension/scripts/check-dist-drift.mjs
+@@ -52,21 +52,24 @@ function runVerify() {
+   writeFileSync(
+     driftConfigPath,
+     `import base from './wxt.config.ts';
+ export default {
+   ...base,
+   outDir: ${JSON.stringify(tmp)},
+ };
+ `,
+   );
+   try {
+-    execFileSync(process.execPath, [wxtBin, 'build', '--config', driftConfigPath], { stdio: 'inherit' });
++    execFileSync(process.execPath, [wxtBin, 'build', '--config', driftConfigPath], {
++      stdio: 'inherit',
++      env: { ...process.env, NODE_ENV: 'production' },
++    });
+   } finally {
+     try {
+       unlinkSync(driftConfigPath);
+     } catch {
+       // ignore cleanup errors
+     }
+   }
+ 
+   const fresh = hashTree(join(tmp, 'chrome-mv3'));
+   const committed = hashTree(COMMITTED);
+diff --git a/code/extension/src/util/debounce.ts b/code/extension/src/util/debounce.ts
+new file mode 100644
+index 0000000..ef1bac8
+--- /dev/null
++++ b/code/extension/src/util/debounce.ts
+@@ -0,0 +1,10 @@
++export function debounce<A extends unknown[]>(
++  fn: (...args: A) => void,
++  ms: number,
++): (...args: A) => void {
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  return (...args: A) => {
++    clearTimeout(timer);
++    timer = setTimeout(() => fn(...args), ms);
++  };
++}

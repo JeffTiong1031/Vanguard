@@ -1,0 +1,2386 @@
+MERGE_BASE: 5dbfd8dd79718fb08497c42440fa3aa7b3129b1e
+HEAD: 176e46b5d2710693d99b9b4ae76b84b0d1b4cbb9
+
+=== COMMITS ===
+176e46b docs(ext): Slice 1 end-to-end acceptance checklist
+c5ba888 fix(ext): verify dist drift in production mode
+8256d25 feat(ext): wire the full block -> modal -> rewrite -> user-sends flow
+ca4f635 fix(ext): redact ignore reasons and serialize audit storage writes
+9a076e8 feat(ext): local salted-hash audit and Ignore-rate-per-class (no raw values)
+161a95c fix(ext): reject whitespace-only Ignore reasons in modal
+2a98b0a feat(ext): Preact modal in a shadow root with Ignore-with-reason
+2313672 feat(ext): single-use hash-bound approval token with TTL and edit invalidation
+b35ad7d fix(ext): NUL-delimit SessionNumbering keys; assert rewrite map privacy shape
+0600f0f feat(ext): in-memory monotonic numbering and placeholder rewrite (no rehydration)
+fadd083 feat(ext): ChatGPT and Claude adapters (selectors marked for live verification)
+d758437 feat(ext): window-capture gate with sync verdict read and IME pass-through
+30fdfab feat(ext): L1+L2 scan orchestration with ADR 0013/0014 rules
+8e4a8d8 fix(ext): rebuild committed dist to match post-fix offscreen source
+93c26b4 feat(ext): synchronous verdict cache, monotonic toward dirty
+2788d28 feat(ext): L1 detectors (NRIC/SSM+ambiguous/TIN/email/card) with the 1+1 guardrail
+bbcc575 fix(ext): correct L2 char-offset reconstruction on recurring substrings; harden client/bg/pin
+ab384ce feat(ext): hash-pinned transformers.js NER in an offscreen document
+6e6e0c6 fix(ext): test drift is detected; drift build reuses real config
+2b2e49e feat(ext): fail CI when committed dist drifts from src
+0158ce4 feat(ext): WXT scaffold that loads unpacked on ChatGPT and Claude
+
+=== STAT ===
+ code/extension/ACCEPTANCE.md                       |   71 +
+ code/extension/dist/chrome-mv3/background.js       |    2 +
+ .../dist/chrome-mv3/chunks/offscreen-DmbA2OmB.js   | 2896 ++++++
+ .../dist/chrome-mv3/content-scripts/content.js     |    2 +
+ code/extension/dist/chrome-mv3/manifest.json       |    1 +
+ code/extension/dist/chrome-mv3/offscreen.html      |    9 +
+ .../chrome-mv3/ort/ort-wasm-simd-threaded.jsep.mjs |  125 +
+ .../ort/ort-wasm-simd-threaded.jsep.wasm           |  Bin 0 -> 21596019 bytes
+ code/extension/entrypoints/background.ts           |   35 +
+ code/extension/entrypoints/content.ts              |   93 +
+ code/extension/entrypoints/offscreen/index.html    |    9 +
+ code/extension/entrypoints/offscreen/main.ts       |   75 +
+ code/extension/models.manifest.json                |    8 +
+ code/extension/package-lock.json                   | 9266 ++++++++++++++++++++
+ code/extension/package.json                        |   12 +-
+ .../public/ort/ort-wasm-simd-threaded.jsep.mjs     |  125 +
+ .../public/ort/ort-wasm-simd-threaded.jsep.wasm    |  Bin 0 -> 21596019 bytes
+ code/extension/scripts/build-model-manifest.mjs    |   25 +
+ code/extension/scripts/check-dist-drift.mjs        |   90 +
+ code/extension/src/adapters/chatgpt.ts             |   25 +
+ code/extension/src/adapters/claude.ts              |   23 +
+ code/extension/src/adapters/registry.ts            |    8 +
+ code/extension/src/adapters/types.ts               |   77 +-
+ code/extension/src/audit/audit.ts                  |   54 +
+ code/extension/src/detection/hash.ts               |    7 +
+ code/extension/src/detection/l1/card.ts            |   21 +
+ code/extension/src/detection/l1/email.ts           |    5 +
+ code/extension/src/detection/l1/index.ts           |   21 +
+ code/extension/src/detection/l1/nric.ts            |   15 +
+ code/extension/src/detection/l1/ssm.ts             |   19 +
+ code/extension/src/detection/l1/tin.ts             |    6 +
+ code/extension/src/detection/l1/types.ts           |    3 +
+ code/extension/src/detection/l2/client.ts          |   23 +
+ code/extension/src/detection/l2/messages.ts        |   83 +
+ code/extension/src/detection/l2/pin.ts             |   52 +
+ code/extension/src/detection/scan.ts               |   23 +
+ code/extension/src/detection/verdict-cache.ts      |   17 +
+ code/extension/src/entrypoints/background.ts       |   43 -
+ code/extension/src/entrypoints/content.ts          |   50 -
+ code/extension/src/gate/approval-token.ts          |   19 +
+ code/extension/src/gate/gate.ts                    |   36 +
+ code/extension/src/mask/numbering.ts               |   17 +
+ code/extension/src/mask/placeholder.ts             |   15 +
+ code/extension/src/ui/modal.tsx                    |   55 +
+ code/extension/src/ui/mount.ts                     |   28 +
+ code/extension/src/util/debounce.ts                |   10 +
+ code/extension/tests/adapters.test.ts              |   28 +
+ code/extension/tests/approval-token.test.ts        |   21 +
+ code/extension/tests/audit.test.ts                 |   70 +
+ code/extension/tests/dist-drift.test.ts            |   58 +
+ code/extension/tests/gate.test.ts                  |   69 +
+ code/extension/tests/l1/card.test.ts               |   12 +
+ code/extension/tests/l1/email.test.ts              |    9 +
+ code/extension/tests/l1/guardrail.test.ts          |   25 +
+ code/extension/tests/l1/nric.test.ts               |   11 +
+ code/extension/tests/l1/runl1.test.ts              |   24 +
+ code/extension/tests/l1/ssm.test.ts                |   11 +
+ code/extension/tests/l1/tin.test.ts                |    9 +
+ code/extension/tests/l2-messages.test.ts           |  109 +
+ code/extension/tests/mask.test.ts                  |   38 +
+ code/extension/tests/modal.test.tsx                |  161 +
+ code/extension/tests/scan.test.ts                  |   68 +
+ code/extension/tests/verdict-cache.test.ts         |   32 +
+ code/extension/vitest.config.ts                    |    7 +
+ code/extension/wxt.config.ts                       |   13 +
+ 65 files changed, 14208 insertions(+), 166 deletions(-)
+
+=== DIFF -U5 (source/config; dist omitted) ===
+diff --git a/code/extension/ACCEPTANCE.md b/code/extension/ACCEPTANCE.md
+new file mode 100644
+index 0000000..531636d
+--- /dev/null
++++ b/code/extension/ACCEPTANCE.md
+@@ -0,0 +1,71 @@
++# Slice 1 acceptance â€” run on chatgpt.com AND claude.ai
++
++**Status: CHECKLIST WRITTEN â€” LIVE RUN DEFERRED TO TEAM TEST**
++
++This document is the Slice 1 acceptance definition (doc 05 Â§1.2 visual criterion requires a human browser). Automated build/test gates are run in CI and recorded in the Task 14 report; all live checkboxes below remain unchecked until the founder's team completes a manual session on both surfaces.
++
++Run every section on **both** `https://chatgpt.com` and `https://claude.ai`. Mark each box only after observing the criterion on that surface.
++
++---
++
++## Setup
++- [ ] `npm run build && npm run check:dist` â€” dist is in sync
++- [ ] Load `dist/chrome-mv3` unpacked (Developer mode)
++- [ ] First use downloads + hash-verifies weights once (watch the SW console for the verify log)
++
++## The real flow (REAL chapters 1-4 of the chronology)
++- [ ] Type `Please call Ahmad about the deal.` â†’ the send is blocked; the modal shows PERSON: 1 and the rewrite `Please call PERSON_1 about the deal.`
++- [ ] Approve â†’ the composer now holds the rewrite, caret at end, focus in the composer
++- [ ] Press Enter (or click Send) yourself â†’ the message sends (the token matches; the gate does not stop it)
++- [ ] Paste `IC 890101-14-5555 and email me at a@b.com` â†’ blocked; modal shows NRIC: 1, EMAIL: 1
++- [ ] Type `explain Einstein's theory` â†’ blocked (stock NER PERSON); Ignore-with-reason "public figure" â†’ sends unrewritten. **This FP is expected and is the measurement (ADR 0017 Â§Consequences).**
++- [ ] Type `what is 1 + 1` â†’ NOT blocked (the guardrail holds)
++- [ ] Compose in Chinese via Microsoft Pinyin â†’ Enter commits candidates normally; only a send-intent Enter is gated (U12-b)
++- [ ] Kill the offscreen document (chrome://extensions â†’ inspect â†’ close) mid-session â†’ next send degrades to advisory ("protection degraded"), does NOT hang (ADR 0014)
++
++## The invariants (must all hold)
++- [ ] No network request carries prompt text (DevTools â†’ Network, filter by your typed string â†’ zero hits except the model CDN on first run)
++- [ ] `chrome.storage.local` contains NO raw names/NRICs â€” only classes, counts, salted fingerprints (Application tab)
++- [ ] The original value is never written back into the page after a rewrite (E2)
++- [ ] On a second machine, the same name gets `PERSON_1` independently â€” there is no shared/synced map (trivially true: no backend)
++
++---
++
++## Residual risks â€” verify live (carry-forward from Tasks 3, 8, 12, 13)
++
++These augment the checklist above; they do not replace any brief item.
++
++### R1 â€” ORT threaded WASM without COOP/COEP (Task 3)
++- [ ] On first scan after load, L2 initializes in the offscreen document (SW console: no fatal ORT init error). Extension uses threaded WASM with `numThreads=1` and does **not** rely on COOP/COEP headers from the provider page.
++- [ ] If L2 fails to initialize, the next send **degrades to advisory** ("protection degraded") and does **not** hang or fail-closed (ADR 0014).
++
++### R2 â€” Hash-pinned first-run weight fetch (Task 3)
++- [ ] First use on a clean profile: weights download from the public CDN once, hash verification succeeds (SW/offscreen console log), and subsequent scans reuse the cached artifact without re-download.
++- [ ] Tamper test (optional): corrupt the cached blob â†’ reload â†’ verify fails safe to advisory, not silent clean.
++
++### R3 â€” `messages.ts` CLS/SEP comment (Task 3, non-blocking)
++- [ ] **Skip or note only:** a comment in `messages.ts` overstates whether `[CLS]`/`[SEP]` tokens reach `attachCharOffsets` (filtered upstream). Cosmetic; does not affect acceptance.
++
++### Task 8 â€” Adapter selectors on live DOM
++- [ ] Composer binding succeeds on chatgpt.com (content script finds composer; typing/paste events reach the gate).
++- [ ] Composer binding succeeds on claude.ai (same).
++- [ ] Send-button click path is intercepted on both surfaces (not Enter-only).
++- [ ] `writeText` after Approve updates the visible composer without auto-submitting (decision #8).
++
++### Task 12 minors â€” UX edge cases inherited from wiring
++- [ ] **Cold-cache CLEAN paste â†’ Send:** paste clean text, press Send immediately (cache still cold). Expect the first keypress may be swallowed with no modal; a **second** Send press is required. This is fail-safe, not fail-open â€” document if observed.
++- [ ] **Approve â†’ Send hash round-trip:** after Approve on a DIRTY prompt, press Send once. If `innerText` round-trip from `writeText` differs from the plain-string rewrite, the approval token may not match and a second Send may be needed. Verify the happy path (one Send after Approve) on both surfaces; note any mismatch.
++
++### Task 13 â€” Cross-tab audit storage (note only, not blocking)
++- [ ] **Note:** concurrent tabs can race on `chrome.storage.local` audit writes (module-local locks cover same-tab only; SW single-writer deferred). Acceptable for team test; flag if duplicate or lost audit rows appear under heavy multi-tab use.
++
++---
++
++## Sign-off
++
++| Surface | Tester | Date | Pass / Fail | Notes |
++|---------|--------|------|-------------|-------|
++| chatgpt.com | | | | |
++| claude.ai | | | | |
++
++**Slice 1 accepted when:** all Setup + Real flow + Invariants boxes are checked on **both** surfaces, residual risks R1/R2/Task 8/Task 12 minors are verified or explicitly noted, and sign-off is recorded.
+diff --git a/code/extension/entrypoints/background.ts b/code/extension/entrypoints/background.ts
+new file mode 100644
+index 0000000..289e1df
+--- /dev/null
++++ b/code/extension/entrypoints/background.ts
+@@ -0,0 +1,35 @@
++import type { ScanRequest, ScanResponse } from '../src/detection/l2/messages';
++
++// [verify] WXT output path for entrypoints/offscreen/index.html â€” confirmed by inspecting a real
++// build (dist/chrome-mv3/); see .superpowers/sdd/task-3-report.md for the check.
++const OFFSCREEN_URL = 'offscreen.html';
++
++async function ensureOffscreen(): Promise<void> {
++  const has = await chrome.offscreen.hasDocument?.();
++  if (has) return;
++  await chrome.offscreen.createDocument({
++    url: OFFSCREEN_URL,
++    reasons: [chrome.offscreen.Reason.WORKERS],
++    justification: 'Run on-device NER inference in a WASM worker; no data leaves the device.',
++  });
++}
++
++export default defineBackground(() => {
++  console.info('[vanguard] background alive');
++
++  chrome.runtime.onMessage.addListener((msg: ScanRequest, _s, sendResponse) => {
++    if (msg?.kind !== 'l2-scan') return;
++    (async () => {
++      try {
++        await ensureOffscreen();
++        const res = (await chrome.runtime.sendMessage(msg)) as ScanResponse;
++        sendResponse(res);
++      } catch (e) {
++        // Without this, a throw becomes an unhandled rejection and the content side only
++        // sees a timeout â†’ 'degraded'. Surface the real failure as an l2-result error.
++        sendResponse({ kind: 'l2-result', id: msg.id, ok: false, error: String(e) } satisfies ScanResponse);
++      }
++    })();
++    return true;
++  });
++});
+diff --git a/code/extension/entrypoints/content.ts b/code/extension/entrypoints/content.ts
+new file mode 100644
+index 0000000..ce2e8e9
+--- /dev/null
++++ b/code/extension/entrypoints/content.ts
+@@ -0,0 +1,93 @@
++import { pickAdapter } from '../src/adapters/registry';
++import { recordFindings, recordIgnore } from '../src/audit/audit';
++import { sha256Hex } from '../src/detection/hash';
++import { scanInto } from '../src/detection/scan';
++import { VerdictCache } from '../src/detection/verdict-cache';
++import { ApprovalStore } from '../src/gate/approval-token';
++import { installGate } from '../src/gate/gate';
++import { rewrite, SessionNumbering } from '../src/mask/placeholder';
++import { hideModal, showModal } from '../src/ui/mount';
++import { debounce } from '../src/util/debounce';
++
++const COLD_HASH = '\0cold';
++const L2_TIMEOUT_MS = 4_000; // (estimate) team-test value; U6-b measures the curve
++
++export default defineContentScript({
++  matches: ['https://chatgpt.com/*', 'https://claude.ai/*'],
++  runAt: 'document_start',
++  world: 'ISOLATED',
++  main() {
++    const adapter = pickAdapter(location.hostname);
++    if (!adapter) return;
++
++    const cache = new VerdictCache();
++    const approvals = new ApprovalStore();
++    const numbering = new SessionNumbering();
++    const hashes = new Map<string, string>();
++
++    const scan = async (text: string) => {
++      const verdict = await scanInto(cache, text, { l2TimeoutMs: L2_TIMEOUT_MS });
++      hashes.set(text, await sha256Hex(text));
++      if (verdict.state === 'DIRTY') await recordFindings(verdict.findings);
++    };
++    const debouncedScan = debounce((text: string) => void scan(text), 250);
++
++    installGate({
++      cache,
++      getComposerText: (_path) => adapter.readText(),
++      isSendIntent: (event, path) =>
++        (event instanceof KeyboardEvent && event.key === 'Enter' && !event.shiftKey)
++        || adapter.isSendControl(path),
++      hashOf: (text) => hashes.get(text) ?? COLD_HASH,
++      approvedHash: () => approvals.currentHash(),
++      onBlocked: async (text) => {
++        if (cache.getSync(hashes.get(text) ?? '') == null) await scan(text);
++        const verdict = cache.getSync(hashes.get(text) ?? '');
++        if (!verdict || verdict.state === 'CLEAN') return;
++
++        const { rewritten } = rewrite(text, verdict.findings, numbering);
++        showModal({
++          rewritten,
++          summary: summarise(verdict.findings),
++          onApprove: async () => {
++            adapter.writeText(rewritten);
++            const hash = await sha256Hex(rewritten);
++            approvals.approve(hash, 60_000);
++            hashes.set(rewritten, hash);
++            hideModal();
++          },
++          onIgnore: async (reason) => {
++            await recordIgnore(verdict.findings, reason);
++            hideModal();
++          },
++        });
++      },
++    });
++
++    let boundComposer: HTMLElement | null = null;
++    const onInput = () => {
++      approvals.invalidate();
++      const text = adapter.readText();
++      if (text) debouncedScan(text);
++    };
++    const bindComposer = () => {
++      const composer = adapter.getComposer();
++      if (composer === boundComposer) return;
++      boundComposer?.removeEventListener('input', onInput);
++      boundComposer = composer;
++      boundComposer?.addEventListener('input', onInput);
++    };
++    bindComposer();
++    new MutationObserver(bindComposer).observe(document, { childList: true, subtree: true });
++
++    adapter.onPaste((text) => void scan(text));
++  },
++});
++
++function summarise(findings: Array<{ cls: string }>) {
++  const counts = new Map<string, number>();
++  for (const finding of findings) {
++    counts.set(finding.cls, (counts.get(finding.cls) ?? 0) + 1);
++  }
++  return [...counts].map(([cls, count]) => ({ cls, count }));
++}
+diff --git a/code/extension/entrypoints/offscreen/index.html b/code/extension/entrypoints/offscreen/index.html
+new file mode 100644
+index 0000000..a099e9d
+--- /dev/null
++++ b/code/extension/entrypoints/offscreen/index.html
+@@ -0,0 +1,9 @@
++<!doctype html>
++<html>
++  <head>
++    <meta charset="utf-8" />
++  </head>
++  <body>
++    <script type="module" src="./main.ts"></script>
++  </body>
++</html>
+diff --git a/code/extension/entrypoints/offscreen/main.ts b/code/extension/entrypoints/offscreen/main.ts
+new file mode 100644
+index 0000000..ca6057c
+--- /dev/null
++++ b/code/extension/entrypoints/offscreen/main.ts
+@@ -0,0 +1,75 @@
++// entrypoints/offscreen/main.ts
++//
++// ADR 0006: ONE offscreen instance, all tabs. This is the ONLY module in the extension that
++// imports `@huggingface/transformers` (resolution #7) â€” the background SW and content scripts
++// never load the model runtime.
++import { pipeline, env, type TokenClassificationPipeline } from '@huggingface/transformers';
++import type { PipelineNerToken, ScanRequest, ScanResponse } from '../../src/detection/l2/messages';
++import { attachCharOffsets, mergeNerTokens } from '../../src/detection/l2/messages';
++import { verifyPinnedModel } from '../../src/detection/l2/pin';
++
++const MODEL_ID = 'Xenova/bert-base-multilingual-cased-ner-hrl';
++
++env.allowLocalModels = false;
++env.useBrowserCache = true;
++
++// [decision] Self-host the ONNX Runtime Web WASM/mjs pair from `public/ort/` instead of the
++// library's default fallback (jsdelivr CDN â€” see node_modules/@huggingface/transformers/src/
++// backends/onnx.js: `ONNX_ENV.wasm.wasmPaths = 'https://cdn.jsdelivr.net/...'` when unset and not
++// in a service worker). MV3's default `extension_pages` CSP is `script-src 'self'
++// 'wasm-unsafe-eval'; object-src 'self'`, which would block that CDN's `.mjs` loader module.
++// Same-origin (`chrome-extension://<id>/ort/...`) avoids the question entirely. `[verify]` in a
++// real browser â€” this is a design decision made from reading the CSP and the library's fallback
++// path, not a live-tested one (Step 8 is DEFERRED_MANUAL).
++// Non-null: transformers.js unconditionally populates `env.backends.onnx.wasm` when the wasm
++// backend is registered (backends/onnx.js), which happens on import; the type is `Partial<...>`
++// only because `env.backends.onnx` itself is generically typed to also allow other backends.
++const wasmEnv = env.backends.onnx.wasm!;
++wasmEnv.wasmPaths = chrome.runtime.getURL('ort/');
++// U22 baseline (ADR 0017 Â§Consequences): single-thread WASM, no COOP/COEP, no SharedArrayBuffer.
++wasmEnv.numThreads = 1;
++
++let nerPromise: Promise<TokenClassificationPipeline> | null = null;
++async function getNer(): Promise<TokenClassificationPipeline> {
++  if (!nerPromise) {
++    nerPromise = (async () => {
++      try {
++        await verifyPinnedModel(MODEL_ID); // throws on hash mismatch; seeds the browser cache
++        // transformers.js v3: quantization is selected via `dtype`, not the v2 `quantized: true`
++        // option. `dtype: 'q8'` on `device: 'wasm'` selects the `_quantized` file suffix, i.e.
++        // `onnx/model_quantized.onnx` â€” verified against node_modules source (utils/dtypes.js,
++        // models.js) and exactly the file models.manifest.json pins.
++        const ner = await pipeline<'token-classification'>('token-classification', MODEL_ID, {
++          device: 'wasm',
++          dtype: 'q8',
++        });
++        return ner;
++      } catch (e) {
++        nerPromise = null; // don't cache a permanent failure; the next scan may retry
++        throw e;
++      }
++    })();
++  }
++  return nerPromise;
++}
++
++chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) => {
++  if (msg?.kind !== 'l2-scan') return;
++  (async () => {
++    try {
++      const ner = await getNer();
++      // CRITICAL: default ignore_labels:['O'] drops non-entity tokens and leaves
++      // attachCharOffsets's cursor stranded on recurring substrings (wrong span). Pass
++      // ignore_labels:[] so the FULL ordered stream (entity + O) advances the cursor.
++      // Verified against transformers@3.8.1 src/pipelines.js (TokenClassificationPipeline._call
++      // and the documented example at line ~370). mergeNerTokens drops O afterward.
++      const raw = (await ner(msg.text, { ignore_labels: [] })) as unknown as PipelineNerToken[];
++      const withOffsets = attachCharOffsets(msg.text, raw);
++      const entities = mergeNerTokens(withOffsets);
++      sendResponse({ kind: 'l2-result', id: msg.id, ok: true, entities } satisfies ScanResponse);
++    } catch (e) {
++      sendResponse({ kind: 'l2-result', id: msg.id, ok: false, error: String(e) } satisfies ScanResponse);
++    }
++  })();
++  return true; // async sendResponse
++});
+diff --git a/code/extension/models.manifest.json b/code/extension/models.manifest.json
+new file mode 100644
+index 0000000..3db389b
+--- /dev/null
++++ b/code/extension/models.manifest.json
+@@ -0,0 +1,8 @@
++{
++  "Xenova/bert-base-multilingual-cased-ner-hrl": {
++    "config.json": "7aa891abae067f95a40f5e2005b3de44824a083f256802934a993d301ec25076",
++    "tokenizer.json": "bf1b59b7b11c95f194f51708d918eea378e09d05f84c0e1656dc5180e8117088",
++    "tokenizer_config.json": "e6f3b96db926a37d4039995fbf5ad17de158dfb8f6343d607e4dbaad18d75f5a",
++    "onnx/model_quantized.onnx": "5b65139844be260b624a2a13782b01d122e613d64ce16ed0ba4d82e0b816f1a9"
++  }
++}
+diff --git a/code/extension/package.json b/code/extension/package.json
+index a081d78..eaf86a0 100644
+--- a/code/extension/package.json
++++ b/code/extension/package.json
+@@ -1,19 +1,23 @@
+ {
+-  "name": "vanguard-extension",
+-  "version": "0.0.0",
++  "name": "vanguard-slice1",
+   "private": true,
+   "type": "module",
+-  "_comment": "SKELETON. doc 01 Â§2's component shape with stubs. The live code is ../spikes/. See ../README.md for why the U12 spike is deliberately NOT built on this.",
+   "scripts": {
+     "dev": "wxt",
+     "build": "wxt build",
+-    "compile": "tsc --noEmit"
++    "postbuild": "node scripts/check-dist-drift.mjs --write",
++    "check:dist": "node scripts/check-dist-drift.mjs",
++    "test": "vitest run"
+   },
+   "devDependencies": {
++    "@testing-library/preact": "^3.2.4",
++    "jsdom": "^29.1.1",
+     "typescript": "^5.5.0",
++    "vitest": "^2.0.0",
+     "wxt": "^0.19.0"
+   },
+   "dependencies": {
++    "@huggingface/transformers": "^3.0.0",
+     "preact": "^10.22.0"
+   }
+ }
+diff --git a/code/extension/scripts/build-model-manifest.mjs b/code/extension/scripts/build-model-manifest.mjs
+new file mode 100644
+index 0000000..0045378
+--- /dev/null
++++ b/code/extension/scripts/build-model-manifest.mjs
+@@ -0,0 +1,25 @@
++// scripts/build-model-manifest.mjs â€” run once to pin, re-run to re-pin on a deliberate model bump.
++//
++// Files pinned here MUST be exactly the files the running pipeline loads (verified against
++// node_modules/@huggingface/transformers@3.8.1 source, see .superpowers/sdd/task-3-report.md):
++//   - config.json                 (model config; PretrainedConfig.from_pretrained)
++//   - tokenizer.json               (fast tokenizer; PreTrainedTokenizer.from_pretrained)
++//   - tokenizer_config.json        (ditto â€” fetched alongside tokenizer.json, always)
++//   - onnx/model_quantized.onnx    (dtype: 'q8' on device 'wasm' -> suffix '_quantized')
++// `vocab.txt` is deliberately NOT pinned: transformers.js's tokenizer loader never fetches it
++// (only tokenizer.json/tokenizer_config.json), so pinning it would be dead weight, not security.
++import { createHash } from 'node:crypto';
++import { writeFileSync } from 'node:fs';
++
++const MODEL = 'Xenova/bert-base-multilingual-cased-ner-hrl';
++const FILES = ['config.json', 'tokenizer.json', 'tokenizer_config.json', 'onnx/model_quantized.onnx'];
++const HOST = 'https://huggingface.co';
++
++const out = { [MODEL]: {} };
++for (const f of FILES) {
++  const r = await fetch(`${HOST}/${MODEL}/resolve/main/${f}`);
++  if (!r.ok) throw new Error(`${f}: ${r.status}`);
++  out[MODEL][f] = createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex');
++  console.log(f, out[MODEL][f]);
++}
++writeFileSync('models.manifest.json', JSON.stringify(out, null, 2) + '\n');
+diff --git a/code/extension/scripts/check-dist-drift.mjs b/code/extension/scripts/check-dist-drift.mjs
+new file mode 100644
+index 0000000..0636148
+--- /dev/null
++++ b/code/extension/scripts/check-dist-drift.mjs
+@@ -0,0 +1,90 @@
++// scripts/check-dist-drift.mjs
++// Build to a temp dir, hash every output file, compare to committed dist/chrome-mv3.
++// --write mode (postbuild) just refreshes committed dist. Default mode verifies + exits 1 on drift.
++import { execFileSync } from 'node:child_process';
++import { createHash } from 'node:crypto';
++import {
++  existsSync,
++  mkdtempSync,
++  readdirSync,
++  readFileSync,
++  statSync,
++  unlinkSync,
++  writeFileSync,
++} from 'node:fs';
++import { join, relative, resolve } from 'node:path';
++import { tmpdir } from 'node:os';
++import { fileURLToPath } from 'node:url';
++
++const wxtBin = join(process.cwd(), 'node_modules', 'wxt', 'bin', 'wxt.mjs');
++
++export const COMMITTED = 'dist/chrome-mv3';
++
++export function hashTree(root) {
++  const out = {};
++  const walk = (dir) => {
++    for (const name of readdirSync(dir)) {
++      const p = join(dir, name);
++      if (statSync(p).isDirectory()) walk(p);
++      else out[relative(root, p).replace(/\\/g, '/')] = createHash('sha256').update(readFileSync(p)).digest('hex');
++    }
++  };
++  walk(root);
++  return out;
++}
++
++/** Paths whose content hashes differ between two hashTree manifests. */
++export function diffTrees(fresh, committed) {
++  const keys = new Set([...Object.keys(fresh), ...Object.keys(committed)]);
++  return [...keys].filter((k) => fresh[k] !== committed[k]);
++}
++
++function runVerify() {
++  if (!existsSync(COMMITTED)) {
++    console.error(`Missing ${COMMITTED}. Run \`npm run build\` and commit.`);
++    process.exit(1);
++  }
++
++  const tmp = mkdtempSync(join(tmpdir(), 'vanguard-build-'));
++  // WXT 0.19 has no `wxt build --outDir` CLI flag. Override outDir via a
++  // generated config that spreads the real wxt.config.ts (no manifest copy).
++  const driftConfigPath = join(process.cwd(), '.wxt-drift.config.mjs');
++  writeFileSync(
++    driftConfigPath,
++    `import base from './wxt.config.ts';
++export default {
++  ...base,
++  outDir: ${JSON.stringify(tmp)},
++};
++`,
++  );
++  try {
++    execFileSync(process.execPath, [wxtBin, 'build', '--config', driftConfigPath], {
++      stdio: 'inherit',
++      env: { ...process.env, NODE_ENV: 'production' },
++    });
++  } finally {
++    try {
++      unlinkSync(driftConfigPath);
++    } catch {
++      // ignore cleanup errors
++    }
++  }
++
++  const fresh = hashTree(join(tmp, 'chrome-mv3'));
++  const committed = hashTree(COMMITTED);
++  const drift = diffTrees(fresh, committed);
++  if (drift.length) {
++    console.error('dist/ is stale. Run `npm run build` and commit. Drifted:\n' + drift.join('\n'));
++    process.exit(1);
++  }
++  console.log('dist/ matches a fresh build.');
++}
++
++const isDirectRun =
++  process.argv[1] && resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1]);
++
++if (isDirectRun) {
++  if (process.argv.includes('--write')) process.exit(0); // postbuild already produced dist/
++  runVerify();
++}
+diff --git a/code/extension/src/adapters/chatgpt.ts b/code/extension/src/adapters/chatgpt.ts
+new file mode 100644
+index 0000000..27ee240
+--- /dev/null
++++ b/code/extension/src/adapters/chatgpt.ts
+@@ -0,0 +1,25 @@
++// [verify all selectors against live chatgpt.com DOM]
++import type { SurfaceAdapter } from './types';
++const COMPOSER = ['#prompt-textarea', 'div[contenteditable="true"]'];
++const SEND = ['button[data-testid="send-button"]', 'button[aria-label*="Send" i]'];
++
++export const chatgptAdapter: SurfaceAdapter = {
++  host: 'chatgpt.com',
++  getComposer() { for (const s of COMPOSER) { const el = document.querySelector<HTMLElement>(s); if (el) return el; } return null; },
++  readText() { return this.getComposer()?.innerText ?? null; },
++  writeText(text) {
++    const el = this.getComposer(); if (!el) return;
++    el.focus(); el.textContent = text;
++    el.dispatchEvent(new InputEvent('input', { bubbles: true })); // let the app's state sync
++    const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
++    const sel = getSelection(); sel?.removeAllRanges(); sel?.addRange(r); // caret to end (doc 05 Â§6)
++  },
++  isSendControl(path) {
++    return path.some((n) => n instanceof Element && SEND.some((s) => n.matches?.(s) || n.closest?.(s)));
++  },
++  onPaste(cb) {
++    document.addEventListener('paste', (e) => {
++      const t = e.clipboardData?.getData('text'); if (t) cb(t);
++    }, true);
++  },
++};
+diff --git a/code/extension/src/adapters/claude.ts b/code/extension/src/adapters/claude.ts
+new file mode 100644
+index 0000000..591fa0c
+--- /dev/null
++++ b/code/extension/src/adapters/claude.ts
+@@ -0,0 +1,23 @@
++// [verify all selectors against live claude.ai DOM]
++import type { SurfaceAdapter } from './types';
++const COMPOSER = ['div[contenteditable="true"].ProseMirror', 'div[contenteditable="true"]'];
++const SEND = ['button[aria-label*="Send" i]', 'button[data-testid*="send" i]'];
++
++export const claudeAdapter: SurfaceAdapter = {
++  host: 'claude.ai',
++  getComposer() { for (const s of COMPOSER) { const el = document.querySelector<HTMLElement>(s); if (el) return el; } return null; },
++  readText() { return this.getComposer()?.innerText ?? null; },
++  writeText(text) {
++    const el = this.getComposer(); if (!el) return;
++    el.focus(); el.textContent = text;
++    el.dispatchEvent(new InputEvent('input', { bubbles: true }));
++    const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
++    const sel = getSelection(); sel?.removeAllRanges(); sel?.addRange(r);
++  },
++  isSendControl(path) {
++    return path.some((n) => n instanceof Element && SEND.some((s) => n.matches?.(s) || n.closest?.(s)));
++  },
++  onPaste(cb) {
++    document.addEventListener('paste', (e) => { const t = e.clipboardData?.getData('text'); if (t) cb(t); }, true);
++  },
++};
+diff --git a/code/extension/src/adapters/registry.ts b/code/extension/src/adapters/registry.ts
+new file mode 100644
+index 0000000..cc70a3b
+--- /dev/null
++++ b/code/extension/src/adapters/registry.ts
+@@ -0,0 +1,8 @@
++import type { SurfaceAdapter } from './types';
++import { chatgptAdapter } from './chatgpt';
++import { claudeAdapter } from './claude';
++export function pickAdapter(hostname: string): SurfaceAdapter | null {
++  if (hostname.endsWith('chatgpt.com')) return chatgptAdapter;
++  if (hostname.endsWith('claude.ai')) return claudeAdapter;
++  return null;
++}
+diff --git a/code/extension/src/adapters/types.ts b/code/extension/src/adapters/types.ts
+index 557b51c..59b2d60 100644
+--- a/code/extension/src/adapters/types.ts
++++ b/code/extension/src/adapters/types.ts
+@@ -1,69 +1,8 @@
+-// The site adapter contract â€” doc 05 Â§3.2.
+-//
+-// ðŸ”´ THIS FILE SHIPS NO SELECTORS, DELIBERATELY (doc 05 Â§3.1). They are wrong by the time you read
+-// them â€” D4: providers churn their DOM on roughly a weekly cadence, "folklore, not measured" â€” and a
+-// selector committed to a repo reads as a spec. THE CONTRACT IS THE ARTIFACT.
+-//
+-// D4 is Low confidence, and doc 05 Â§3.4 hides the cheapest open item in the package inside it:
+-// "the adapter self-test is ALSO the D4 instrument. Every self-test failure is a timestamped record
+-// of a provider breaking us. After one quarter of Phase 0 we will have replaced an assumption with a
+-// measurement, for free, from a mechanism we had to build anyway."
+-
+-export interface SiteAdapter {
+-  readonly surface: 'chatgpt' | 'claude';
+-
+-  /** The composer. May be inside a shadow root â€” resolve with composedPath(), never event.target. */
+-  resolveComposer(): HTMLElement | null;
+-
+-  /**
+-   * Current composer text.
+-   * ðŸ”´ Returning '' when the composer EXISTS is a BREAKAGE, not an empty prompt (doc 05 Â§3.3).
+-   * Conflating the two is a silent fail-open: we would scan nothing and report clean.
+-   */
+-  readText(): string;
+-
+-  /** Write the rewritten string. Must fire the events the page's framework actually listens for. */
+-  writeText(next: string): void;
+-
+-  /**
+-   * ðŸ”´ EVERY send path, not just Enter: Enter Â· Ctrl/Cmd+Enter Â· Send button Â· paste-and-send Â·
+-   * voice (doc 05 Â§2.3). A missed path fails OPEN, SILENTLY â€” doc 00 Â§6's worst case, because the
+-   * control stops working while the audit trail says it worked. This is why the log-only observer
+-   * exists at all.
+-   */
+-  isSendIntent(ev: Event): boolean;
+-
+-  /**
+-   * Doc 05 Â§3.3 â€” and IT MUST FAIL LOUD. A broken adapter degrades to advisory (ADR 0014), surfaced
+-   * to the user AND the admin as "protection degraded". One degradation state, three triggers
+-   * (doc 06 Â§7.1). Never silence.
+-   */
+-  selfTest(): { ok: boolean; failed: string[] };
+-}
+-
+-/**
+- * ðŸ”´ THERE ARE TWO ADAPTERS, NOT ONE â€” doc 05 Â§4.4, ADR 0012, CLAUDE.md Â§7.3 rank 10.
+- *
+- * The DOM adapter (above) and the request-schema adapter (below) break INDEPENDENTLY, on the same
+- * D4 clock â€” and SiteAdapter.selfTest() covers only the first. A provider can change its request
+- * body shape without touching a single selector, and the observer goes blind while every DOM
+- * self-test stays green.
+- *
+- * That asymmetry is the point: the observer exists to catch what the gate misses, so it must not
+- * fail silently in a way the gate's own health check cannot see.
+- */
+-export interface RequestSchemaAdapter {
+-  readonly surface: 'chatgpt' | 'claude';
+-
+-  /**
+-   * Extract the prompt from a webRequest body, to reconcile against what the gate authorized.
+-   * An unauthorized send lands in the audit trail as a BYPASS (doc 05 Â§4.4).
+-   * âš ï¸� U20: if a surface submits over an open WebSocket, webRequest sees the handshake and never
+-   * the frames â€” this adapter would be structurally blind for that surface. Measured for free by
+-   * the U12 spike (spikes/u12-harness/PROTOCOL.md step 7).
+-   */
+-  extractPrompt(body: unknown): string | null;
+-
+-  /** Its own self-test. The DOM adapter's does not cover this one. */
+-  selfTest(): { ok: boolean; failed: string[] };
+-}
++export type SurfaceAdapter = {
++  host: string;
++  getComposer(): HTMLElement | null;
++  readText(): string | null;
++  writeText(text: string): void;
++  isSendControl(path: EventTarget[]): boolean;
++  onPaste(cb: (text: string) => void): void;
++};
+diff --git a/code/extension/src/audit/audit.ts b/code/extension/src/audit/audit.ts
+new file mode 100644
+index 0000000..695d6d0
+--- /dev/null
++++ b/code/extension/src/audit/audit.ts
+@@ -0,0 +1,54 @@
++import type { Finding } from '../detection/l1/types';
++import { saltedFingerprint } from '../detection/hash';
++
++type Row = { cls: string; fp: string; ignored: boolean; reason?: string; t: number };
++const KEY = 'vg_audit';
++let saltInitialization: Promise<string> | undefined;
++let appendChain: Promise<void> = Promise.resolve();
++
++function salt(): Promise<string> {
++  if (!saltInitialization) {
++    saltInitialization = (async () => {
++      const got = (await chrome.storage.local.get('vg_salt')).vg_salt as string | undefined;
++      if (got) return got;
++      const s = crypto.randomUUID();
++      await chrome.storage.local.set({ vg_salt: s });
++      return s;
++    })().finally(() => { saltInitialization = undefined; });
++  }
++  return saltInitialization;
++}
++function append(rows: Row[]): Promise<void> {
++  const operation = appendChain.then(async () => {
++    const cur = ((await chrome.storage.local.get(KEY))[KEY] as Row[] | undefined) ?? [];
++    await chrome.storage.local.set({ [KEY]: [...cur, ...rows] });
++  });
++  appendChain = operation.catch(() => undefined);
++  return operation;
++}
++async function toRows(findings: Finding[], ignored: boolean, reason?: string): Promise<Row[]> {
++  const s = await salt();
++  return Promise.all(findings.map(async (f) => ({
++    cls: f.cls, fp: await saltedFingerprint(f.text, s), ignored, reason, t: Date.now(),
++  })));
++}
++function redactReason(reason: string, findings: Finding[]): string {
++  return findings.reduce(
++    (redacted, finding) => finding.text ? redacted.split(finding.text).join('') : redacted,
++    reason,
++  );
++}
++export async function recordFindings(findings: Finding[]): Promise<void> { await append(await toRows(findings, false)); }
++export async function recordIgnore(findings: Finding[], reason: string): Promise<void> {
++  await append(await toRows(findings, true, redactReason(reason, findings)));
++}
++export async function ignoreRateByClass(): Promise<Record<string, { flagged: number; ignored: number }>> {
++  const rows = ((await chrome.storage.local.get(KEY))[KEY] as Row[] | undefined) ?? [];
++  const out: Record<string, { flagged: number; ignored: number }> = {};
++  for (const r of rows) {
++    out[r.cls] ??= { flagged: 0, ignored: 0 };
++    if (r.ignored) out[r.cls]!.ignored++;
++    else out[r.cls]!.flagged++;
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/hash.ts b/code/extension/src/detection/hash.ts
+new file mode 100644
+index 0000000..22fb59a
+--- /dev/null
++++ b/code/extension/src/detection/hash.ts
+@@ -0,0 +1,7 @@
++export async function sha256Hex(s: string): Promise<string> {
++  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
++  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
++}
++export async function saltedFingerprint(text: string, salt: string): Promise<string> {
++  return (await sha256Hex(salt + '\0' + text)).slice(0, 16); // 64-bit prefix; never reversible to text
++}
+diff --git a/code/extension/src/detection/l1/card.ts b/code/extension/src/detection/l1/card.ts
+new file mode 100644
+index 0000000..cf5a7d8
+--- /dev/null
++++ b/code/extension/src/detection/l1/card.ts
+@@ -0,0 +1,21 @@
++// src/detection/l1/card.ts â€” 13-19 digit runs (optionally spaced/dashed) that pass Luhn.
++import type { Finding } from './types';
++const CAND_RE = /\b(?:\d[ -]?){13,19}\b/g;
++function luhnOk(digits: string): boolean {
++  let sum = 0, alt = false;
++  for (let i = digits.length - 1; i >= 0; i--) {
++    let n = digits.charCodeAt(i) - 48;
++    if (alt) { n *= 2; if (n > 9) n -= 9; }
++    sum += n; alt = !alt;
++  }
++  return sum % 10 === 0;
++}
++export function detectCard(text: string): Finding[] {
++  const out: Finding[] = [];
++  for (const m of text.matchAll(CAND_RE)) {
++    const digits = m[0].replace(/[ -]/g, '');
++    if (digits.length < 13 || digits.length > 19 || !luhnOk(digits)) continue;
++    out.push({ cls: 'CARD', start: m.index!, end: m.index! + m[0].length, text: m[0] });
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l1/email.ts b/code/extension/src/detection/l1/email.ts
+new file mode 100644
+index 0000000..9da1c01
+--- /dev/null
++++ b/code/extension/src/detection/l1/email.ts
+@@ -0,0 +1,5 @@
++import type { Finding } from './types';
++const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
++export function detectEmail(text: string): Finding[] {
++  return [...text.matchAll(EMAIL_RE)].map((m) => ({ cls: 'EMAIL', start: m.index!, end: m.index! + m[0].length, text: m[0] }));
++}
+diff --git a/code/extension/src/detection/l1/index.ts b/code/extension/src/detection/l1/index.ts
+new file mode 100644
+index 0000000..baccd62
+--- /dev/null
++++ b/code/extension/src/detection/l1/index.ts
+@@ -0,0 +1,21 @@
++import type { Finding } from './types';
++import { detectNric } from './nric';
++import { detectSsm } from './ssm';
++import { detectTin } from './tin';
++import { detectEmail } from './email';
++import { detectCard } from './card';
++
++export type { Finding, FindingClass } from './types';
++
++export function runL1(text: string): Finding[] {
++  const all = [detectNric, detectSsm, detectTin, detectEmail, detectCard].flatMap((f) => f(text));
++  all.sort((a, b) => a.start - b.start || b.end - a.end);
++  // Drop a finding fully contained in an earlier, longer one (e.g. SSM's 12-digit inside a card run).
++  const out: Finding[] = [];
++  let lastEnd = -1;
++  for (const f of all) {
++    if (f.start < lastEnd) continue;
++    out.push(f); lastEnd = f.end;
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l1/nric.ts b/code/extension/src/detection/l1/nric.ts
+new file mode 100644
+index 0000000..4e4cf71
+--- /dev/null
++++ b/code/extension/src/detection/l1/nric.ts
+@@ -0,0 +1,15 @@
++// src/detection/l1/nric.ts â€” YYMMDD-PB-###G. No checksum (U1). Day/month sanity only; PB open-set.
++import type { Finding } from './types';
++const NRIC_RE = /\b(\d{2})(\d{2})(\d{2})-(\d{2})-(\d{4})\b/g;
++const UNASSIGNED_PB = new Set(['00','17','18','19','20','69','70','73','80','81','94','95','96','97']);
++
++export function detectNric(text: string): Finding[] {
++  const out: Finding[] = [];
++  for (const m of text.matchAll(NRIC_RE)) {
++    const [, , mm, dd, pb] = m;
++    if (+mm < 1 || +mm > 12 || +dd < 1 || +dd > 31) continue; // structural (doc 03 Â§2.2)
++    if (UNASSIGNED_PB.has(pb!)) continue;                      // 14 unassigned PB codes (U2)
++    out.push({ cls: 'NRIC', start: m.index!, end: m.index! + m[0].length, text: m[0] });
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l1/ssm.ts b/code/extension/src/detection/l1/ssm.ts
+new file mode 100644
+index 0000000..348968f
+--- /dev/null
++++ b/code/extension/src/detection/l1/ssm.ts
+@@ -0,0 +1,19 @@
++// src/detection/l1/ssm.ts â€” 12 bare digits. ~86% of 2001-2012 incorporations also parse as NRIC.
++// The day filter is defeated by construction, so a 12-digit number that ALSO parses as an NRIC-shaped
++// string is AMBIGUOUS, not decidable from digits alone (doc 03 Â§2.3).
++import type { Finding } from './types';
++const SSM_RE = /\b(\d{12})\b/g;
++
++export function detectSsm(text: string): Finding[] {
++  const out: Finding[] = [];
++  for (const m of text.matchAll(SSM_RE)) {
++    const d = m[1]!;
++    const mm = +d.slice(2, 4), dd = +d.slice(4, 6);
++    const looksNric = mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31;
++    out.push({
++      cls: looksNric ? 'NRIC_OR_SSM_AMBIGUOUS' : 'SSM',
++      start: m.index!, end: m.index! + 12, text: d,
++    });
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l1/tin.ts b/code/extension/src/detection/l1/tin.ts
+new file mode 100644
+index 0000000..df9c553
+--- /dev/null
++++ b/code/extension/src/detection/l1/tin.ts
+@@ -0,0 +1,6 @@
++// src/detection/l1/tin.ts â€” LHDN TIN: IG (current) + legacy SG/OG (pre-2023 docs get pasted; doc 03 Â§U3).
++import type { Finding } from './types';
++const TIN_RE = /\b(IG|SG|OG)\d{9,11}\b/gi;
++export function detectTin(text: string): Finding[] {
++  return [...text.matchAll(TIN_RE)].map((m) => ({ cls: 'TIN', start: m.index!, end: m.index! + m[0].length, text: m[0] }));
++}
+diff --git a/code/extension/src/detection/l1/types.ts b/code/extension/src/detection/l1/types.ts
+new file mode 100644
+index 0000000..8a6363f
+--- /dev/null
++++ b/code/extension/src/detection/l1/types.ts
+@@ -0,0 +1,3 @@
++export type FindingClass =
++  | 'NRIC' | 'SSM' | 'NRIC_OR_SSM_AMBIGUOUS' | 'TIN' | 'EMAIL' | 'CARD' | 'PERSON' | 'ORG';
++export type Finding = { cls: FindingClass; start: number; end: number; text: string };
+diff --git a/code/extension/src/detection/l2/client.ts b/code/extension/src/detection/l2/client.ts
+new file mode 100644
+index 0000000..1ad092b
+--- /dev/null
++++ b/code/extension/src/detection/l2/client.ts
+@@ -0,0 +1,23 @@
++// src/detection/l2/client.ts
++//
++// Content-side client. Never imports `@huggingface/transformers` (resolution #7) â€” only the
++// typed message contract.
++import type { L2Entity, ScanRequest, ScanResponse } from './messages';
++
++export async function l2Scan(text: string, timeoutMs: number): Promise<L2Entity[] | 'degraded'> {
++  const id = crypto.randomUUID();
++  const req: ScanRequest = { kind: 'l2-scan', id, text };
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  const timeout = new Promise<'degraded'>((r) => {
++    timer = setTimeout(() => r('degraded'), timeoutMs);
++  });
++  const call = chrome.runtime
++    .sendMessage(req)
++    .then((res: ScanResponse) => (res.ok ? res.entities : ('degraded' as const)))
++    .catch(() => 'degraded' as const);
++  try {
++    return await Promise.race([call, timeout]);
++  } finally {
++    if (timer !== undefined) clearTimeout(timer);
++  }
++}
+diff --git a/code/extension/src/detection/l2/messages.ts b/code/extension/src/detection/l2/messages.ts
+new file mode 100644
+index 0000000..7c6cc15
+--- /dev/null
++++ b/code/extension/src/detection/l2/messages.ts
+@@ -0,0 +1,83 @@
++// src/detection/l2/messages.ts
++//
++// The typed content<->offscreen contract for L2 (stock multilingual NER). Pure â€” no
++// `@huggingface/transformers` import here, so content scripts, the background SW, and this
++// file's own tests can all use it without pulling in the model runtime (resolution #7).
++
++export type L2Entity = { type: 'PERSON' | 'ORG'; start: number; end: number; text: string };
++export type ScanRequest = { kind: 'l2-scan'; id: string; text: string };
++export type ScanResponse =
++  | { kind: 'l2-result'; id: string; ok: true; entities: L2Entity[] }
++  | { kind: 'l2-result'; id: string; ok: false; error: string };
++
++// mBERT-NER emits PER/ORG/LOC/MISC. Slice 1 keeps PER->PERSON and ORG only (ADR 0017 Â§5: LOC off).
++const KEEP: Record<string, L2Entity['type'] | undefined> = { PER: 'PERSON', ORG: 'ORG' };
++
++export type RawNerToken = { entity: string; start: number; end: number; word: string };
++
++// Merge B-/I- token tags into whole-entity spans. transformers.js token-classification with
++// `aggregation_strategy` can do this, but we merge ourselves so the contract is stable across versions.
++export function mergeNerTokens(tokens: RawNerToken[]): L2Entity[] {
++  const out: L2Entity[] = [];
++  let cur: L2Entity | null = null;
++  for (const t of tokens) {
++    const [tag, rawLabel] = t.entity.split('-') as ['B' | 'I', string];
++    const label = KEEP[rawLabel];
++    if (!label) {
++      cur = null;
++      continue;
++    }
++    if (tag === 'B' || !cur || cur.type !== label) {
++      cur = { type: label, start: t.start, end: t.end, text: t.word };
++      out.push(cur);
++    } else {
++      cur.end = t.end;
++      // [RED caught this] A wordpiece continuation ("##foo") glues directly onto the previous
++      // piece; a same-type I-tag token that is a whole new word (no "##") is a separate word and
++      // needs a space, or "Ahmad"+"Ali" renders as "AhmadAli". `text` is the audit/preview
++      // fingerprint only â€” masking downstream uses start/end, never this string.
++      cur.text += t.word.startsWith('##') ? t.word.slice(2) : ` ${t.word}`;
++    }
++  }
++  return out;
++}
++
++// --- Character-offset reconstruction ------------------------------------------------------
++//
++// [finding, verified against node_modules @huggingface/transformers@3.8.1 source] The installed
++// transformers.js v3 token-classification pipeline's `_call` (src/pipelines.js) never sets
++// `start`/`end` on its output tokens â€” the two fields are declared `start?`/`end?` in its own
++// typedef and the implementation still carries the literal comment
++// `// TODO: Add support for start and end`. The tokenizer has no `return_offsets_mapping` support
++// either. So the raw pipeline output is `{ entity, score, index, word }` â€” no character
++// positions â€” even though `mergeNerTokens` above (and everything downstream that masks by
++// position rather than by `text`) needs real offsets.
++//
++// This reconstructs them by walking the prompt text left-to-right and locating each decoded
++// token's text, stripping the WordPiece continuation prefix ("##") before searching.
++//
++// ðŸ”´ CRITICAL invariant: `tokens` MUST be the FULL ordered stream (entity + O + subword), in
++// sequence order. The pipeline defaults to `ignore_labels: ['O']`, which drops non-entity tokens
++// and leaves the cursor stranded â€” `indexOf(piece, cursor)` then lands on the FIRST occurrence of
++// a recurring word even when the tagged mention is a later one (wrong span reported as ok). The
++// offscreen caller passes `ignore_labels: []` so O tokens advance the cursor between entities.
++// Special tokens whose `word` is not a text substring (`[CLS]`/`[SEP]`) return -1 and are dropped
++// WITHOUT advancing the cursor â€” they sit at boundaries and are not text content.
++// `mergeNerTokens` then drops non-KEEP labels (including O) after offsets are attached.
++export type PipelineNerToken = { entity: string; word: string };
++
++export function attachCharOffsets(text: string, tokens: PipelineNerToken[]): RawNerToken[] {
++  const out: RawNerToken[] = [];
++  let cursor = 0;
++  for (const t of tokens) {
++    const isContinuation = t.word.startsWith('##');
++    const piece = isContinuation ? t.word.slice(2) : t.word;
++    if (!piece) continue;
++    const idx = text.indexOf(piece, cursor);
++    // Unalignable (special tokens, normalization misses): drop WITHOUT advancing cursor.
++    if (idx === -1) continue;
++    out.push({ entity: t.entity, start: idx, end: idx + piece.length, word: t.word });
++    cursor = idx + piece.length;
++  }
++  return out;
++}
+diff --git a/code/extension/src/detection/l2/pin.ts b/code/extension/src/detection/l2/pin.ts
+new file mode 100644
+index 0000000..3804be9
+--- /dev/null
++++ b/code/extension/src/detection/l2/pin.ts
+@@ -0,0 +1,52 @@
++// src/detection/l2/pin.ts
++//
++// Verify each pinned model file's SHA-256 BEFORE transformers.js loads it, then seed the browser
++// Cache so transformers.js reads our verified bytes instead of re-fetching (doc 05 Â§7; ADR 0017
++// weights row). Hash-pinning is the security invariant here: this function hashes and THROWS on
++// mismatch, fail-closed. It never silently downgrades to "load anyway".
++//
++// Offscreen documents get reclaimed (ADR 0006); on respawn we re-verify. Prefer the already-
++// seeded transformers-cache entry when present â€” hash the cached bytes (still fail-closed) and
++// skip the network fetch. Network fetch only on a cache miss.
++import manifest from '../../../models.manifest.json';
++
++// VERIFIED against node_modules/@huggingface/transformers@3.8.1/src/{env.js,utils/hub.js}:
++//   env.remoteHost = 'https://huggingface.co/'
++//   env.remotePathTemplate = '{model}/resolve/{revision}/'   (revision defaults to 'main')
++// hub.js builds `remoteURL = pathJoin(remoteHost, remotePathTemplate..., filename)`, and â€” when
++// `env.useBrowserCache = true` and the cache is not a FileCache (i.e. it's the browser Cache API
++// via `caches.open('transformers-cache')`) â€” that exact `remoteURL` string is the cache key
++// (`proposedCacheKey`) it looks up with `cache.match(...)`. So `fileUrl` below must byte-for-byte
++// match `pathJoin('https://huggingface.co/', '{model}/resolve/main/', file)`, which it does.
++const HOST = 'https://huggingface.co';
++const fileUrl = (modelId: string, file: string) => `${HOST}/${modelId}/resolve/main/${file}`;
++
++async function sha256Hex(buf: ArrayBuffer): Promise<string> {
++  const d = await crypto.subtle.digest('SHA-256', buf);
++  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
++}
++
++export async function verifyPinnedModel(modelId: string): Promise<void> {
++  const files = (manifest as Record<string, Record<string, string>>)[modelId];
++  if (!files) throw new Error(`no pin manifest for ${modelId}`);
++  const cache = await caches.open('transformers-cache');
++  for (const [file, expected] of Object.entries(files)) {
++    const url = fileUrl(modelId, file);
++
++    const cached = await cache.match(url);
++    if (cached) {
++      const bytes = await cached.arrayBuffer();
++      const got = await sha256Hex(bytes);
++      if (got !== expected) throw new Error(`hash mismatch for ${file} (cached): ${got} != ${expected}`);
++      // Cached bytes verified â€” do not re-fetch. transformers.js will reuse the same cache key.
++      continue;
++    }
++
++    const res = await fetch(url, { cache: 'no-store' });
++    if (!res.ok) throw new Error(`fetch ${file} failed: ${res.status}`);
++    const bytes = await res.clone().arrayBuffer();
++    const got = await sha256Hex(bytes);
++    if (got !== expected) throw new Error(`hash mismatch for ${file}: ${got} != ${expected}`);
++    await cache.put(url, new Response(bytes, { headers: res.headers }));
++  }
++}
+diff --git a/code/extension/src/detection/scan.ts b/code/extension/src/detection/scan.ts
+new file mode 100644
+index 0000000..a166eea
+--- /dev/null
++++ b/code/extension/src/detection/scan.ts
+@@ -0,0 +1,23 @@
++import type { Finding } from './l1/types';
++import { runL1 } from './l1';
++import { l2Scan } from './l2/client';
++import { sha256Hex } from './hash';
++import { VerdictCache, type Verdict } from './verdict-cache';
++
++export async function scanInto(cache: VerdictCache, text: string, opts: { l2TimeoutMs: number }): Promise<Verdict> {
++  const hash = await sha256Hex(text);
++  const l1 = runL1(text);
++  if (l1.length > 0) cache.setDirty(hash, l1); // ADR 0013: gate the dangerous input now
++
++  const l2 = await l2Scan(text, opts.l2TimeoutMs);
++  if (l2 === 'degraded') {
++    // ADR 0014: never fabricate CLEAN. Keep any L1 dirtiness; if L1 was empty, leave the hash unknown.
++    return cache.getSync(hash) ?? { state: 'CLEAN', findings: [], complete: false };
++  }
++  const l2Findings: Finding[] = l2.map((e) => ({ cls: e.type, start: e.start, end: e.end, text: e.text }));
++  const findings = [...l1, ...l2Findings];
++  if (findings.length > 0) cache.setDirty(hash, findings);
++  else cache.setClean(hash, []);
++  cache.markComplete(hash);
++  return cache.getSync(hash)!;
++}
+diff --git a/code/extension/src/detection/verdict-cache.ts b/code/extension/src/detection/verdict-cache.ts
+new file mode 100644
+index 0000000..736433b
+--- /dev/null
++++ b/code/extension/src/detection/verdict-cache.ts
+@@ -0,0 +1,17 @@
++import type { Finding } from './l1/types';
++export type Verdict = { state: 'CLEAN' | 'DIRTY'; findings: Finding[]; complete: boolean };
++
++export class VerdictCache {
++  private m = new Map<string, Verdict>();
++  getSync(hash: string): Verdict | undefined { return this.m.get(hash); }
++  setDirty(hash: string, findings: Finding[]): void {
++    this.m.set(hash, { state: 'DIRTY', findings, complete: false });
++  }
++  setClean(hash: string, findings: Finding[]): void {
++    if (this.m.get(hash)?.state === 'DIRTY') return; // monotonic: never DIRTY -> CLEAN except via full scan
++    this.m.set(hash, { state: 'CLEAN', findings, complete: true });
++  }
++  markComplete(hash: string): void {
++    const v = this.m.get(hash); if (v) v.complete = true;
++  }
++}
+diff --git a/code/extension/src/entrypoints/background.ts b/code/extension/src/entrypoints/background.ts
+deleted file mode 100644
+index f23927c..0000000
+--- a/code/extension/src/entrypoints/background.ts
++++ /dev/null
+@@ -1,43 +0,0 @@
+-// Service worker. Ephemeral: exactly 30 seconds idle (U10 âœ… cited â€” not "~30s").
+-//
+-// STUB â€” doc 01 Â§2's shape.
+-//
+-// U10's bonus fact, which ADR 0006 wanted and doc 05 Â§5.1 found: offscreenâ†’SW messages RESET the
+-// idle timer. So a busy engine keeps the SW alive for free, and ADR 0006's two lifecycles are
+-// coupled in our favour rather than fighting.
+-
+-export default defineBackground(() => {
+-  // TODO  Offscreen lifecycle (ADR 0006). Chrome MAY reclaim the document; the SW must recreate it,
+-  //       and the first scan after recreation pays the model-load cost.
+-  //       ðŸ”´ ADR 0011: a reclaim must NOT restart placeholder numbering. Restarting makes PERSON_1
+-  //       mean two people in one thread â€” "confident, wrong output about identifiable people."
+-  //       The counter is a SEPARATE RECORD from the mappings and outlives them. It is an integer:
+-  //       no value, no hash, no salt, no exposure. DO NOT tidy the two into one record â€” ADR 0011
+-  //       exists precisely because a future engineer would.
+-  //
+-  // TODO  webRequest observer (ADR 0012) â€” onBeforeRequest + requestBody. LOG ONLY. NEVER ABORTS.
+-  //       It is passive and STRUCTURALLY CANNOT break the provider's app, which is half of why it
+-  //       beat the MAIN-world patch ("your DLP tool broke ChatGPT for 150 people" ends the account).
+-  //       The other half: a MAIN-world patch only sees the transports we ENUMERATED â€” fetch, XHR,
+-  //       sendBeacon, WebSocket, and fetch inside a Web Worker, which a window.fetch patch never
+-  //       touches because a worker has its own global. An unbounded, silent blind-spot set â€” in the
+-  //       component that exists to catch silent misses. webRequest's blind spot is EXACTLY ONE
+-  //       (WebSocket frames â€” U20), known and testable in week 1.
+-  //       âš ï¸� U20 is measured FOR FREE by the U12 spike (../../../spikes/u12-harness/PROTOCOL.md
+-  //          step 7). Do not build this until that reports.
+-  //
+-  // TODO  Audit transport: batched, hashed events. I3 â€” hashes, classes, counts, NEVER values.
+-  //       Doc 07 Â§7.2: the class-level Ignore RATE rides this exact shape for free and is a
+-  //       detector-prioritization signal. It is NEVER a label â€” doc 00 Â§1.6's poisoning argument
+-  //       stands and only fails to reach the AGGREGATE, because the poisoner is indiscriminate and
+-  //       so moves the mean without moving the ranking.
+-  //       ðŸ”´ Doc 07 Â§7.3: that is a SECOND PURPOSE for data collected under a compliance promise.
+-  //       The DPA must name it BEFORE we use it. A paragraph now; a diligence finding later.
+-  //
+-  // TODO  Degradation (ADR 0014). One state, three triggers (doc 06 Â§7.1): engine dead, adapter
+-  //       broken, surface unresolvable. Degrade to ADVISORY â€” never fail-closed. Surfaced to the
+-  //       user AND the admin as "protection degraded".
+-  //       ðŸ”´ The timeout CANNOT be a constant: latency is a function of chunk count (doc 06 Â§4.2),
+-  //       so a fixed timeout declares the engine dead on a long Chinese paste â€” i.e. on the wedge,
+-  //       on the dominant threat. Its coefficients come from U6-b's measured curve. No value here.
+-});
+diff --git a/code/extension/src/entrypoints/content.ts b/code/extension/src/entrypoints/content.ts
+deleted file mode 100644
+index e097362..0000000
+--- a/code/extension/src/entrypoints/content.ts
++++ /dev/null
+@@ -1,50 +0,0 @@
+-// ISOLATED world, document_start. The gate's home.
+-//
+-// STUB â€” doc 01 Â§2's shape. The LIVE version of this claim is
+-// ../../../spikes/u12-harness/iso-gate.js, and it is raw MV3 on purpose (see ../../../README.md).
+-//
+-// ðŸ”´ BLOCKED ON U12-a. Doc 05 Â§1.2: "If U12-a fails, no part of this document survives." The gate
+-// would have to move to the MAIN world, which ADR 0005 shows destroys the synchronous cache read â€”
+-// which is doc 01 Â§0's coupling â€” which is decisions #2 and #8. Rework, not tuning.
+-//
+-// WHY THE GATE IS HERE AND NOT IN THE MAIN WORLD (ADR 0005): content scripts and page scripts share
+-// one DOM event dispatch â€” separate JS contexts, not separate event systems. And it matters
+-// enormously that the isolated world is WHERE THE VERDICT CACHE LIVES, so the gate can read it
+-// SYNCHRONOUSLY. A MAIN-world gate would have to postMessage across the world boundary â€” async â€”
+-// which reintroduces the stop-and-replay that doc 01 Â§0 exists to avoid, and replay IS the
+-// auto-submit decision #8 forbids.
+-
+-export default defineContentScript({
+-  matches: ['https://chatgpt.com/*', 'https://chat.openai.com/*', 'https://claude.ai/*'],
+-  runAt: 'document_start', // load-bearing: U12-c's mitigation is that we register before page JS
+-  world: 'ISOLATED',       // ADR 0005. Never MAIN (ADR 0012).
+-
+-  main() {
+-    // TODO(U12-a)  gate: capture @ window (ADR 0010 â€” NOT document), composedPath() not
+-    //              event.target (ADR 0005, non-negotiable: shadow DOM retargets).
+-    //
+-    // TODO(U12-b)  composition rule: pass through Enter when isComposing || keyCode === 229.
+-    //              ðŸ”´ The post-compositionend suppression window has NO VALUE until U12-b measures
+-    //              it. Doc 05 Â§1.3: "It is derived from the U12-b measurement or it does not exist.
+-    //              Inventing '50 ms' now would be a number that silently decides whether Chinese
+-    //              input works."
+-    //
+-    // TODO         verdict cache: hash -> clean | dirty | unknown.
+-    //              ðŸ”´ MONOTONIC TOWARD DIRTY (ADR 0013): L1 may write DIRTY; only a completed
+-    //              L1+L2 scan may write CLEAN. Without this the L1 short-circuit is a SILENT
+-    //              FAIL-OPEN â€” the control reporting a clean scan of a prompt it never finished.
+-    //              I5: hash + boolean, NEVER text.
+-    //
+-    // TODO         approval token: hash(rewritten), single-use, isolated world (B2).
+-    //              TTL has no value yet (doc 05 Â§6.4).
+-    //              ðŸ”´ It does not send. It WITHHOLDS AN INTERRUPTION (doc 04 Â§6). Decision #8.
+-    //              Compute the rewrite ONCE and carry the string â€” then determinism is not required,
+-    //              because nothing is recomputed (doc 05 Â§6.2). The property that IS load-bearing is
+-    //              idempotency, and L1's placeholder mask delivers it (doc 07 Â§6.1).
+-    //
+-    // TODO         modal + overlay: Preact in a SHADOW ROOT (doc 01 Â§6, non-negotiable â€” our styles
+-    //              must not leak into a page we don't own, and theirs must not leak into ours).
+-    //              ðŸ”´ The Accept button stays DISABLED until the scan completes (doc 06 Â§5):
+-    //              accepting a partial finding set ships a prompt we told them was clean.
+-  },
+-});
+diff --git a/code/extension/src/gate/approval-token.ts b/code/extension/src/gate/approval-token.ts
+new file mode 100644
+index 0000000..b30bd7e
+--- /dev/null
++++ b/code/extension/src/gate/approval-token.ts
+@@ -0,0 +1,19 @@
++export class ApprovalStore {
++  private hash: string | null = null;
++  private expiresAt = 0;
++  approve(rewrittenHash: string, ttlMs: number): void {
++    this.hash = rewrittenHash;
++    this.expiresAt = Date.now() + ttlMs;
++  }
++  private live(): boolean {
++    if (this.hash && Date.now() > this.expiresAt) this.hash = null;
++    return this.hash != null;
++  }
++  currentHash(): string | null { return this.live() ? this.hash : null; }
++  consumeIfMatch(hash: string): boolean {
++    if (!this.live() || this.hash !== hash) return false;
++    this.hash = null; // burn: single-use
++    return true;
++  }
++  invalidate(): void { this.hash = null; } // called on any composer edit
++}
+diff --git a/code/extension/src/gate/gate.ts b/code/extension/src/gate/gate.ts
+new file mode 100644
+index 0000000..a6ee745
+--- /dev/null
++++ b/code/extension/src/gate/gate.ts
+@@ -0,0 +1,36 @@
++import type { VerdictCache } from '../detection/verdict-cache';
++
++export function decideGate(a: { hash: string; cache: VerdictCache; approvedHash: string | null }): 'PASS' | 'BLOCK' {
++  if (a.approvedHash === a.hash) return 'PASS';
++  const v = a.cache.getSync(a.hash);
++  if (!v) return 'BLOCK';               // cold cache -> modal resolves it
++  return v.state === 'CLEAN' ? 'PASS' : 'BLOCK';
++}
++
++export type GateDeps = {
++  cache: VerdictCache;
++  getComposerText: (path: EventTarget[]) => string | null;
++  isSendIntent: (e: Event, path: EventTarget[]) => boolean;
++  hashOf: (text: string) => string;          // sync hash lookup memoized by the scanner
++  approvedHash: () => string | null;
++  onBlocked: (text: string) => void;
++};
++
++export function installGate(deps: GateDeps): void {
++  const handler = (e: KeyboardEvent | MouseEvent) => {
++    if (e.eventPhase !== Event.CAPTURING_PHASE) return;
++    if (e instanceof KeyboardEvent && e.isComposing) return; // U12-b: IME commit, not a send
++    const path = e.composedPath();
++    if (!deps.isSendIntent(e, path)) return;
++    const text = deps.getComposerText(path);
++    if (text == null) return;
++    const decision = decideGate({ hash: deps.hashOf(text), cache: deps.cache, approvedHash: deps.approvedHash() });
++    if (decision === 'BLOCK') {
++      e.stopImmediatePropagation();
++      e.preventDefault();
++      deps.onBlocked(text);
++    }
++  };
++  window.addEventListener('keydown', handler, { capture: true });
++  window.addEventListener('click', handler, { capture: true });
++}
+diff --git a/code/extension/src/mask/numbering.ts b/code/extension/src/mask/numbering.ts
+new file mode 100644
+index 0000000..aa928ca
+--- /dev/null
++++ b/code/extension/src/mask/numbering.ts
+@@ -0,0 +1,17 @@
++import type { FindingClass } from '../detection/l1/types';
++
++export class SessionNumbering {
++  private counters = new Map<FindingClass, number>();
++  private assigned = new Map<string, string>(); // `${cls}\0${text}` -> placeholder (IN MEMORY ONLY)
++
++  placeholderFor(cls: FindingClass, text: string): string {
++    const key = `${cls}\0${text}`;
++    const seen = this.assigned.get(key);
++    if (seen) return seen;
++    const next = (this.counters.get(cls) ?? 0) + 1;
++    this.counters.set(cls, next);
++    const ph = `${cls}_${next}`;
++    this.assigned.set(key, ph);
++    return ph;
++  }
++}
+diff --git a/code/extension/src/mask/placeholder.ts b/code/extension/src/mask/placeholder.ts
+new file mode 100644
+index 0000000..b453aa4
+--- /dev/null
++++ b/code/extension/src/mask/placeholder.ts
+@@ -0,0 +1,15 @@
++import type { Finding, FindingClass } from '../detection/l1/types';
++export { SessionNumbering } from './numbering';
++import { SessionNumbering } from './numbering';
++
++export function rewrite(text: string, findings: Finding[], numbering: SessionNumbering) {
++  const sorted = [...findings].sort((a, b) => b.start - a.start); // right-to-left keeps offsets valid
++  let rewritten = text;
++  const map: Array<{ placeholder: string; cls: FindingClass }> = [];
++  for (const f of sorted) {
++    const ph = numbering.placeholderFor(f.cls, text.slice(f.start, f.end));
++    rewritten = rewritten.slice(0, f.start) + ph + rewritten.slice(f.end);
++    map.push({ placeholder: ph, cls: f.cls });
++  }
++  return { rewritten, map };
++}
+diff --git a/code/extension/src/ui/modal.tsx b/code/extension/src/ui/modal.tsx
+new file mode 100644
+index 0000000..dea104b
+--- /dev/null
++++ b/code/extension/src/ui/modal.tsx
+@@ -0,0 +1,55 @@
++import { useState } from 'preact/hooks';
++
++export type ModalProps = {
++  rewritten: string;
++  summary: Array<{ cls: string; count: number }>;
++  onApprove: () => void;
++  onIgnore: (reason: string) => void;
++};
++
++export function Modal({
++  rewritten,
++  summary,
++  onApprove,
++  onIgnore,
++}: ModalProps) {
++  const [reason, setReason] = useState('');
++  const trimmedReason = reason.trim();
++
++  return (
++    <div
++      role="dialog"
++      aria-labelledby="modal-title"
++      style="all:initial;font:14px system-ui;color:#111"
++    >
++      <h2 id="modal-title">Sensitive content detected</h2>
++      <ul>
++        {summary.map(({ cls, count }) => (
++          <li key={cls}>
++            {cls}: {count}
++          </li>
++        ))}
++      </ul>
++      <pre style="white-space:pre-wrap;background:#f4f4f5;padding:8px">
++        {rewritten}
++      </pre>
++      <button type="button" onClick={onApprove}>
++        Approve &amp; insert rewrite
++      </button>
++      <input
++        placeholder="Reason to ignore"
++        value={reason}
++        onInput={(event) =>
++          setReason((event.target as HTMLInputElement).value)
++        }
++      />
++      <button
++        type="button"
++        disabled={!trimmedReason}
++        onClick={() => trimmedReason && onIgnore(trimmedReason)}
++      >
++        Ignore
++      </button>
++    </div>
++  );
++}
+diff --git a/code/extension/src/ui/mount.ts b/code/extension/src/ui/mount.ts
+new file mode 100644
+index 0000000..fdf1b71
+--- /dev/null
++++ b/code/extension/src/ui/mount.ts
+@@ -0,0 +1,28 @@
++import { h, render } from 'preact';
++import { Modal, type ModalProps } from './modal';
++
++let host: HTMLElement | null = null;
++let shadowRoot: ShadowRoot | null = null;
++let showKey = 0;
++
++export function showModal(props: ModalProps): void {
++  if (!host) {
++    host = document.createElement('div');
++    host.style.cssText =
++      'position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:rgba(0,0,0,.35)';
++    (document.body || document.documentElement).appendChild(host);
++    shadowRoot = host.attachShadow({ mode: 'closed' });
++  }
++
++  showKey += 1;
++  render(h(Modal, { ...props, key: showKey }), shadowRoot!);
++}
++
++export function hideModal(): void {
++  if (!host || !shadowRoot) return;
++
++  render(null, shadowRoot);
++  host.remove();
++  host = null;
++  shadowRoot = null;
++}
+diff --git a/code/extension/src/util/debounce.ts b/code/extension/src/util/debounce.ts
+new file mode 100644
+index 0000000..ef1bac8
+--- /dev/null
++++ b/code/extension/src/util/debounce.ts
+@@ -0,0 +1,10 @@
++export function debounce<A extends unknown[]>(
++  fn: (...args: A) => void,
++  ms: number,
++): (...args: A) => void {
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  return (...args: A) => {
++    clearTimeout(timer);
++    timer = setTimeout(() => fn(...args), ms);
++  };
++}
+diff --git a/code/extension/tests/adapters.test.ts b/code/extension/tests/adapters.test.ts
+new file mode 100644
+index 0000000..fffb5a3
+--- /dev/null
++++ b/code/extension/tests/adapters.test.ts
+@@ -0,0 +1,28 @@
++import { describe, it, expect } from 'vitest';
++import { pickAdapter } from '../src/adapters/registry';
++import { chatgptAdapter } from '../src/adapters/chatgpt';
++import { claudeAdapter } from '../src/adapters/claude';
++
++describe('adapter registry', () => {
++  it('routes chatgpt.com', () => expect(pickAdapter('chatgpt.com')?.host).toBe('chatgpt.com'));
++  it('routes claude.ai', () => expect(pickAdapter('claude.ai')?.host).toBe('claude.ai'));
++  it('returns null off-surface', () => expect(pickAdapter('example.com')).toBeNull());
++});
++
++describe('adapter shape', () => {
++  const methods = ['getComposer', 'readText', 'writeText', 'isSendControl', 'onPaste'] as const;
++
++  it('chatgptAdapter exposes the expected host and methods', () => {
++    expect(chatgptAdapter.host).toBe('chatgpt.com');
++    for (const m of methods) {
++      expect(typeof chatgptAdapter[m]).toBe('function');
++    }
++  });
++
++  it('claudeAdapter exposes the expected host and methods', () => {
++    expect(claudeAdapter.host).toBe('claude.ai');
++    for (const m of methods) {
++      expect(typeof claudeAdapter[m]).toBe('function');
++    }
++  });
++});
+diff --git a/code/extension/tests/approval-token.test.ts b/code/extension/tests/approval-token.test.ts
+new file mode 100644
+index 0000000..b5eebc1
+--- /dev/null
++++ b/code/extension/tests/approval-token.test.ts
+@@ -0,0 +1,21 @@
++import { describe, it, expect, vi } from 'vitest';
++import { ApprovalStore } from '../src/gate/approval-token';
++
++describe('ApprovalStore', () => {
++  it('matches once then is consumed', () => {
++    const s = new ApprovalStore(); s.approve('h', 60_000);
++    expect(s.consumeIfMatch('h')).toBe(true);
++    expect(s.consumeIfMatch('h')).toBe(false); // single-use
++  });
++  it('does not match a different hash (an edit changes the hash)', () => {
++    const s = new ApprovalStore(); s.approve('h', 60_000);
++    expect(s.consumeIfMatch('h2')).toBe(false);
++    expect(s.currentHash()).toBe('h'); // unconsumed by a miss
++  });
++  it('expires after its TTL', () => {
++    vi.useFakeTimers(); const s = new ApprovalStore(); s.approve('h', 1000);
++    vi.advanceTimersByTime(1001);
++    expect(s.consumeIfMatch('h')).toBe(false);
++    vi.useRealTimers();
++  });
++});
+diff --git a/code/extension/tests/audit.test.ts b/code/extension/tests/audit.test.ts
+new file mode 100644
+index 0000000..b3244b2
+--- /dev/null
++++ b/code/extension/tests/audit.test.ts
+@@ -0,0 +1,70 @@
++import { describe, it, expect, beforeEach, vi } from 'vitest';
++
++const store: Record<string, unknown> = {};
++const writes: Record<string, unknown>[] = [];
++let overlapAuditGets = false;
++let auditGetCount = 0;
++let releaseAuditGets: (() => void) | undefined;
++vi.stubGlobal('chrome', {
++  storage: { local: {
++    get: async (k: string) => {
++      if (overlapAuditGets && k === 'vg_audit') {
++        auditGetCount++;
++        if (auditGetCount === 2) releaseAuditGets?.();
++        else await new Promise<void>((resolve) => {
++          releaseAuditGets = resolve;
++          setTimeout(resolve, 10);
++        });
++      }
++      return { [k]: store[k] };
++    },
++    set: async (o: Record<string, unknown>) => {
++      writes.push(o);
++      Object.assign(store, o);
++    },
++  } },
++});
++
++import { recordFindings, recordIgnore, ignoreRateByClass } from '../src/audit/audit';
++
++describe('audit', () => {
++  beforeEach(() => {
++    for (const k of Object.keys(store)) delete store[k];
++    writes.length = 0;
++    overlapAuditGets = false;
++    auditGetCount = 0;
++    releaseAuditGets = undefined;
++  });
++  it('never persists the raw finding text', async () => {
++    await recordFindings([{ cls: 'PERSON', start: 0, end: 5, text: 'Ahmad' }]);
++    expect(JSON.stringify(store)).not.toContain('Ahmad');
++  });
++  it('redacts raw finding text from an ignore reason', async () => {
++    await recordIgnore(
++      [{ cls: 'PERSON', start: 0, end: 5, text: 'Ahmad' }],
++      'Ahmad is a public figure',
++    );
++    expect(JSON.stringify(store)).not.toContain('Ahmad');
++  });
++  it('initializes one salt for concurrent callers', async () => {
++    await Promise.all([
++      recordFindings([{ cls: 'PERSON', start: 0, end: 5, text: 'Ahmad' }]),
++      recordFindings([{ cls: 'ORG', start: 0, end: 5, text: 'Apple' }]),
++    ]);
++    expect(writes.filter((write) => 'vg_salt' in write)).toHaveLength(1);
++  });
++  it('preserves rows from overlapping audit calls', async () => {
++    overlapAuditGets = true;
++    await Promise.all([
++      recordFindings([{ cls: 'PERSON', start: 0, end: 5, text: 'Ahmad' }]),
++      recordIgnore([{ cls: 'ORG', start: 0, end: 5, text: 'Apple' }], 'public company'),
++    ]);
++    expect(store.vg_audit).toHaveLength(2);
++  });
++  it('computes ignore-rate per class', async () => {
++    await recordFindings([{ cls: 'ORG', start: 0, end: 5, text: 'Apple' }]);
++    await recordIgnore([{ cls: 'ORG', start: 0, end: 5, text: 'Apple' }], 'public company');
++    const r = await ignoreRateByClass();
++    expect(r.ORG).toEqual({ flagged: 1, ignored: 1 });
++  });
++});
+diff --git a/code/extension/tests/dist-drift.test.ts b/code/extension/tests/dist-drift.test.ts
+new file mode 100644
+index 0000000..7a017a6
+--- /dev/null
++++ b/code/extension/tests/dist-drift.test.ts
+@@ -0,0 +1,58 @@
++// tests/dist-drift.test.ts
++import { execFileSync } from 'node:child_process';
++import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
++import { join } from 'node:path';
++import { tmpdir } from 'node:os';
++import { afterAll, describe, expect, it } from 'vitest';
++import { COMMITTED, diffTrees, hashTree } from '../scripts/check-dist-drift.mjs';
++
++describe('dist drift', () => {
++  it('committed dist matches a fresh build', () => {
++    // check:dist exits 0 when in sync, 1 when stale. A non-zero exit throws.
++    expect(() =>
++      execFileSync('node', ['scripts/check-dist-drift.mjs'], { cwd: process.cwd() }),
++    ).not.toThrow();
++  });
++
++  it('detects drift when an output file byte differs', () => {
++    const fixture = mkdtempSync(join(tmpdir(), 'vanguard-drift-neg-'));
++    const clean = join(fixture, 'clean');
++    const dirty = join(fixture, 'dirty');
++    try {
++      cpSync(COMMITTED, clean, { recursive: true });
++      cpSync(COMMITTED, dirty, { recursive: true });
++      appendFileSync(join(dirty, 'manifest.json'), 'x');
++
++      const drift = diffTrees(hashTree(clean), hashTree(dirty));
++      expect(drift).toContain('manifest.json');
++      expect(drift.length).toBeGreaterThan(0);
++    } finally {
++      rmSync(fixture, { recursive: true, force: true });
++    }
++  });
++
++  it('exits non-zero when committed dist is stale, then restores it', () => {
++    const target = join(COMMITTED, 'manifest.json');
++    const original = readFileSync(target);
++    try {
++      appendFileSync(target, 'x');
++      expect(() =>
++        execFileSync('node', ['scripts/check-dist-drift.mjs'], {
++          cwd: process.cwd(),
++          stdio: 'pipe',
++        }),
++      ).toThrow();
++    } finally {
++      writeFileSync(target, original);
++    }
++  });
++});
++
++afterAll(() => {
++  // Working tree must be pristine after mutate-and-restore.
++  const status = execFileSync('git', ['status', '--porcelain', 'code/extension/dist'], {
++    cwd: join(process.cwd(), '..', '..'),
++    encoding: 'utf8',
++  });
++  expect(status.trim()).toBe('');
++});
+diff --git a/code/extension/tests/gate.test.ts b/code/extension/tests/gate.test.ts
+new file mode 100644
+index 0000000..94e741f
+--- /dev/null
++++ b/code/extension/tests/gate.test.ts
+@@ -0,0 +1,69 @@
++import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
++import { decideGate, installGate } from '../src/gate/gate';
++import { VerdictCache } from '../src/detection/verdict-cache';
++
++describe('decideGate (pure core of the listener)', () => {
++  it('blocks when the current text is DIRTY and unapproved', () => {
++    const c = new VerdictCache();
++    c.setDirty('h', [{ cls: 'NRIC', start: 0, end: 1, text: 'x' }]);
++    expect(decideGate({ hash: 'h', cache: c, approvedHash: null })).toBe('BLOCK');
++  });
++  it('passes when the DIRTY text has a matching approval', () => {
++    const c = new VerdictCache();
++    c.setDirty('h', []);
++    expect(decideGate({ hash: 'h', cache: c, approvedHash: 'h' })).toBe('PASS');
++  });
++  it('passes CLEAN', () => {
++    const c = new VerdictCache();
++    c.setClean('h', []);
++    expect(decideGate({ hash: 'h', cache: c, approvedHash: null })).toBe('PASS');
++  });
++  it('blocks UNKNOWN (cold cache) to stay fail-safe until a scan lands', () => {
++    expect(decideGate({ hash: 'cold', cache: new VerdictCache(), approvedHash: null })).toBe(
++      'BLOCK',
++    );
++  });
++  it('blocks when DIRTY and approvedHash is a different hash', () => {
++    const c = new VerdictCache();
++    c.setDirty('b', [{ cls: 'NRIC', start: 0, end: 1, text: 'x' }]);
++    expect(decideGate({ hash: 'b', cache: c, approvedHash: 'a' })).toBe('BLOCK');
++  });
++  it('passes CLEAN regardless of approvedHash being null', () => {
++    const c = new VerdictCache();
++    c.setClean('h', []);
++    expect(decideGate({ hash: 'h', cache: c, approvedHash: null })).toBe('PASS');
++    expect(decideGate({ hash: 'h', cache: c, approvedHash: 'other' })).toBe('PASS');
++  });
++});
++
++describe('installGate', () => {
++  const addEventListener = vi.fn();
++
++  beforeEach(() => {
++    vi.stubGlobal('window', { addEventListener });
++    addEventListener.mockClear();
++  });
++
++  afterEach(() => {
++    vi.unstubAllGlobals();
++  });
++
++  it('registers keydown and click listeners at window capture phase', () => {
++    installGate({
++      cache: new VerdictCache(),
++      getComposerText: () => null,
++      isSendIntent: () => false,
++      hashOf: () => 'h',
++      approvedHash: () => null,
++      onBlocked: () => {},
++    });
++
++    expect(addEventListener).toHaveBeenCalledTimes(2);
++    expect(addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), {
++      capture: true,
++    });
++    expect(addEventListener).toHaveBeenCalledWith('click', expect.any(Function), {
++      capture: true,
++    });
++  });
++});
+diff --git a/code/extension/tests/l1/card.test.ts b/code/extension/tests/l1/card.test.ts
+new file mode 100644
+index 0000000..d2c375b
+--- /dev/null
++++ b/code/extension/tests/l1/card.test.ts
+@@ -0,0 +1,12 @@
++import { describe, it, expect } from 'vitest';
++import { detectCard } from '../../src/detection/l1/card';
++
++describe('card', () => {
++  it('detects a Luhn-valid test PAN', () => expect(detectCard('4111 1111 1111 1111')[0]?.cls).toBe('CARD'));
++  it('ignores a Luhn-invalid 16-digit run', () => expect(detectCard('4111 1111 1111 1112')).toEqual([]));
++  it('ignores a 12-digit run (too short for a card)', () => expect(detectCard('4111 1111 1111')).toEqual([]));
++  it('detects a Luhn-valid 19-digit PAN', () =>
++    expect(detectCard('4111 1111 1111 1111 110')[0]?.cls).toBe('CARD'));
++  it('does not fire on a 20-digit run whose 19-digit prefix fails Luhn', () =>
++    expect(detectCard('12345678901234567890')).toEqual([]));
++});
+diff --git a/code/extension/tests/l1/email.test.ts b/code/extension/tests/l1/email.test.ts
+new file mode 100644
+index 0000000..40a7c22
+--- /dev/null
++++ b/code/extension/tests/l1/email.test.ts
+@@ -0,0 +1,9 @@
++import { describe, it, expect } from 'vitest';
++import { detectEmail } from '../../src/detection/l1/email';
++
++describe('email', () => {
++  it('detects a normal address', () =>
++    expect(detectEmail('reach me at alice@example.com thanks')[0]?.cls).toBe('EMAIL'));
++  it('does not fire on not an @ mention', () => expect(detectEmail('not an @ mention')).toEqual([]));
++  it('does not fire on a@b without TLD', () => expect(detectEmail('a@b')).toEqual([]));
++});
+diff --git a/code/extension/tests/l1/guardrail.test.ts b/code/extension/tests/l1/guardrail.test.ts
+new file mode 100644
+index 0000000..14437ad
+--- /dev/null
++++ b/code/extension/tests/l1/guardrail.test.ts
+@@ -0,0 +1,25 @@
++import { describe, it, expect } from 'vitest';
++import { runL1 } from '../../src/detection/l1';
++
++describe('L1 fires on identifier grammars, never on bare numbers', () => {
++  for (const clean of [
++    '1+1',
++    '1 + 1 = 2',
++    'the year 2024',
++    'chapter 12',
++    'I need 3 apples',
++    '100%',
++    '$4.50',
++    'page 42 of 100',
++    '2024-01-01 is a date',
++    'call me at 3pm',
++    '12345',
++    'order #7890',
++    'v1.2.3',
++    'aisle 9',
++    'RM 250',
++    '-5 degrees',
++  ]) {
++    it(`no finding: ${clean}`, () => expect(runL1(clean)).toEqual([]));
++  }
++});
+diff --git a/code/extension/tests/l1/nric.test.ts b/code/extension/tests/l1/nric.test.ts
+new file mode 100644
+index 0000000..f2eeef8
+--- /dev/null
++++ b/code/extension/tests/l1/nric.test.ts
+@@ -0,0 +1,11 @@
++import { describe, it, expect } from 'vitest';
++import { detectNric } from '../../src/detection/l1/nric';
++
++describe('NRIC', () => {
++  it('detects a valid NRIC', () => expect(detectNric('IC 890101-14-5555 ok')[0]?.cls).toBe('NRIC'));
++  it('rejects an impossible month', () => expect(detectNric('991301-14-5555')).toEqual([]));
++  it('rejects an unassigned PB code', () => expect(detectNric('890101-17-5555')).toEqual([]));
++  it('does not fire on a bare 12-digit run without dashes', () => expect(detectNric('890101145555')).toEqual([]));
++  it('rejects impossible day 00', () => expect(detectNric('890100-14-5555')).toEqual([]));
++  it('rejects impossible day 32', () => expect(detectNric('890132-14-5555')).toEqual([]));
++});
+diff --git a/code/extension/tests/l1/runl1.test.ts b/code/extension/tests/l1/runl1.test.ts
+new file mode 100644
+index 0000000..526de39
+--- /dev/null
++++ b/code/extension/tests/l1/runl1.test.ts
+@@ -0,0 +1,24 @@
++import { describe, it, expect } from 'vitest';
++import { runL1 } from '../../src/detection/l1';
++
++describe('runL1', () => {
++  it('returns only NRIC for a dashed NRIC, not SSM/AMBIGUOUS on the same string', () => {
++    const findings = runL1('IC 890101-14-5555 ok');
++    expect(findings).toHaveLength(1);
++    expect(findings[0]?.cls).toBe('NRIC');
++  });
++
++  it('dedupes overlapping findings, keeping the longer span', () => {
++    // 16-digit Luhn-valid PAN; SSM would match a 12-digit prefix if boundaries allowed overlap.
++    const text = '4111111111111111';
++    const findings = runL1(text);
++    expect(findings.filter((f) => f.cls === 'CARD')).toHaveLength(1);
++    expect(findings.filter((f) => f.cls === 'SSM' || f.cls === 'NRIC_OR_SSM_AMBIGUOUS')).toHaveLength(0);
++  });
++
++  it('merges non-overlapping findings from multiple detectors', () => {
++    const findings = runL1('IC 890101-14-5555 email alice@example.com TIN IG123456789');
++    const classes = findings.map((f) => f.cls).sort();
++    expect(classes).toEqual(['EMAIL', 'NRIC', 'TIN']);
++  });
++});
+diff --git a/code/extension/tests/l1/ssm.test.ts b/code/extension/tests/l1/ssm.test.ts
+new file mode 100644
+index 0000000..b7e0680
+--- /dev/null
++++ b/code/extension/tests/l1/ssm.test.ts
+@@ -0,0 +1,11 @@
++import { describe, it, expect } from 'vitest';
++import { detectSsm } from '../../src/detection/l1/ssm';
++
++describe('SSM', () => {
++  it('flags a 12-digit that cannot be an NRIC as SSM', () =>
++    expect(detectSsm('201501234567')[0]?.cls).toBe('SSM')); // month=15 -> not NRIC-shaped
++  it('flags an NRIC-shaped 12-digit as AMBIGUOUS', () =>
++    expect(detectSsm('890101145555')[0]?.cls).toBe('NRIC_OR_SSM_AMBIGUOUS'));
++  it('does not fire on an 11-digit run', () => expect(detectSsm('20150123456')).toEqual([]));
++  it('does not fire on a 13-digit run', () => expect(detectSsm('2015012345678')).toEqual([]));
++});
+diff --git a/code/extension/tests/l1/tin.test.ts b/code/extension/tests/l1/tin.test.ts
+new file mode 100644
+index 0000000..c5589d5
+--- /dev/null
++++ b/code/extension/tests/l1/tin.test.ts
+@@ -0,0 +1,9 @@
++import { describe, it, expect } from 'vitest';
++import { detectTin } from '../../src/detection/l1/tin';
++
++describe('TIN', () => {
++  it('detects a valid IG TIN', () => expect(detectTin('TIN IG123456789 here')[0]?.cls).toBe('TIN'));
++  it('does not fire on a lone SG prefix without digits', () => expect(detectTin('country SG only')).toEqual([]));
++  it('does not fire on OG inside a word without 9-11 trailing digits', () =>
++    expect(detectTin('cognitive reasoning')).toEqual([]));
++});
+diff --git a/code/extension/tests/l2-messages.test.ts b/code/extension/tests/l2-messages.test.ts
+new file mode 100644
+index 0000000..6c8fdb6
+--- /dev/null
++++ b/code/extension/tests/l2-messages.test.ts
+@@ -0,0 +1,109 @@
++// tests/l2-messages.test.ts
++import { describe, it, expect } from 'vitest';
++import { attachCharOffsets, mergeNerTokens } from '../src/detection/l2/messages';
++
++describe('mergeNerTokens', () => {
++  it('merges B-/I- PER tokens into one PERSON span and drops LOC', () => {
++    const merged = mergeNerTokens([
++      { entity: 'B-PER', start: 13, end: 18, word: 'Ahmad' },
++      { entity: 'I-PER', start: 19, end: 22, word: 'Ali' },
++      { entity: 'B-LOC', start: 30, end: 36, word: 'Penang' },
++    ]);
++    expect(merged).toEqual([{ type: 'PERSON', start: 13, end: 22, text: 'Ahmad Ali' }]);
++  });
++
++  it('keeps ORG and separates adjacent entities of different type', () => {
++    const merged = mergeNerTokens([
++      { entity: 'B-ORG', start: 0, end: 5, word: 'Apple' },
++      { entity: 'B-PER', start: 6, end: 9, word: 'Tim' },
++    ]);
++    expect(merged.map((m) => m.type)).toEqual(['ORG', 'PERSON']);
++  });
++
++  it('merges a wordpiece continuation ("##") into the preceding entity without the marker', () => {
++    const merged = mergeNerTokens([
++      { entity: 'B-PER', start: 0, end: 4, word: 'Ahm' },
++      { entity: 'I-PER', start: 4, end: 6, word: '##ad' },
++    ]);
++    expect(merged).toEqual([{ type: 'PERSON', start: 0, end: 6, text: 'Ahmad' }]);
++  });
++});
++
++describe('attachCharOffsets', () => {
++  it('locates each decoded token in the source text and strips "##" before searching', () => {
++    const text = 'Please email Ahmad about the Apple deal';
++    const tokens = attachCharOffsets(text, [
++      { entity: 'O', word: 'Please' },
++      { entity: 'O', word: 'email' },
++      { entity: 'B-PER', word: 'Ahm' },
++      { entity: 'I-PER', word: '##ad' },
++      { entity: 'O', word: 'about' },
++      { entity: 'B-ORG', word: 'Apple' },
++    ]);
++    expect(tokens).toEqual([
++      { entity: 'O', start: 0, end: 6, word: 'Please' },
++      { entity: 'O', start: 7, end: 12, word: 'email' },
++      { entity: 'B-PER', start: 13, end: 16, word: 'Ahm' },
++      { entity: 'I-PER', start: 16, end: 18, word: '##ad' },
++      { entity: 'O', start: 19, end: 24, word: 'about' },
++      { entity: 'B-ORG', start: 29, end: 34, word: 'Apple' },
++    ]);
++  });
++
++  it('drops a token it cannot align rather than guessing a span', () => {
++    const tokens = attachCharOffsets('hello world', [
++      { entity: 'O', word: 'hello' },
++      { entity: 'O', word: 'nowhere-in-text' },
++      { entity: 'O', word: 'world' },
++    ]);
++    expect(tokens.map((t) => t.word)).toEqual(['hello', 'world']);
++  });
++
++  // CRITICAL regression: recurring substring + entity-only stream (pipeline default
++  // ignore_labels:['O']) mislocates the tagged mention onto the FIRST occurrence.
++  // Production must pass the FULL ordered stream (ignore_labels:[]) so O tokens advance
++  // the cursor. This test uses the production-shaped full stream and asserts the LATER
++  // occurrence; the companion check below documents that entity-only is wrong.
++  it('points at the later occurrence of a recurring word when given the full ordered stream', () => {
++    // "I love Apple and my friend has an apple; call Apple Inc"
++    //  indices:         ^7                           ^46
++    const text = 'I love Apple and my friend has an apple; call Apple Inc';
++    const firstApple = text.indexOf('Apple'); // 7
++    const lastApple = text.lastIndexOf('Apple'); // 46
++    expect(firstApple).toBe(7);
++    expect(lastApple).toBe(46);
++
++    // Entity-only stream (old production shape) â€” MUST land on the WRONG (first) span.
++    const entityOnly = attachCharOffsets(text, [{ entity: 'B-ORG', word: 'Apple' }]);
++    expect(entityOnly[0]!.start).toBe(firstApple);
++    expect(entityOnly[0]!.start).not.toBe(lastApple);
++
++    // Full ordered stream as the real pipeline emits with ignore_labels:[] â€” O tokens
++    // between the three "Apple"/"apple" mentions advance the cursor past the early ones.
++    const fullStream = attachCharOffsets(text, [
++      { entity: 'O', word: 'I' },
++      { entity: 'O', word: 'love' },
++      { entity: 'O', word: 'Apple' }, // first Apple â€” not the tagged entity
++      { entity: 'O', word: 'and' },
++      { entity: 'O', word: 'my' },
++      { entity: 'O', word: 'friend' },
++      { entity: 'O', word: 'has' },
++      { entity: 'O', word: 'an' },
++      { entity: 'O', word: 'apple' }, // lowercase apple â€” not the tagged entity
++      { entity: 'O', word: ';' },
++      { entity: 'O', word: 'call' },
++      { entity: 'B-ORG', word: 'Apple' }, // the tagged mention â€” LATER occurrence
++      { entity: 'I-ORG', word: 'Inc' },
++    ]);
++    const orgTokens = fullStream.filter((t) => t.entity.endsWith('ORG'));
++    expect(orgTokens).toEqual([
++      { entity: 'B-ORG', start: lastApple, end: lastApple + 5, word: 'Apple' },
++      { entity: 'I-ORG', start: lastApple + 6, end: lastApple + 9, word: 'Inc' },
++    ]);
++    // End-to-end: merge must also land on the later span, not the first.
++    const merged = mergeNerTokens(fullStream);
++    expect(merged).toEqual([
++      { type: 'ORG', start: lastApple, end: lastApple + 9, text: 'Apple Inc' },
++    ]);
++  });
++});
+diff --git a/code/extension/tests/mask.test.ts b/code/extension/tests/mask.test.ts
+new file mode 100644
+index 0000000..9d20bb1
+--- /dev/null
++++ b/code/extension/tests/mask.test.ts
+@@ -0,0 +1,38 @@
++import { describe, it, expect } from 'vitest';
++import { SessionNumbering, rewrite } from '../src/mask/placeholder';
++
++describe('masking', () => {
++  it('same original -> same placeholder within a session', () => {
++    const n = new SessionNumbering();
++    expect(n.placeholderFor('PERSON', 'Ahmad')).toBe('PERSON_1');
++    expect(n.placeholderFor('PERSON', 'Ahmad')).toBe('PERSON_1');
++    expect(n.placeholderFor('PERSON', 'Rachel')).toBe('PERSON_2');
++  });
++  it('rewrites right-to-left so offsets stay valid', () => {
++    const n = new SessionNumbering();
++    const { rewritten } = rewrite('call Ahmad about Apple', [
++      { cls: 'PERSON', start: 5, end: 10, text: 'Ahmad' },
++      { cls: 'ORG', start: 17, end: 22, text: 'Apple' },
++    ], n);
++    expect(rewritten).toBe('call PERSON_1 about ORG_1');
++  });
++  it('distinct classes with colliding concatenation get distinct placeholders', () => {
++    const n = new SessionNumbering();
++    expect(n.placeholderFor('NRIC', '_OR_SSM_AMBIGUOUSfoo')).toBe('NRIC_1');
++    expect(n.placeholderFor('NRIC_OR_SSM_AMBIGUOUS', 'foo')).toBe('NRIC_OR_SSM_AMBIGUOUS_1');
++  });
++  it('rewrite map has privacy-safe shape with no original text', () => {
++    const n = new SessionNumbering();
++    const { map } = rewrite('call Ahmad about Apple', [
++      { cls: 'PERSON', start: 5, end: 10, text: 'Ahmad' },
++      { cls: 'ORG', start: 17, end: 22, text: 'Apple' },
++    ], n);
++    for (const entry of map) {
++      expect(Object.keys(entry).sort()).toEqual(['cls', 'placeholder']);
++      expect(entry).toEqual({ placeholder: entry.placeholder, cls: entry.cls });
++    }
++    const serialized = JSON.stringify(map);
++    expect(serialized).not.toContain('Ahmad');
++    expect(serialized).not.toContain('Apple');
++  });
++});
+diff --git a/code/extension/tests/modal.test.tsx b/code/extension/tests/modal.test.tsx
+new file mode 100644
+index 0000000..9f0b0a8
+--- /dev/null
++++ b/code/extension/tests/modal.test.tsx
+@@ -0,0 +1,161 @@
++// @vitest-environment jsdom
++
++import { cleanup, fireEvent, render } from '@testing-library/preact';
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import { Modal } from '../src/ui/modal';
++import { hideModal, showModal } from '../src/ui/mount';
++
++afterEach(() => {
++  cleanup();
++  hideModal();
++  vi.restoreAllMocks();
++});
++
++describe('Modal', () => {
++  it('shows only the finding summary and rewritten preview', () => {
++    const { getByText } = render(
++      <Modal
++        rewritten="call PERSON_1 at ORG_1"
++        summary={[
++          { cls: 'PERSON', count: 1 },
++          { cls: 'ORG', count: 2 },
++        ]}
++        onApprove={() => {}}
++        onIgnore={() => {}}
++      />,
++    );
++
++    expect(getByText('PERSON: 1')).toBeTruthy();
++    expect(getByText('ORG: 2')).toBeTruthy();
++    expect(getByText('call PERSON_1 at ORG_1')).toBeTruthy();
++  });
++
++  it('calls onApprove without submitting anything', () => {
++    const onApprove = vi.fn();
++    const { getByRole } = render(
++      <Modal
++        rewritten="call PERSON_1"
++        summary={[{ cls: 'PERSON', count: 1 }]}
++        onApprove={onApprove}
++        onIgnore={() => {}}
++      />,
++    );
++
++    const approve = getByRole('button', { name: /approve/i });
++    expect(approve.getAttribute('type')).toBe('button');
++    fireEvent.click(approve);
++
++    expect(onApprove).toHaveBeenCalledOnce();
++  });
++
++  it('disables Ignore until a reason is entered', () => {
++    const onIgnore = vi.fn();
++    const { getByPlaceholderText, getByRole } = render(
++      <Modal
++        rewritten="x"
++        summary={[]}
++        onApprove={() => {}}
++        onIgnore={onIgnore}
++      />,
++    );
++    const ignore = getByRole('button', { name: /^ignore$/i }) as HTMLButtonElement;
++
++    expect(ignore.disabled).toBe(true);
++    fireEvent.click(ignore);
++    expect(onIgnore).not.toHaveBeenCalled();
++
++    fireEvent.input(getByPlaceholderText(/reason/i), {
++      target: { value: 'false positive' },
++    });
++    expect(ignore.disabled).toBe(false);
++    fireEvent.click(ignore);
++
++    expect(onIgnore).toHaveBeenCalledWith('false positive');
++  });
++
++  it('does not call onIgnore for whitespace-only reasons', () => {
++    const onIgnore = vi.fn();
++    const { getByPlaceholderText, getByRole } = render(
++      <Modal
++        rewritten="x"
++        summary={[]}
++        onApprove={() => {}}
++        onIgnore={onIgnore}
++      />,
++    );
++    const ignore = getByRole('button', { name: /^ignore$/i }) as HTMLButtonElement;
++
++    fireEvent.input(getByPlaceholderText(/reason/i), {
++      target: { value: '   ' },
++    });
++    expect(ignore.disabled).toBe(true);
++    fireEvent.click(ignore);
++    expect(onIgnore).not.toHaveBeenCalled();
++  });
++
++  it('passes trimmed reason to onIgnore', () => {
++    const onIgnore = vi.fn();
++    const { getByPlaceholderText, getByRole } = render(
++      <Modal
++        rewritten="x"
++        summary={[]}
++        onApprove={() => {}}
++        onIgnore={onIgnore}
++      />,
++    );
++
++    fireEvent.input(getByPlaceholderText(/reason/i), {
++      target: { value: '  false positive  ' },
++    });
++    fireEvent.click(getByRole('button', { name: /^ignore$/i }));
++
++    expect(onIgnore).toHaveBeenCalledWith('false positive');
++  });
++
++  it('resets reason when remounted via key', () => {
++    const props = {
++      rewritten: 'x',
++      summary: [] as Array<{ cls: string; count: number }>,
++      onApprove: () => {},
++      onIgnore: () => {},
++    };
++    const { getByPlaceholderText, rerender } = render(<Modal {...props} key={1} />);
++
++    fireEvent.input(getByPlaceholderText(/reason/i), {
++      target: { value: 'stale reason' },
++    });
++
++    rerender(<Modal {...props} key={2} />);
++
++    expect((getByPlaceholderText(/reason/i) as HTMLInputElement).value).toBe('');
++  });
++});
++
++describe('modal mount', () => {
++  it('renders into a closed shadow root and removes its host', () => {
++    const attachShadow = Element.prototype.attachShadow;
++    let capturedRoot: ShadowRoot | undefined;
++    const attachSpy = vi
++      .spyOn(Element.prototype, 'attachShadow')
++      .mockImplementation(function (this: Element, init) {
++        capturedRoot = attachShadow.call(this, init);
++        return capturedRoot;
++      });
++
++    showModal({
++      rewritten: 'PERSON_1',
++      summary: [{ cls: 'PERSON', count: 1 }],
++      onApprove: () => {},
++      onIgnore: () => {},
++    });
++
++    const host = document.body.lastElementChild as HTMLElement;
++    expect(attachSpy).toHaveBeenCalledWith({ mode: 'closed' });
++    expect(host.shadowRoot).toBeNull();
++    expect(capturedRoot?.querySelector('[role="dialog"]')).not.toBeNull();
++
++    hideModal();
++
++    expect(host.isConnected).toBe(false);
++  });
++});
+diff --git a/code/extension/tests/scan.test.ts b/code/extension/tests/scan.test.ts
+new file mode 100644
+index 0000000..647821d
+--- /dev/null
++++ b/code/extension/tests/scan.test.ts
+@@ -0,0 +1,68 @@
++import { describe, it, expect, vi, beforeEach } from 'vitest';
++import { scanInto } from '../src/detection/scan';
++import { VerdictCache } from '../src/detection/verdict-cache';
++import { sha256Hex } from '../src/detection/hash';
++import { l2Scan } from '../src/detection/l2/client';
++
++vi.mock('../src/detection/l2/client', () => ({
++  l2Scan: vi.fn(async () => [{ type: 'PERSON', start: 0, end: 5, text: 'Ahmad' }]),
++}));
++
++describe('scanInto', () => {
++  it('an L1 hit makes it DIRTY even before L2', async () => {
++    const c = new VerdictCache();
++    const v = await scanInto(c, 'IC 890101-14-5555', { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('DIRTY');
++    expect(v.findings.some((f) => f.cls === 'NRIC')).toBe(true);
++  });
++  it('L1-clean + L2 PERSON is DIRTY', async () => {
++    const c = new VerdictCache();
++    const v = await scanInto(c, 'call Ahmad', { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('DIRTY');
++    expect(v.findings.some((f) => f.cls === 'PERSON')).toBe(true);
++  });
++});
++
++describe('scanInto degraded path (ADR 0014)', () => {
++  beforeEach(() => {
++    vi.mocked(l2Scan).mockReset();
++  });
++
++  it('L1 hit + L2 degraded: verdict stays DIRTY and cache is DIRTY', async () => {
++    vi.mocked(l2Scan).mockResolvedValueOnce('degraded');
++    const c = new VerdictCache();
++    const text = 'IC 890101-14-5555';
++    const hash = await sha256Hex(text);
++    const v = await scanInto(c, text, { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('DIRTY');
++    expect(c.getSync(hash)!.state).toBe('DIRTY');
++  });
++
++  it('L1 clean + L2 degraded: CLEAN incomplete, cache has no entry', async () => {
++    vi.mocked(l2Scan).mockResolvedValueOnce('degraded');
++    const c = new VerdictCache();
++    const text = 'hello world';
++    const hash = await sha256Hex(text);
++    const v = await scanInto(c, text, { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('CLEAN');
++    expect(v.complete).toBe(false);
++    expect(c.getSync(hash)).toBeUndefined();
++  });
++});
++
++describe('scanInto L1-clean + L2 empty', () => {
++  beforeEach(() => {
++    vi.mocked(l2Scan).mockReset();
++  });
++
++  it('state CLEAN, complete:true, cache cached CLEAN', async () => {
++    vi.mocked(l2Scan).mockResolvedValueOnce([]);
++    const c = new VerdictCache();
++    const text = 'hello world';
++    const hash = await sha256Hex(text);
++    const v = await scanInto(c, text, { l2TimeoutMs: 1000 });
++    expect(v.state).toBe('CLEAN');
++    expect(v.complete).toBe(true);
++    expect(c.getSync(hash)!.state).toBe('CLEAN');
++  });
++});
+diff --git a/code/extension/tests/verdict-cache.test.ts b/code/extension/tests/verdict-cache.test.ts
+new file mode 100644
+index 0000000..3c557af
+--- /dev/null
++++ b/code/extension/tests/verdict-cache.test.ts
+@@ -0,0 +1,32 @@
++import { describe, it, expect } from 'vitest';
++import { VerdictCache } from '../src/detection/verdict-cache';
++import { saltedFingerprint } from '../src/detection/hash';
++
++describe('VerdictCache monotonic-toward-dirty', () => {
++  it('setClean does not overwrite an existing DIRTY (ADR 0013)', () => {
++    const c = new VerdictCache();
++    c.setDirty('h', [{ cls: 'NRIC', start: 0, end: 1, text: 'x' }]);
++    c.setClean('h', []);
++    expect(c.getSync('h')!.state).toBe('DIRTY');
++  });
++  it('a fresh hash is undefined (cold cache -> caller must treat as unknown)', () => {
++    expect(new VerdictCache().getSync('nope')).toBeUndefined();
++  });
++  it('setClean on a cold hash sets CLEAN with complete:true', () => {
++    const c = new VerdictCache();
++    c.setClean('cold', []);
++    const v = c.getSync('cold')!;
++    expect(v.state).toBe('CLEAN');
++    expect(v.complete).toBe(true);
++  });
++});
++
++describe('saltedFingerprint', () => {
++  it('returns a 16-char hex string and different salts yield different fingerprints', async () => {
++    const fp1 = await saltedFingerprint('hello', 'salt-a');
++    const fp2 = await saltedFingerprint('hello', 'salt-b');
++    expect(fp1).toMatch(/^[0-9a-f]{16}$/);
++    expect(fp2).toMatch(/^[0-9a-f]{16}$/);
++    expect(fp1).not.toBe(fp2);
++  });
++});
+diff --git a/code/extension/vitest.config.ts b/code/extension/vitest.config.ts
+new file mode 100644
+index 0000000..e81cc37
+--- /dev/null
++++ b/code/extension/vitest.config.ts
+@@ -0,0 +1,7 @@
++import { defineConfig } from 'vitest/config';
++
++export default defineConfig({
++  test: {
++    include: ['tests/**/*.test.{ts,tsx}'],
++  },
++});
+diff --git a/code/extension/wxt.config.ts b/code/extension/wxt.config.ts
+new file mode 100644
+index 0000000..4e6cd19
+--- /dev/null
++++ b/code/extension/wxt.config.ts
+@@ -0,0 +1,13 @@
++import { defineConfig } from 'wxt';
++
++export default defineConfig({
++  outDir: 'dist',
++  manifest: {
++    name: 'Vanguard (Slice 1)',
++    description: 'On-device prompt-privacy gate for ChatGPT and Claude. Team test build.',
++    version: '0.1.0',
++    permissions: ['storage', 'offscreen'],
++    host_permissions: ['https://chatgpt.com/*', 'https://claude.ai/*'],
++    // No webRequest (ADR 0017 Â§6.2). No <all_urls>. Two hosts only.
++  },
++});
