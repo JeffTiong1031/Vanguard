@@ -6,7 +6,12 @@ import { VerdictCache } from '../src/detection/verdict-cache';
 import { ApprovalStore } from '../src/gate/approval-token';
 import { installGate } from '../src/gate/gate';
 import { rewrite, SessionNumbering } from '../src/mask/placeholder';
-import { hideModal, showModal } from '../src/ui/mount';
+import {
+  hideModal,
+  hideProtectionDegraded,
+  showModal,
+  showProtectionDegraded,
+} from '../src/ui/mount';
 import { debounce } from '../src/util/debounce';
 
 const COLD_HASH = '\0cold';
@@ -28,6 +33,8 @@ export default defineContentScript({
     const scan = async (text: string) => {
       const verdict = await scanInto(cache, text, { l2TimeoutMs: L2_TIMEOUT_MS });
       hashes.set(text, await sha256Hex(text));
+      if (verdict.complete) hideProtectionDegraded();
+      else showProtectionDegraded();
       if (verdict.state === 'DIRTY') await recordFindings(verdict.findings);
     };
     const debouncedScan = debounce((text: string) => void scan(text), 250);
@@ -43,7 +50,7 @@ export default defineContentScript({
       onBlocked: async (text) => {
         if (cache.getSync(hashes.get(text) ?? '') == null) await scan(text);
         const verdict = cache.getSync(hashes.get(text) ?? '');
-        if (!verdict || verdict.state === 'CLEAN') return;
+        if (!verdict || verdict.state !== 'DIRTY') return;
 
         const { rewritten } = rewrite(text, verdict.findings, numbering);
         showModal({
@@ -51,9 +58,10 @@ export default defineContentScript({
           summary: summarise(verdict.findings),
           onApprove: async () => {
             adapter.writeText(rewritten);
-            const hash = await sha256Hex(rewritten);
+            const approvedText = adapter.readText() ?? rewritten;
+            const hash = await sha256Hex(approvedText);
             approvals.approve(hash, 60_000);
-            hashes.set(rewritten, hash);
+            hashes.set(approvedText, hash);
             hideModal();
           },
           onIgnore: async (reason) => {

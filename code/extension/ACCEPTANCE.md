@@ -2,14 +2,14 @@
 
 **Status: CHECKLIST WRITTEN — LIVE RUN DEFERRED TO TEAM TEST**
 
-This document is the Slice 1 acceptance definition (doc 05 §1.2 visual criterion requires a human browser). Automated build/test gates are run in CI and recorded in the Task 14 report; all live checkboxes below remain unchecked until the founder's team completes a manual session on both surfaces.
+This document is the Slice 1 acceptance definition (doc 05 §1.2 visual criterion requires a human browser). There is no CI workflow yet: `npm run build`, `npm run test`, and `npm run check:dist` must be run locally and their output recorded. All live checkboxes below remain unchecked until the founder's team completes a manual session on both surfaces.
 
 Run every section on **both** `https://chatgpt.com` and `https://claude.ai`. Mark each box only after observing the criterion on that surface.
 
 ---
 
 ## Setup
-- [ ] `npm run build && npm run check:dist` — dist is in sync
+- [ ] `npm run build && npm run test && npm run check:dist` — local gates pass and dist is in sync
 - [ ] Load `dist/chrome-mv3` unpacked (Developer mode)
 - [ ] First use downloads + hash-verifies weights once (watch the SW console for the verify log)
 
@@ -54,7 +54,7 @@ These augment the checklist above; they do not replace any brief item.
 
 ### Task 12 minors — UX edge cases inherited from wiring
 - [ ] **Cold-cache CLEAN paste → Send:** paste clean text, press Send immediately (cache still cold). Expect the first keypress may be swallowed with no modal; a **second** Send press is required. This is fail-safe, not fail-open — document if observed.
-- [ ] **Approve → Send hash round-trip:** after Approve on a DIRTY prompt, press Send once. If `innerText` round-trip from `writeText` differs from the plain-string rewrite, the approval token may not match and a second Send may be needed. Verify the happy path (one Send after Approve) on both surfaces; note any mismatch.
+- [ ] **Approve → Send hash round-trip:** after Approve on a DIRTY prompt, press Send once. The approval token is minted from the composer's post-`writeText` value, so the gate's `innerText` round-trip must match. Verify one Send after Approve on both surfaces; note any mismatch.
 
 ### Task 13 — Cross-tab audit storage (note only, not blocking)
 - [ ] **Note:** concurrent tabs can race on `chrome.storage.local` audit writes (module-local locks cover same-tab only; SW single-writer deferred). Acceptable for team test; flag if duplicate or lost audit rows appear under heavy multi-tab use.

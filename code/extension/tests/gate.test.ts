@@ -18,6 +18,11 @@ describe('decideGate (pure core of the listener)', () => {
     c.setClean('h', []);
     expect(decideGate({ hash: 'h', cache: c, approvedHash: null })).toBe('PASS');
   });
+  it('passes an explicit degraded advisory verdict', () => {
+    const c = new VerdictCache();
+    c.setAdvisory('h');
+    expect(decideGate({ hash: 'h', cache: c, approvedHash: null })).toBe('PASS');
+  });
   it('blocks UNKNOWN (cold cache) to stay fail-safe until a scan lands', () => {
     expect(decideGate({ hash: 'cold', cache: new VerdictCache(), approvedHash: null })).toBe(
       'BLOCK',

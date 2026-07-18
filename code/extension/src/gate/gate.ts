@@ -4,7 +4,7 @@ export function decideGate(a: { hash: string; cache: VerdictCache; approvedHash:
   if (a.approvedHash === a.hash) return 'PASS';
   const v = a.cache.getSync(a.hash);
   if (!v) return 'BLOCK';               // cold cache -> modal resolves it
-  return v.state === 'CLEAN' ? 'PASS' : 'BLOCK';
+  return v.state === 'CLEAN' || v.state === 'ADVISORY' ? 'PASS' : 'BLOCK';
 }
 
 export type GateDeps = {

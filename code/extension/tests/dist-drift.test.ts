@@ -6,6 +6,12 @@ import { tmpdir } from 'node:os';
 import { afterAll, describe, expect, it } from 'vitest';
 import { COMMITTED, diffTrees, hashTree } from '../scripts/check-dist-drift.mjs';
 
+const repoRoot = join(process.cwd(), '..', '..');
+const initialDistStatus = execFileSync('git', ['status', '--porcelain', 'code/extension/dist'], {
+  cwd: repoRoot,
+  encoding: 'utf8',
+});
+
 describe('dist drift', () => {
   it('committed dist matches a fresh build', () => {
     // check:dist exits 0 when in sync, 1 when stale. A non-zero exit throws.
@@ -49,10 +55,10 @@ describe('dist drift', () => {
 });
 
 afterAll(() => {
-  // Working tree must be pristine after mutate-and-restore.
+  // Mutate-and-restore must preserve the dist state that existed before this suite.
   const status = execFileSync('git', ['status', '--porcelain', 'code/extension/dist'], {
-    cwd: join(process.cwd(), '..', '..'),
+    cwd: repoRoot,
     encoding: 'utf8',
   });
-  expect(status.trim()).toBe('');
+  expect(status).toBe(initialDistStatus);
 });

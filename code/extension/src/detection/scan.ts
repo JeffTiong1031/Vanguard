@@ -11,8 +11,9 @@ export async function scanInto(cache: VerdictCache, text: string, opts: { l2Time
 
   const l2 = await l2Scan(text, opts.l2TimeoutMs);
   if (l2 === 'degraded') {
-    // ADR 0014: never fabricate CLEAN. Keep any L1 dirtiness; if L1 was empty, leave the hash unknown.
-    return cache.getSync(hash) ?? { state: 'CLEAN', findings: [], complete: false };
+    // ADR 0014: preserve L1 dirtiness; otherwise pass explicitly as surfaced advisory, never as CLEAN.
+    if (l1.length === 0) cache.setAdvisory(hash);
+    return cache.getSync(hash)!;
   }
   const l2Findings: Finding[] = l2.map((e) => ({ cls: e.type, start: e.start, end: e.end, text: e.text }));
   const findings = [...l1, ...l2Findings];

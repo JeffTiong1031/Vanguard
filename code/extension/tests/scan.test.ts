@@ -38,15 +38,15 @@ describe('scanInto degraded path (ADR 0014)', () => {
     expect(c.getSync(hash)!.state).toBe('DIRTY');
   });
 
-  it('L1 clean + L2 degraded: CLEAN incomplete, cache has no entry', async () => {
+  it('L1 clean + L2 degraded: ADVISORY incomplete is cached for the gate', async () => {
     vi.mocked(l2Scan).mockResolvedValueOnce('degraded');
     const c = new VerdictCache();
     const text = 'hello world';
     const hash = await sha256Hex(text);
     const v = await scanInto(c, text, { l2TimeoutMs: 1000 });
-    expect(v.state).toBe('CLEAN');
+    expect(v.state).toBe('ADVISORY');
     expect(v.complete).toBe(false);
-    expect(c.getSync(hash)).toBeUndefined();
+    expect(c.getSync(hash)).toEqual(v);
   });
 });
 

@@ -3,11 +3,17 @@
 import { cleanup, fireEvent, render } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Modal } from '../src/ui/modal';
-import { hideModal, showModal } from '../src/ui/mount';
+import {
+  hideModal,
+  hideProtectionDegraded,
+  showModal,
+  showProtectionDegraded,
+} from '../src/ui/mount';
 
 afterEach(() => {
   cleanup();
   hideModal();
+  hideProtectionDegraded();
   vi.restoreAllMocks();
 });
 
@@ -157,5 +163,20 @@ describe('modal mount', () => {
     hideModal();
 
     expect(host.isConnected).toBe(false);
+  });
+
+  it('shows a non-blocking protection degraded notice', () => {
+    const attachShadow = Element.prototype.attachShadow;
+    let capturedRoot: ShadowRoot | undefined;
+    vi.spyOn(Element.prototype, 'attachShadow').mockImplementation(function (this: Element, init) {
+      capturedRoot = attachShadow.call(this, init);
+      return capturedRoot;
+    });
+
+    showProtectionDegraded();
+
+    const notice = capturedRoot?.querySelector('[role="status"]');
+    expect(notice?.textContent).toContain('Protection degraded');
+    expect((document.body.lastElementChild as HTMLElement).style.pointerEvents).toBe('none');
   });
 });
