@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionNumbering } from '../src/mask/placeholder';
-import { Modal } from '../src/ui/modal';
+import { Modal, placePopover } from '../src/ui/modal';
 import {
   hideModal,
   hideProtectionDegraded,
@@ -25,6 +25,27 @@ const emailFinding: Finding = {
   end: 22,
   text: 'a@example.com',
 };
+
+describe('placePopover', () => {
+  it('sits below the word when there is room', () => {
+    const pos = placePopover(
+      { top: 100, bottom: 120, left: 40, right: 100, width: 60, height: 20, x: 40, y: 100, toJSON: () => '' },
+      800,
+      600,
+    );
+    expect(pos.top).toBe(128);
+    expect(pos.left).toBe(40);
+  });
+
+  it('flips above when near the bottom of the viewport', () => {
+    const pos = placePopover(
+      { top: 500, bottom: 520, left: 40, right: 100, width: 60, height: 20, x: 40, y: 500, toJSON: () => '' },
+      800,
+      560,
+    );
+    expect(pos.top).toBeLessThan(500);
+  });
+});
 
 describe('Modal (Send review)', () => {
   it('shows review copy and disables Proceed until spans are resolved', () => {
