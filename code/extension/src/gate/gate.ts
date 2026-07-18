@@ -16,11 +16,38 @@ export type GateDeps = {
   onBlocked: (text: string) => void;
 };
 
+/** True when the event originated inside our shadow UI (modal, hints popover). */
+export function isVanguardUiPath(path: EventTarget[]): boolean {
+  return path.some(
+    (node) => node instanceof Element && node.hasAttribute('data-vanguard-ui'),
+  );
+}
+
+/** True when focus is inside our UI (walks open shadow → host). */
+export function isVanguardUiFocused(): boolean {
+  const ae = document.activeElement;
+  if (!(ae instanceof Element)) return false;
+  let node: Node | null = ae;
+  while (node) {
+    if (node instanceof Element && node.hasAttribute('data-vanguard-ui')) return true;
+    if (node instanceof ShadowRoot) {
+      node = node.host;
+      continue;
+    }
+    node = node.parentNode;
+  }
+  return false;
+}
+
 export function installGate(deps: GateDeps): void {
   const handler = (e: KeyboardEvent | MouseEvent) => {
     if (e.eventPhase !== Event.CAPTURING_PHASE) return;
     if (e instanceof KeyboardEvent && e.isComposing) return; // U12-b: IME commit, not a send
     const path = e.composedPath();
+    // Enter in Ignore / hint Accept must not be treated as Send (Claude live bug).
+    // Keys typing into Ignore were landing in the composer because focus stayed on-page;
+    // path + activeElement both needed (shadow retargeting).
+    if (isVanguardUiPath(path) || isVanguardUiFocused()) return;
     if (!deps.isSendIntent(e, path)) return;
     const text = deps.getComposerText(path);
     if (text == null) return;

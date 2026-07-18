@@ -9,5 +9,13 @@ export default defineConfig({
     permissions: ['storage', 'offscreen'],
     host_permissions: ['https://chatgpt.com/*', 'https://claude.ai/*'],
     // No webRequest (ADR 0017 §6.2). No <all_urls>. Two hosts only.
+    // MV3 default *should* include wasm-unsafe-eval; live Chrome applied script-src 'self'
+    // only and blocked ORT WASM (R1). Pin the extension_pages CSP explicitly.
+    content_security_policy: {
+      // wasm-unsafe-eval on script-src AND worker-src: ORT may compile WASM in a Worker.
+      // Live error after kill-offscreen quoted script-src 'self' only → stale load; pin both.
+      extension_pages:
+        "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self' 'wasm-unsafe-eval'",
+    },
   },
 });

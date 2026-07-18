@@ -5,7 +5,8 @@ import { scanInto } from '../src/detection/scan';
 import { VerdictCache } from '../src/detection/verdict-cache';
 import { ApprovalStore } from '../src/gate/approval-token';
 import { installGate } from '../src/gate/gate';
-import { rewrite, SessionNumbering } from '../src/mask/placeholder';
+import { SessionNumbering } from '../src/mask/placeholder';
+import { createComposerHints } from '../src/ui/composer-hints';
 import {
   hideModal,
   hideProtectionDegraded,
@@ -15,7 +16,11 @@ import {
 import { debounce } from '../src/util/debounce';
 
 const COLD_HASH = '\0cold';
-const L2_TIMEOUT_MS = 4_000; // (estimate) team-test value; U6-b measures the curve
+// First-run weight download (quantized mBERT NER) routinely exceeds a few seconds on a
+// cold cache. 4s caused lasting "protection degraded" with no CSP error — the race lost
+// to the download, then every follow-up scan also timed out until a lucky fast hit.
+// (estimate) team-test value; U6-b still measures the real curve later.
+const L2_TIMEOUT_MS = 120_000;
 
 export default defineContentScript({
   matches: ['https://chatgpt.com/*', 'https://claude.ai/*'],
@@ -29,6 +34,17 @@ export default defineContentScript({
     const approvals = new ApprovalStore();
     const numbering = new SessionNumbering();
     const hashes = new Map<string, string>();
+
+    const hints = createComposerHints({
+      numbering,
+      onRewrite: (rewritten) => {
+        adapter.writeText(rewritten);
+        approvals.invalidate();
+        const text = adapter.readText() ?? rewritten;
+        hints.update(text);
+        void scan(text);
+      },
+    });
 
     const scan = async (text: string) => {
       const verdict = await scanInto(cache, text, { l2TimeoutMs: L2_TIMEOUT_MS });
@@ -52,20 +68,22 @@ export default defineContentScript({
         const verdict = cache.getSync(hashes.get(text) ?? '');
         if (!verdict || verdict.state !== 'DIRTY') return;
 
-        const { rewritten } = rewrite(text, verdict.findings, numbering);
         showModal({
-          rewritten,
-          summary: summarise(verdict.findings),
-          onApprove: async () => {
-            adapter.writeText(rewritten);
-            const approvedText = adapter.readText() ?? rewritten;
+          text,
+          findings: verdict.findings,
+          numbering,
+          onProceed: async ({ finalText, ignored }) => {
+            for (const row of ignored) {
+              await recordIgnore([row.finding], row.reason);
+            }
+            adapter.writeText(finalText);
+            const approvedText = adapter.readText() ?? finalText;
             const hash = await sha256Hex(approvedText);
             approvals.approve(hash, 60_000);
             hashes.set(approvedText, hash);
-            hideModal();
-          },
-          onIgnore: async (reason) => {
-            await recordIgnore(verdict.findings, reason);
+            // Approval covers ignored originals still present (gate matches hash).
+            void scan(approvedText);
+            hints.update(approvedText);
             hideModal();
           },
         });
@@ -76,26 +94,32 @@ export default defineContentScript({
     const onInput = () => {
       approvals.invalidate();
       const text = adapter.readText();
-      if (text) debouncedScan(text);
+      if (text) {
+        // L1 hints: sync, no L2 (ADR 0024). Gate scan stays debounced.
+        hints.update(text);
+        debouncedScan(text);
+      } else {
+        hints.clear();
+      }
     };
     const bindComposer = () => {
       const composer = adapter.getComposer();
       if (composer === boundComposer) return;
       boundComposer?.removeEventListener('input', onInput);
       boundComposer = composer;
+      hints.attach(composer);
       boundComposer?.addEventListener('input', onInput);
+      const text = adapter.readText();
+      if (text) hints.update(text);
+      else hints.clear();
     };
     bindComposer();
     new MutationObserver(bindComposer).observe(document, { childList: true, subtree: true });
 
-    adapter.onPaste((text) => void scan(text));
+    adapter.onPaste((text) => {
+      hints.update(text);
+      void scan(text);
+    });
   },
 });
 
-function summarise(findings: Array<{ cls: string }>) {
-  const counts = new Map<string, number>();
-  for (const finding of findings) {
-    counts.set(finding.cls, (counts.get(finding.cls) ?? 0) + 1);
-  }
-  return [...counts].map(([cls, count]) => ({ cls, count }));
-}
