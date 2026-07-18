@@ -1,0 +1,10 @@
+services:
+  extract:
+    build: .
+    ports:
+      - "8000:8000"
+    read_only: true                 # F4, enforced by the runtime rather than by intent
+    tmpfs:
+      - /tmp:size=16m
+    mem_limit: 512m                 # a parse bomb that slips the guards still cannot take the host
+    restart: "no"                   # no restart-loop that could retry a queued payload

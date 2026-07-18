@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "U27 file-capture spike",
+  "version": "0.1.0",
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://claude.ai/*"],
+      "js": ["capture.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED",
+      "all_frames": true
+    }
+  ]
+}

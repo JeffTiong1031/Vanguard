@@ -42,6 +42,70 @@ Doc 01 §6 calls this **"the stack decision I'd defend hardest"**:
   `setAccessLevel()`. *"Defaults are where the letter-vs-purpose trap lives, because a default is a
   decision nobody remembers making."*
 
+## Running it (Slice 2 team test)
+
+**Default — founder-hosted shared API.** For the team test, use the shared instance the founder
+runs rather than building locally:
+
+- **Base URL:** `https://vanguard-extract.example.com` *(replace with the live team-test origin
+  before the test — the extension's `wxt.config.ts` host permission must match)*
+- **Extension:** open **Options → File checking API URL**, paste that URL, save. No rebuild needed.
+
+**Fallback — run it yourself** *(B3-style self-hosting; only if you cannot reach the shared
+instance or need to debug the backend):*
+
+```bash
+cd code/backend
+docker compose up --build
+```
+
+Verify:
+
+```bash
+curl -s http://localhost:8000/healthz
+curl -s -F "file=@tests/fixtures/zip_bomb.docx" http://localhost:8000/v1/extract
+```
+
+Expected: `{"ok":true}` then `{"error":{"code":"suspicious_archive",…}}`. Point the extension
+Options page at `http://localhost:8000` if you use this path.
+
+## What testers should know
+
+On the **shared instance**, your real work files **leave your machine** and are parsed on a server
+the founder runs. That is the product's file posture (ADR 0008 — files go to the cloud, in-region,
+zero-retention, under DPA). The team is not a customer with a DPA; saying this upfront is the point.
+
+**Your typing stays local; the file goes to the checker and is not kept.** Prompt text never leaves
+your browser. Only file bytes are sent for parsing; the backend does not retain them after the
+request completes.
+
+**PDF redaction uses PyMuPDF** (`app/redact/pdf.py`). That is fine for pitch demos and Load unpacked
+team tests. **Before Chrome Web Store submission or paying customers, resolve the licence** —
+PyMuPDF is AGPL-3.0 or commercial; see the U30 spike notes in the Slice 2 plan.
+
+## What this service does not keep
+
+Doc 02 §4.3 names four ways zero-retention silently becomes short-retention. Each is closed here:
+
+| Trap | How we close it |
+|---|---|
+| **Async retry** (needs the payload to still exist) | No retry queue, Celery, SQS, or similar — `test_zero_retention.py::test_the_app_declares_no_retry_or_queue_dependency` greps `app/main.py` for banned imports |
+| **Dead-letter queue** (persistence for failed content) | Same structural guard — no DLQ dependency in the codebase |
+| **Debug retention** ("easier with the file") | `app/routes/extract.py` docstring: *"Parse a file to text. Return the text. Keep nothing."* No upload volume mounts in `Dockerfile`; `docker-compose.yml` sets `restart: "no"` |
+| **APM body capture** (nobody notices for six months) | `app/main.py` — no APM; `test_zero_retention.py::test_no_file_content_reaches_the_logs` and `test_a_parse_failure_does_not_log_the_body` |
+
+**Framework default (F4):** Starlette's `UploadFile` spools files over 1 MB to disk. We read the raw
+stream under a cap instead — `app/routes/extract.py` `/v1/extract`, guarded by
+`test_no_temp_file_survives_a_request`. The container adds `read_only: true` and a 16 MB tmpfs so
+even a slipped write has nowhere to land.
+
+## Residency
+
+**`ap-southeast-5`** is the commercial target for MY tenants (doc 02 §6.2, U13 ✅). The Slice 2 team
+test runs on **localhost** or one **founder-hosted** instance and **does not exercise the residency
+path**. U17 (per-service availability in that region) is still unverified and still gates Phase 1
+sizing.
+
 ## Doc 07 §7.3 — read this before adding analytics
 
 The class-level **Ignore rate** is a legitimate detector-prioritization signal, and it rides I3's

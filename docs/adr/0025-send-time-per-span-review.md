@@ -1,7 +1,7 @@
 # ADR 0025 — Send-time per-span review (Grammarly-style gate modal)
 
 **Status:** Accepted · **Date:** 2026-07-18 · **Decider:** the founder
-**Related:** [ADR 0024](0024-slice-1-5-l1-composer-hints.md) · decision #8 (no auto-submit)
+**Related:** [ADR 0024](0024-slice-1-5-l1-composer-hints.md) · [ADR 0026](0026-report-false-detection-after-slice-2.md) (Report — after Slice 2) · decision #8 (no auto-submit)
 
 ## Context
 
@@ -34,3 +34,4 @@ span is resolved.
 - Typing hints (ADR 0024) stay L1-only and non-blocking.
 - Send review shows **full L1+L2** findings (PERSON/ORG included).
 - Decision #8 intact: Proceed prepares the composer; it does not submit.
+- **Report** is not part of this modal yet — founder locked it for **after Slice 2** ([ADR 0026](0026-report-false-detection-after-slice-2.md)). Until then: Accept / Ignore only.

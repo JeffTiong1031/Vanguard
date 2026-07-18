@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { HeldFile } from '../src/files/types';
 import { SessionNumbering } from '../src/mask/placeholder';
+import type { Finding } from '../src/detection/l1/types';
 import { Modal, placePopover } from '../src/ui/modal';
 import {
   hideModal,
@@ -10,7 +12,6 @@ import {
   showModal,
   showProtectionDegraded,
 } from '../src/ui/mount';
-import type { Finding } from '../src/detection/l1/types';
 
 afterEach(() => {
   cleanup();
@@ -18,6 +19,8 @@ afterEach(() => {
   hideProtectionDegraded();
   vi.restoreAllMocks();
 });
+
+const noopFileAck = () => {};
 
 const emailFinding: Finding = {
   cls: 'EMAIL',
@@ -29,22 +32,40 @@ const emailFinding: Finding = {
 describe('placePopover', () => {
   it('prefers the right side of the word when there is room', () => {
     const pos = placePopover(
-      { top: 200, bottom: 220, left: 100, right: 180, width: 80, height: 20, x: 100, y: 200, toJSON: () => '' },
+      {
+        top: 200,
+        bottom: 220,
+        left: 100,
+        right: 180,
+        width: 80,
+        height: 20,
+        x: 100,
+        y: 200,
+        toJSON: () => '',
+      },
       800,
       600,
     );
-    // 180 + 8 = 188
     expect(pos.left).toBe(188);
     expect(pos.top).toBe(200);
   });
 
   it('flips to the left when the word is near the right edge', () => {
     const pos = placePopover(
-      { top: 200, bottom: 220, left: 700, right: 780, width: 80, height: 20, x: 700, y: 200, toJSON: () => '' },
+      {
+        top: 200,
+        bottom: 220,
+        left: 700,
+        right: 780,
+        width: 80,
+        height: 20,
+        x: 700,
+        y: 200,
+        toJSON: () => '',
+      },
       800,
       600,
     );
-    // 700 - 300 - 8 = 392
     expect(pos.left).toBe(392);
   });
 });
@@ -57,6 +78,8 @@ describe('Modal (Send review)', () => {
         text="email me a@example.com"
         findings={[emailFinding]}
         numbering={numbering}
+        files={[]}
+        onAcknowledgeFileError={noopFileAck}
         onProceed={() => {}}
       />,
     );
@@ -75,6 +98,8 @@ describe('Modal (Send review)', () => {
         text="email me a@example.com"
         findings={[emailFinding]}
         numbering={numbering}
+        files={[]}
+        onAcknowledgeFileError={noopFileAck}
         onProceed={onProceed}
       />,
     );
@@ -90,6 +115,7 @@ describe('Modal (Send review)', () => {
       expect.objectContaining({
         finalText: 'email me EMAIL_1',
         ignored: [],
+        files: [],
       }),
     );
   });
@@ -102,6 +128,8 @@ describe('Modal (Send review)', () => {
         text="email me a@example.com"
         findings={[emailFinding]}
         numbering={numbering}
+        files={[]}
+        onAcknowledgeFileError={noopFileAck}
         onProceed={onProceed}
       />,
     );
@@ -124,6 +152,7 @@ describe('Modal (Send review)', () => {
       expect.objectContaining({
         finalText: 'email me a@example.com',
         ignored: [expect.objectContaining({ reason: 'public support alias' })],
+        files: [],
       }),
     );
   });
@@ -136,6 +165,8 @@ describe('Modal (Send review)', () => {
         text="email me a@example.com"
         findings={[emailFinding]}
         numbering={numbering}
+        files={[]}
+        onAcknowledgeFileError={noopFileAck}
         onProceed={onProceed}
       />,
     );
@@ -143,6 +174,78 @@ describe('Modal (Send review)', () => {
     fireEvent.click(getByRole('button', { name: /Accept all/i }));
     await waitFor(() => expect(onProceed).toHaveBeenCalled());
     expect(onProceed.mock.calls[0]![0].finalText).toBe('email me EMAIL_1');
+  });
+
+  it('shows a File tab that reads Checking while the scan is in flight', async () => {
+    const held: HeldFile = {
+      id: 'f1',
+      file: new File(['x'], 'payroll.pdf'),
+      status: { kind: 'scanning' },
+    };
+    render(
+      <Modal
+        text="hello"
+        findings={[]}
+        numbering={new SessionNumbering()}
+        files={[held]}
+        onAcknowledgeFileError={noopFileAck}
+        onProceed={() => {}}
+      />,
+    );
+    expect(screen.getByRole('tab', { name: /payroll\.pdf/ })).toBeTruthy();
+    expect(screen.getByText(/Checking/)).toBeTruthy();
+  });
+
+  it('keeps Proceed disabled while a file span is pending', async () => {
+    const held: HeldFile = {
+      id: 'f1',
+      file: new File(['x'], 'payroll.pdf'),
+      status: { kind: 'scanned' },
+      extract: '880101-14-5566',
+      findings: [{ cls: 'NRIC', start: 0, end: 14, text: '880101-14-5566' }],
+      decisions: new Map(),
+    };
+    render(
+      <Modal
+        text="a clean prompt"
+        findings={[]}
+        numbering={new SessionNumbering()}
+        files={[held]}
+        onAcknowledgeFileError={noopFileAck}
+        onProceed={() => {}}
+      />,
+    );
+    const proceed = screen.getByRole('button', { name: /Proceed/ }) as HTMLButtonElement;
+    expect(proceed.disabled).toBe(true);
+  });
+
+  it('renders the not-read coverage line so the boundary of the check is visible', () => {
+    const held: HeldFile = {
+      id: 'f1',
+      file: new File(['x'], 'scan.pdf'),
+      status: { kind: 'scanned' },
+      extract: 'body text',
+      findings: [],
+      decisions: new Map(),
+      coverage: {
+        read: ['text layer'],
+        not_read: ['4 pages with no text layer (no OCR)'],
+        pages_total: 10,
+        pages_with_text: 6,
+      },
+    };
+    render(
+      <Modal
+        text="hi"
+        findings={[]}
+        numbering={new SessionNumbering()}
+        files={[held]}
+        onAcknowledgeFileError={noopFileAck}
+        onProceed={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('tab', { name: /scan\.pdf/ }));
+    expect(screen.getByText(/4 pages with no text layer/)).toBeTruthy();
   });
 });
 
@@ -163,6 +266,8 @@ describe('modal mount', () => {
       text: 'x',
       findings: [],
       numbering,
+      files: [],
+      onAcknowledgeFileError: noopFileAck,
       onProceed: () => {},
     });
 

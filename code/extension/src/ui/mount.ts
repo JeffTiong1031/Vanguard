@@ -1,11 +1,15 @@
 import { h, render } from 'preact';
 import { Modal, type ModalProps } from './modal';
+import { OversizedDialog, type OversizedDialogProps } from './oversized-dialog';
 
 let host: HTMLElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
 let showKey = 0;
 let degradedHost: HTMLElement | null = null;
 let tearDownFocusTrap: (() => void) | null = null;
+let oversizeHost: HTMLElement | null = null;
+let oversizeRoot: ShadowRoot | null = null;
+let oversizeTrap: (() => void) | null = null;
 
 /**
  * While the modal is open, Claude/ChatGPT will yank focus back to the composer
@@ -136,4 +140,27 @@ export function showProtectionDegraded(): void {
 export function hideProtectionDegraded(): void {
   degradedHost?.remove();
   degradedHost = null;
+}
+
+export function showOversizedDialog(props: OversizedDialogProps): void {
+  hideOversizedDialog();
+  oversizeHost = document.createElement('div');
+  oversizeHost.setAttribute('data-vanguard-ui', 'oversized');
+  oversizeHost.setAttribute('tabindex', '-1');
+  oversizeHost.style.cssText =
+    'position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:rgba(15,23,42,.45)';
+  (document.body || document.documentElement).appendChild(oversizeHost);
+  oversizeRoot = oversizeHost.attachShadow({ mode: 'open' });
+  render(h(OversizedDialog, props), oversizeRoot);
+  oversizeTrap = installFocusTrap(oversizeHost, oversizeRoot);
+}
+
+export function hideOversizedDialog(): void {
+  if (!oversizeHost || !oversizeRoot) return;
+  oversizeTrap?.();
+  oversizeTrap = null;
+  render(null, oversizeRoot);
+  oversizeHost.remove();
+  oversizeHost = null;
+  oversizeRoot = null;
 }

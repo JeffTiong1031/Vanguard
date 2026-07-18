@@ -1,0 +1,3 @@
+# Probe outputs — regenerate with probe.py / probe_pikepdf.py
+*.redacted.pdf
+*.pikepdf.redacted.pdf
