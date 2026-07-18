@@ -59,7 +59,10 @@ export default {
 `,
   );
   try {
-    execFileSync(process.execPath, [wxtBin, 'build', '--config', driftConfigPath], { stdio: 'inherit' });
+    execFileSync(process.execPath, [wxtBin, 'build', '--config', driftConfigPath], {
+      stdio: 'inherit',
+      env: { ...process.env, NODE_ENV: 'production' },
+    });
   } finally {
     try {
       unlinkSync(driftConfigPath);
