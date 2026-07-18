@@ -8,14 +8,22 @@
 
 ```bash
 cd code/spikes/u30-pdf-redact
-pip install pymupdf
+pip install pymupdf pikepdf pdfminer.six
 python build_smoke_samples.py
+
+# PyMuPDF probe (original)
 python probe.py samples/smoke_text.pdf "880101-14-5566" "Ahmad bin Ali"
 python probe.py samples/smoke_text_image.pdf "880101-14-5566" "Ahmad bin Ali"
 python probe.py samples/smoke_multipage.pdf "880101-14-5566" "Ahmad bin Ali"
+
+# pikepdf alternate probe (MPL-2.0 + MIT only — no PyMuPDF in probe)
+python probe_pikepdf.py samples/smoke_text.pdf "880101-14-5566" "Ahmad bin Ali"
+python probe_pikepdf.py samples/smoke_text_image.pdf "880101-14-5566" "Ahmad bin Ali"
+python probe_pikepdf.py samples/smoke_multipage.pdf "880101-14-5566" "Ahmad bin Ali"
 ```
 
-The probe writes `<input>.redacted.pdf` beside the source file and prints a result dict.
+Each probe writes `<input>.redacted.pdf` or `<input>.pikepdf.redacted.pdf` beside the source and
+prints a result dict.
 
 ## What this tests (U30)
 
@@ -52,33 +60,72 @@ is loud and safe. **`still_present` is the fatal one.**
 
 ## Smoke (not PASS)
 
-Synthetic fixtures in `samples/` — built by `build_smoke_samples.py`, labelled as smoke, **not**
-real corpus. Fake NRIC `880101-14-5566` and name `Ahmad bin Ali` only.
+Synthetic fixtures in `samples/` — built by `build_smoke_samples.py` (PyMuPDF generator only),
+labelled as smoke, **not** real corpus. Fake NRIC `880101-14-5566` and name `Ahmad bin Ali` only.
 
-| File | missed | still_present | images kept | opens cleanly |
+| File | probe | missed | still_present | images (before→after) |
 |---|---|---|---|---|
-| `smoke_text.pdf` | none | none | yes (0→0) | yes (PyMuPDF) |
-| `smoke_text_image.pdf` | none | none | yes (1→1) | yes (PyMuPDF) |
-| `smoke_multipage.pdf` | none | none | yes (0→0) | yes (PyMuPDF) |
+| `smoke_text.pdf` | PyMuPDF | none | none | 0→0 |
+| `smoke_text.pdf` | pikepdf | none | none | 0→0 |
+| `smoke_text_image.pdf` | PyMuPDF | none | none | 1→1 |
+| `smoke_text_image.pdf` | pikepdf | none | none | 1→1 |
+| `smoke_multipage.pdf` | PyMuPDF | none | none | 0→0 |
+| `smoke_multipage.pdf` | pikepdf | none | none | 0→0 |
 
-Smoke run 2026-07-18: all spans hit, zero `still_present`, images preserved where present.
-Chrome/Acrobat manual check not run on smoke fixtures — required for real corpus PASS.
+Smoke run **2026-07-19**: both probes hit every span, zero `still_present`, images preserved where
+present. Chrome/Acrobat manual check not run on smoke fixtures — required for real corpus PASS.
 
-## Licensing
+## pikepdf spike results
 
-PyMuPDF is **AGPL-3.0 or commercial**. Shipping AGPL code in a distributed product is a diligence
-finding if nobody decided it on purpose. **Licensing is part of the U30 verdict, not a footnote.**
+**Smoke verdict: PASS (mechanism on fixtures only).**
 
-**Founder choice: UNDECIDED**
-
-| Option | Description |
+| Metric | Result |
 |---|---|
-| **(i)** | Commercial PyMuPDF licence |
-| **(ii)** | PDF-only `.txt` fallback, disclosed in the UI |
-| **(iii)** | PDF masking deferred to backlog; PDFs offer only Ignore-or-remove in v1 |
+| `still_present` | `[]` on all three smoke files |
+| `missed` | `[]` |
+| Images | preserved (`1→1` on `smoke_text_image.pdf`) |
+| Residual check | pdfminer.six text extraction (not PyMuPDF) |
 
-A PASS requires both technical success on the real corpus **and** one of the above chosen deliberately.
-Do not pick (ii) silently — Global Constraint 15 exists because `.txt` is the tempting quiet default.
+**How it works:** `parse_content_stream` → edit or drop text-showing operators (`Tj`/`TJ`/…) whose
+operands contain target span literals → `remove_unreferenced_resources` → save. No mature redact API;
+this is best-effort content-stream surgery.
+
+**Honest limits — why smoke PASS ≠ product PASS:**
+
+| Limit | Consequence |
+|---|---|
+| No `search_for` / glyph-position redact | Cannot locate spans split across operators, kerning arrays, or non-literal encodings |
+| Literal-string assumption | Real PDFs use subset fonts, ToUnicode gaps, hex strings, Form XObject text — common on Word/LaTeX exports |
+| No annotation/form/metadata scrub | Annotations, widgets, embedded file attachments may retain text pikepdf never sees |
+| Maintainer guidance | pikepdf docs state comprehensive redaction needs more than stream edits; subset fonts can leak letter sets |
+
+**Real-corpus verdict: PENDING** — founder must run `probe_pikepdf.py` on ≥8 real work PDFs before
+calling pikepdf the ship path.
+
+## Licensing (founder lock — 2026-07-19)
+
+Recorded as a product decision, not legal advice.
+
+| Phase | Library | Position |
+|---|---|---|
+| **Try first** | **pikepdf** (MPL-2.0) + pdfminer.six (MIT) | Preferred for PDF→PDF mask if real corpus PASSes |
+| **Pitch + Load-unpacked team test** | **PyMuPDF** (AGPL-3.0 or commercial) | **Provisional fallback** if pikepdf cannot reliably remove text while keeping images on real work PDFs — acceptable for coworker testing, **not** for ship |
+| **Ship gate** | Before Chrome Web Store / paying customers / commercial launch | **Buy PyMuPDF commercial licence OR stay on pikepdf** — but only if pikepdf **PASSed the real corpus** (zero `still_present`, images kept, opens cleanly). Load-unpacked team testing does **not** satisfy the ship gate. |
+| **Other formats** | DOCX / CSV / TXT | Unchanged — this lock applies to PDF masking only |
+
+Prior options on total PDF failure remain: (i) commercial PyMuPDF licence · (ii) PDF-only `.txt`
+fallback disclosed · (iii) defer PDF masking. Do not pick (ii) silently — Global Constraint 15.
+
+## Task 5B recommendation
+
+**Wire `redact/pdf.py` with PyMuPDF for the pitch / Load-unpacked team-test MVP**, with the AGPL
+position recorded and the ship gate above enforced before any commercial distribution.
+
+**Rationale:** PyMuPDF has the only mature in-place redact route (`search_for` +
+`add_redact_annot` + `apply_redactions` + `PDF_REDACT_IMAGE_NONE`). pikepdf **PASSed smoke** via
+content-stream editing but has **no equivalent API** and is expected to **FAIL or degrade on real
+producer PDFs** — run `probe_pikepdf.py` on the founder corpus in parallel; if it unexpectedly
+PASSes all eight, Task 5B can switch implementation to pikepdf before ship without a licence purchase.
 
 ## Stop condition
 
@@ -90,5 +137,6 @@ silently downgrading to `.txt`. Task 5B's PDF branch is gated on this spike.
 | File | Role |
 |---|---|
 | `probe.py` | PyMuPDF redaction probe — `search_for` + `add_redact_annot` + `apply_redactions` |
-| `build_smoke_samples.py` | Reproducible smoke PDF generator (not real corpus) |
+| `probe_pikepdf.py` | pikepdf alternate — content-stream span removal; pdfminer residual check |
+| `build_smoke_samples.py` | Reproducible smoke PDF generator (PyMuPDF for fixtures only) |
 | `samples/` | Smoke fixtures only |
