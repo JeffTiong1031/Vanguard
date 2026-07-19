@@ -1,6 +1,38 @@
 // tests/l2-messages.test.ts
 import { describe, it, expect } from 'vitest';
-import { attachCharOffsets, mergeNerTokens } from '../src/detection/l2/messages';
+import {
+  attachCharOffsets, buildRunRequest, describeStatus, mergeNerTokens,
+} from '../src/detection/l2/messages';
+
+describe('describeStatus — every branch names itself', () => {
+  it('renders each state as human text', () => {
+    expect(describeStatus({ state: 'disabled' })).toBe('Off — no model configured');
+    expect(describeStatus({ state: 'loading' })).toBe('Loading model…');
+    expect(describeStatus({ state: 'ready', spans: 3, released: 2, kept: 1, failed: 0, ms: 210 }))
+      .toBe('Ready — 3 spans in 210 ms, 2 released, 1 masked');
+    expect(describeStatus({ state: 'failed', reason: 'HTTP 404' })).toBe('Failed — HTTP 404');
+    expect(describeStatus({ state: 'skipped', why: 'too-long' }))
+      .toBe('Skipped — prompt too long for the classifier');
+    expect(describeStatus({ state: 'skipped', why: 'file-path' }))
+      .toBe('Skipped — files are not sensitivity-filtered (ADR 0018)');
+    expect(describeStatus({ state: 'skipped', why: 'no-entities' }))
+      .toBe('Skipped — nothing to judge');
+  });
+});
+
+describe('buildRunRequest — the config the offscreen document cannot read for itself', () => {
+  const cfg = { modelId: 'vanguard/sens-v0.2.0-trim70k', maxTokens: 96 };
+
+  it('carries the config across the hop, under a distinct kind', () => {
+    expect(buildRunRequest({ kind: 'l2-scan', id: 'a', text: 'hello', purpose: 'chat' }, cfg))
+      .toEqual({ kind: 'l2-run', id: 'a', text: 'hello', purpose: 'chat', sensitivity: cfg });
+  });
+
+  it('preserves purpose:file so ADR 0018 survives the hop', () => {
+    expect(buildRunRequest({ kind: 'l2-scan', id: 'b', text: 'x', purpose: 'file' }, cfg).purpose)
+      .toBe('file');
+  });
+});
 
 describe('mergeNerTokens', () => {
   it('merges B-/I- PER tokens into one PERSON span and drops LOC', () => {

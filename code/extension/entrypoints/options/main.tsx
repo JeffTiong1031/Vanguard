@@ -1,6 +1,7 @@
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { getApiBase, setApiBase } from '../../src/files/config';
+import { SensitivityPanel } from '../../src/ui/sensitivity-panel';
 
 function Options() {
   const [base, setBase] = useState('');
@@ -27,4 +28,10 @@ function Options() {
   );
 }
 
-render(<Options />, document.getElementById('root')!);
+render(
+  <>
+    <Options />
+    <SensitivityPanel />
+  </>,
+  document.getElementById('root')!,
+);
