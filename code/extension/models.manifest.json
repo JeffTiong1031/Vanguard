@@ -4,5 +4,12 @@
     "tokenizer.json": "bf1b59b7b11c95f194f51708d918eea378e09d05f84c0e1656dc5180e8117088",
     "tokenizer_config.json": "e6f3b96db926a37d4039995fbf5ad17de158dfb8f6343d607e4dbaad18d75f5a",
     "onnx/model_quantized.onnx": "5b65139844be260b624a2a13782b01d122e613d64ce16ed0ba4d82e0b816f1a9"
+  },
+  "tehjiajie/vanguard-sens-v0.2.0-trim70k": {
+    "config.json": "58339a7df1a45809aad630db40508c65b7a8c2a73d744b59687d697995d43cab",
+    "onnx/model.onnx": "666c346379474db5b539861444ebb64f4dc538ecd01e138ce3804f0c8d75f4b6",
+    "onnx/model.onnx.data": "a2d7b98fe7f85b726728ddc29ba6d767d7b70514ca9c8ed5f04e4dd369b3fc9d",
+    "tokenizer.json": "5297bebfa31612e54d973192eefdaca45d549a5bfab6a4a8ee84403676e37616",
+    "tokenizer_config.json": "d2e677b2bb91a430d09376066a69cde5fa591474fe86fabe850f590ce3070fc2"
   }
 }

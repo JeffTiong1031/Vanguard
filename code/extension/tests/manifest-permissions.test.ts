@@ -14,7 +14,10 @@ describe('manifest host_permissions', () => {
   // permission), so the invariant is pinned here rather than left to be rediscovered.
 
   it('covers both loopback spellings for every local port', () => {
-    const ports = [8000, 8765];
+    // 8765 (the local sensitivity model server) is retired — the classifier now loads from a
+    // public hash-pinned repo (ADR 0029). The invariant is unchanged and still binds the Slice 2
+    // backend on 8000: localhost and 127.0.0.1 are different origins for permission matching.
+    const ports = [8000];
     for (const port of ports) {
       for (const host of ['localhost', '127.0.0.1']) {
         expect(
@@ -59,5 +62,15 @@ describe('offscreen model loading', () => {
     // The NER genuinely ships q8 and its file is pinned in models.manifest.json; only the
     // classifier needs fp32. Guard against a well-meaning sweep changing both.
     expect(offscreen).toContain("dtype: 'q8'");
+  });
+});
+
+describe('the local model server is gone (ADR 0029)', () => {
+  it('requests no permission for the retired :8765 model server', () => {
+    expect(JSON.stringify(manifest.host_permissions)).not.toContain('8765');
+  });
+
+  it('needs no permission for the model host — remote weights already load without one', () => {
+    expect(JSON.stringify(manifest.host_permissions)).not.toContain('huggingface');
   });
 });

@@ -94,8 +94,25 @@ async function getSensitivity(modelId: string): Promise<SensPipe> {
       // failed load, and every entity staying masked — the same symptom as the classifier
       // disagreeing. Observed 2026-07-20; the Node verifier missed it because `cpu` defaults
       // to fp32 and so exercised a different file.
+      // 🔴 The weights are NOT in model.onnx. It is ~0.14 MB of graph; the 560 MB of tensors
+      // lives in a sidecar, `onnx/model.onnx.data`, and transformers.js does not fetch it
+      // unless told to. Loading without this gives a model that resolves, downloads, caches,
+      // and then fails at session init — one more way to arrive at "everything stayed masked".
+      //
+      // ⚠️ And the obvious option is the wrong one. `use_external_data_format: true` fetches
+      // `model.onnx_data` — an UNDERSCORE (models.js: `${baseName}_data`). Our sidecar is
+      // `model.onnx.data`, a DOT, and more importantly the ONNX graph itself records the dotted
+      // name in its external-data location field, so that is the name ORT will look up. The
+      // explicit `externalData` form is the one that lets the fetched path and the recorded
+      // path agree. Verified against @huggingface/transformers@3.8.1 src/models.js:265-318.
       const pipe = await pipeline<'text-classification'>(
-        'text-classification', modelId, { device: 'wasm', dtype: 'fp32' },
+        'text-classification', modelId, {
+          device: 'wasm',
+          dtype: 'fp32',
+          session_options: {
+            externalData: [{ path: 'model.onnx.data', data: 'onnx/model.onnx.data' }],
+          },
+        },
       );
       return (async (text: string) => (await pipe(text)) as never) as SensPipe;
     })().catch((e) => {

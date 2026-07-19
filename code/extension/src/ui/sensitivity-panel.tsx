@@ -7,8 +7,9 @@ import { describeStatus, type SensitivityStatus } from '../detection/l2/messages
 import { loadConfig, setModelId } from '../detection/l2/sensitivity';
 import { readStatus } from '../detection/l2/status-store';
 
-// [set this to the published repo id — ADR 0029, Task 8]
-const DEFAULT_MODEL = 'vanguard/sens-v0.2.0-trim70k';
+// ADR 0029: the published, hash-pinned bundle. Public by design — the extension fetches it
+// with no credentials, and per ADR 0003 the moat was never the model.
+const DEFAULT_MODEL = 'tehjiajie/vanguard-sens-v0.2.0-trim70k';
 
 /**
  * 🔴 This panel exists because the feature had no observable state.

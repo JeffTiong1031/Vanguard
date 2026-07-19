@@ -18,11 +18,9 @@ export default defineConfig({
       // "still blocked", which is indistinguishable from the classifier disagreeing.
       // Observed 2026-07-20, after two other causes with the identical symptom.
       'http://127.0.0.1:8000/*',
-      // Local model server for the sensitivity classifier (docs/team/try-the-sensitivity-classifier.md).
-      // Test-rig only: the artifact is 538 MB and unpublished, and ADR 0017 already calls the
-      // hash-pinned CDN fetch "not the shipping answer" for a model a third this size.
-      'http://localhost:8765/*',
-      'http://127.0.0.1:8765/*',
+      // The sensitivity classifier loads from a public, hash-pinned Hugging Face repo (ADR 0029).
+      // No host_permission is needed for it: the NER already fetches remote weights with none
+      // listed. The local model server it replaced needed two entries here and a Python process.
       // [set this to the founder-hosted team-test origin before the team test]
       'https://vanguard-extract.example.com/*',
     ],
