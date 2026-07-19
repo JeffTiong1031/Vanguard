@@ -21,6 +21,7 @@ import { dirname, resolve } from 'node:path';
 import { pipeline, env } from '@huggingface/transformers';
 import { attachCharOffsets, mergeNerTokens } from '../src/detection/l2/messages.ts';
 import { repairEntities } from '../src/detection/l2/span-repair.ts';
+import { normaliseTerms, proposeOrgs } from '../src/detection/l2/org-dictionary.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EXAM = resolve(HERE, '../../../ml/data/eval_simulated/exam.jsonl');
@@ -31,6 +32,25 @@ env.allowLocalModels = false;
 const limitArg = process.argv.indexOf('--limit');
 const LIMIT = limitArg > -1 ? Number(process.argv[limitArg + 1]) : Infinity;
 const REPAIR = process.argv.includes('--repair');
+const USE_DICT = process.argv.includes('--dict');
+
+// 🔴 The dictionary is derived from the ml/ TRAINING set only, never from the exam. A dictionary
+// built from the exam's own organisations would recover nearly all of them and prove nothing —
+// the same defect as tuning a rule against the thing that measures it. It covers roughly half
+// the exam's ORGs, which is the honest estimate.
+let ORG_TERMS = [];
+if (USE_DICT) {
+  const TRAIN = resolve(HERE, '../../../ml/data/train/merged_v3.jsonl');
+  const seen = [];
+  for (const line of readFileSync(TRAIN, 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    for (const sp of JSON.parse(line).spans ?? []) {
+      if (sp.entity_type === 'ORG') seen.push(sp.surface);
+    }
+  }
+  ORG_TERMS = normaliseTerms(seen);
+  console.log(`org dictionary: ${ORG_TERMS.length} terms (from TRAINING set, not the exam)`);
+}
 
 const rows = readFileSync(EXAM, 'utf8')
   .split('\n')
@@ -67,6 +87,7 @@ for (const ex of rows) {
   // or attachCharOffsets lands on the first occurrence of a recurring word.
   const raw = await ner(ex.text, { ignore_labels: [] });
   let proposed = mergeNerTokens(attachCharOffsets(ex.text, raw));
+  if (USE_DICT) proposed = proposeOrgs(ex.text, ORG_TERMS, proposed);
   if (REPAIR) proposed = repairEntities(proposed, ex.text);
 
   for (const sp of ex.spans) {

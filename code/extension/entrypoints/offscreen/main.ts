@@ -8,6 +8,7 @@ import type { PipelineNerToken, ScanRequest, ScanResponse } from '../../src/dete
 import { attachCharOffsets, mergeNerTokens } from '../../src/detection/l2/messages';
 import { verifyPinnedModel } from '../../src/detection/l2/pin';
 import { repairEntities } from '../../src/detection/l2/span-repair';
+import { loadOrgTerms, proposeOrgs } from '../../src/detection/l2/org-dictionary';
 
 const MODEL_ID = 'Xenova/bert-base-multilingual-cased-ner-hrl';
 
@@ -71,7 +72,12 @@ chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) =
       // 64.2% of them in full — it proposes `Rahman` where doc 04 §4.3 requires `Encik Rahman`,
       // and `阿里` + `巴` where the entity is `阿里巴巴`. Masking half of either leaves the rest
       // in the prompt, so this is a compliance fix as much as an accuracy one.
-      const entities = repairEntities(mergeNerTokens(withOffsets), msg.text);
+      // Dictionary BEFORE repair: a dictionary hit can also need a tail pulled in, and the NER
+      // misses recognisable companies unpredictably — 6.4% of gold MASK spans get no overlapping
+      // proposal at all, and the misses are Proton, TNB, 腾讯, 阿里巴巴, Boeing (ADR 0004).
+      // Empty by default, so this is inert until a dictionary is supplied.
+      const withDict = proposeOrgs(msg.text, await loadOrgTerms(), mergeNerTokens(withOffsets));
+      const entities = repairEntities(withDict, msg.text);
       sendResponse({ kind: 'l2-result', id: msg.id, ok: true, entities } satisfies ScanResponse);
     } catch (e) {
       sendResponse({ kind: 'l2-result', id: msg.id, ok: false, error: String(e) } satisfies ScanResponse);
