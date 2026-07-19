@@ -108,3 +108,57 @@ class TestCoverage:
 
     def test_degenerate_gold(self):
         assert coverage(5, 5, [(0, 20)]) == 0.0
+
+
+class TestOrgTails:
+    def test_latin_tail_is_absorbed(self):
+        from sens.span_repair import expand_org_tails
+        text = "Unilever Malaysia still owes us for the promotional booth."
+        # NER stopped at the recognisable core
+        out = expand_org_tails([(0, len("Unilever"))], text)
+        assert text[out[0][0]:out[0][1]].startswith("Unilever")
+
+    def test_legal_suffix_is_absorbed(self):
+        from sens.span_repair import expand_org_tails
+        text = "Invois daripada Maju Trading Sdn Bhd masih tertunggak."
+        s = text.index("Maju")
+        out = expand_org_tails([(s, s + len("Maju Trading"))], text)
+        assert text[out[0][0]:out[0][1]] == "Maju Trading Sdn Bhd"
+
+    def test_cjk_tail_is_absorbed(self):
+        from sens.span_repair import expand_org_tails
+        text = "请跟进华为供应链伙伴的月度采购付款与结算事宜。"
+        s = text.index("华为")
+        out = expand_org_tails([(s, s + 2)], text)
+        assert text[out[0][0]:out[0][1]] == "华为供应链伙伴"
+
+    def test_punctuation_blocks_absorption(self):
+        # a tail belonging to a DIFFERENT org later in the sentence must not be swept in
+        from sens.span_repair import expand_org_tails
+        text = "Ask Acme. Then call Beta Holdings about it."
+        out = expand_org_tails([(4, 8)], text)  # "Acme"
+        assert text[out[0][0]:out[0][1]] == "Acme"
+
+    def test_lookahead_is_bounded(self):
+        from sens.span_repair import expand_org_tails
+        text = "Acme" + " " * 40 + "Holdings"
+        out = expand_org_tails([(0, 4)], text)
+        assert out == [(0, 4)]
+
+    def test_no_tail_leaves_span_alone(self):
+        from sens.span_repair import expand_org_tails
+        text = "We owe Boeing RM500,000 for the parts."
+        s = text.index("Boeing")
+        assert expand_org_tails([(s, s + 6)], text) == [(s, s + 6)]
+
+
+class TestProvenanceDiscipline:
+    def test_exam_only_titles_are_absent(self):
+        # These were seen failing on the EXAM but do not occur in the training set, so there
+        # is no independent evidence for them. Adding them would be tuning the ruler against
+        # the thing it measures. If a future session adds one, it needs training-set support.
+        from sens.span_repair import LEADING_TITLES, TRAILING_TITLES
+        for t in ("Chef", "Uncle", "Laksamana"):
+            assert t not in LEADING_TITLES, f"{t} has no training-set attestation"
+        for t in ("律师", "主管"):
+            assert t not in TRAILING_TITLES, f"{t} has no training-set attestation"

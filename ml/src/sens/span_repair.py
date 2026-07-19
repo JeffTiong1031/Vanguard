@@ -25,17 +25,39 @@ from __future__ import annotations
 Span = tuple[int, int]
 
 # Latin-script titles that PRECEDE the name. Longest-first so "Dato' Seri" wins over "Dato".
+#
+# 🔴 Provenance rule for this list: entries are attested in the TRAINING set's gold spans
+# (>= 2 distinct spans) or are general linguistic knowledge. They are NOT mined from the
+# exam's failures. Tuning these against the exam is the same defect as training on it — the
+# exam is the measuring instrument, and a ruler calibrated against the thing it measures
+# reports nothing. `律师`, `主管`, `Chef`, `Uncle`, `Laksamana` were observed failing on the
+# exam and are deliberately ABSENT: they do not occur in training, so there is no independent
+# evidence for them.
 LEADING_TITLES: tuple[str, ...] = (
     "Dato' Seri", "Datuk Seri", "Dato Seri", "Tan Sri", "Tun Dr.", "Dato'", "Datuk", "Datin",
-    "Dato", "Tun", "Encik", "Puan", "Cikgu", "Cik", "Tuan", "Sir", "Professor", "Prof.",
-    "Prof", "Dr.", "Mr.", "Mrs.", "Ms.", "Miss", "En.",
+    "Dato", "Tun", "Tunku", "Sultan", "Encik", "Puan", "Cikgu", "Cik", "Tuan", "Sir",
+    "Professor", "Prof.", "Prof", "Dr.", "Mr.", "Mrs.", "Ms.", "Miss", "Madam", "En.",
+    "Director", "Pengarah",
 )
 
 # CJK titles that FOLLOW the name.
 TRAILING_TITLES: tuple[str, ...] = (
-    "先生", "女士", "小姐", "太太", "经理", "主任", "博士", "老板", "局长", "长官",
-    "大人", "老师", "医生", "总经理", "总",
+    "先生", "女士", "小姐", "太太", "总经理", "经理", "主任", "博士", "老板", "局长",
+    "长官", "大人", "老师", "医生", "总",
 )
+
+# ORG name tails. A stock NER stops at the recognisable core (`Unilever`, `华为`) and drops
+# the legal or descriptive tail, so the masked span leaves part of the organisation visible.
+# Same provenance rule as above: attested in training gold spans.
+ORG_TAILS: tuple[str, ...] = (
+    "Sdn Bhd", "Sdn. Bhd.", "Corporation", "Enterprise", "Electronics", "Solutions",
+    "Logistics", "Holdings", "Company", "Partner", "Group", "Corp", "Bank", "Bhd", "Ltd",
+    "有限公司", "供应链伙伴", "科技公司", "公司", "集团", "企业", "贸易", "工业", "伙伴",
+)
+
+# How far past a span to look for an ORG tail. Bounded so a tail belonging to a DIFFERENT
+# organisation later in the sentence cannot be swept in.
+ORG_TAIL_LOOKAHEAD = 12
 
 
 def merge_spans(spans: list[Span], gap: int = 0) -> list[Span]:
@@ -81,9 +103,38 @@ def expand_titles(spans: list[Span], text: str) -> list[Span]:
     return merge_spans(grown)
 
 
+def expand_org_tails(spans: list[Span], text: str) -> list[Span]:
+    """Extend a span forward over an organisation tail it stopped short of.
+
+    `Unilever` for `Unilever Malaysia`, `华为` for `华为供应链伙伴`: the NER stops at the
+    recognisable core and the masked span leaves the rest of the name in the prompt.
+
+    The lookahead is bounded and the text between the span and the tail must be short and
+    unbroken — no sentence punctuation — so a tail belonging to a different organisation
+    later in the sentence cannot be absorbed.
+    """
+    grown: list[Span] = []
+    for start, end in spans:
+        window = text[end:end + ORG_TAIL_LOOKAHEAD]
+        best_end = end
+        for tail in ORG_TAILS:
+            idx = window.find(tail)
+            if idx == -1:
+                continue
+            between = window[:idx]
+            if any(ch in between for ch in ".,;!?，。；！？、\n"):
+                continue
+            candidate = end + idx + len(tail)
+            if candidate > best_end:
+                best_end = candidate
+        grown.append((start, best_end))
+    return merge_spans(grown)
+
+
 def repair_spans(spans: list[Span], text: str, gap: int = 0) -> list[Span]:
-    """merge -> expand -> merge again (expansion can create new overlaps)."""
-    return merge_spans(expand_titles(merge_spans(spans, gap=gap), text))
+    """merge -> titles -> org tails -> merge again (expansion can create new overlaps)."""
+    merged = merge_spans(spans, gap=gap)
+    return merge_spans(expand_org_tails(expand_titles(merged, text), text))
 
 
 def coverage(gold_start: int, gold_end: int, spans: list[Span]) -> float:
