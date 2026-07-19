@@ -131,12 +131,40 @@ def main() -> None:
 
         q_path = args.out / "model.int8.onnx"
         try:
-            quantize_dynamic(str(onnx_path), str(q_path), weight_type=QuantType.QInt8,
+            # The exporter records value_info that disagrees with the graph at the classifier
+            # head, and the quantizer's shape-inference pass rejects it:
+            #   InferenceError: Inferred shape and existing shape differ in dimension 0: (768) vs (2)
+            # Dropping the stale annotations and letting inference recompute them fixes it.
+            # This is a repair of the recorded metadata, not of the computation — the int8
+            # round-trip below is what actually decides whether the artifact is usable.
+            import onnx
+
+            graph = onnx.load(str(onnx_path))
+            del graph.graph.value_info[:]
+            clean = args.out / "model.clean.onnx"
+            onnx.save(graph, str(clean), save_as_external_data=True,
+                      location="model.clean.onnx.data", all_tensors_to_one_file=True)
+            quantize_dynamic(str(clean), str(q_path), weight_type=QuantType.QInt8,
                              use_external_data_format=True)
-            sizes["int8_mb"] = _artifact_mb(q_path)
+            measured = _artifact_mb(q_path)
             # int8 is lossy, so the pass condition is the ARGMAX, not the raw logit distance.
             _, q_ok = gate(q_path, args.int8_tol, "int8 round-trip")
-            int8_status = "verified" if q_ok else "BLOCKED — round-trip mismatch"
+            if q_ok:
+                sizes["int8_mb"] = measured
+                int8_status = "verified"
+            else:
+                # Measured 2026-07-19: forcing past the shape-inference error produces a graph
+                # that RUNS and predicts KEEP for everything — accuracy 0.50, MASK recall 0.000,
+                # uniformly across en/bm/zh/mixed. The refusal was protecting us. Record the
+                # size for the record, delete the artifact so it cannot be shipped by accident.
+                int8_status = (f"BLOCKED - round-trip mismatch; the artifact is degenerate "
+                               f"(measured {measured:.0f} MB, not shipped)")
+                sizes["int8_mb_rejected"] = measured
+                for p in (q_path, q_path.with_suffix(q_path.suffix + ".data")):
+                    if p.exists():
+                        p.unlink()
+                print(f"\n🔴 int8 artifact REJECTED and deleted: round-trip mismatch. "
+                      f"Its size was {measured:.0f} MB.")
         except Exception as e:  # noqa: BLE001
             # Recorded, not worked around. A measurement gate that quietly succeeds by some
             # other route is not a measurement.
@@ -166,6 +194,11 @@ def main() -> None:
                     "fp32_roundtrip_max_abs_diff": diff,
                     "fp32_onnx": "verified", "int8_onnx": int8_status,
                     "distillation_trigger_mb": DISTILLATION_TRIGGER_MB}, indent=2), encoding="utf-8")
+
+    # model.clean.* is quantization scaffolding, not a shippable artifact; leaving it in the
+    # directory would double the hand-off size and put an unverified graph next to the verified one.
+    for scratch in args.out.glob("model.clean.onnx*"):
+        scratch.unlink()
 
     sums = args.out / "SHA256SUMS"
     lines = [f"{_sha256(p)}  {p.name}" for p in sorted(args.out.iterdir())

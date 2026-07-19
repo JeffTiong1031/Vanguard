@@ -35,36 +35,62 @@ Slice 1's stock NER labels map as: `PERSON → PER`, `ORG`/`ORGANIZATION → ORG
 - **ORT CPU round-trip vs torch: max abs diff `9.06e-06`** over EN/BM/ZH marked strings, argmax
   agrees on all. Export is verified, not assumed.
 
-## Quantization — 🔴 `BLOCKED`, do not assume int8 works
-`onnxruntime.quantization.quantize_dynamic` fails on this graph:
+## Quantization — 🔴 `BLOCKED`. int8 is NOT available for this model as it stands.
 
+Two independent refusals, and the second is the serious one.
+
+**1. The quantizer refuses the graph.**
 ```
 InferenceError: [ShapeInferenceError] Inferred shape and existing shape
 differ in dimension 0: (768) vs (2)
 ```
+Three option sets fail identically, so the fault is in the exported graph — the classifier head —
+not in the quantizer's configuration.
 
-Three variants were tried (`use_external_data_format`, `MatMulConstBOnly`, `MatMul`-only) and all
-fail identically, so the fault is in the exported graph — the classifier head — not in the
-quantizer's options. **Recorded as blocked rather than worked around**: a measurement gate that
-succeeds by some other route is not a measurement.
+**2. Forcing past it produces a model that runs and is destroyed.** Dropping the exporter's stale
+`value_info` lets shape inference recompute and quantization then completes, yielding a **307 MB**
+artifact. Scored against the exam, that artifact is degenerate:
+
+| | accuracy | MASK recall |
+|---|---|---|
+| fp32 (torch) | **0.9981** | **0.9962** |
+| int8 (ONNX) | **0.5000** | **0.0000** |
+
+It predicts **KEEP for everything** — the trivial model ADR 0021 exists to reject — and the loss is
+**uniform across en/bm/zh/mixed** (−0.49 to −0.52 each), not the BM/ZH-first degradation doc 06
+§6.3 anticipated. fp32/int8 prediction agreement is **50.2%**, i.e. chance.
+
+> **The shape-inference refusal was protecting us.** The graph metadata was inconsistent for a
+> reason, and the "fix" that silenced it produced a plausible-looking 307 MB artifact that
+> answers everything wrong. The round-trip gate caught it on `argmax`; the size report alone
+> would not have. **`export_onnx.py` now deletes a failed int8 artifact** so it cannot be shipped
+> by accident.
+
+**Consequence: quantization cannot currently be assumed as a size lever.** Any budget that reaches
+a shippable number by way of int8 is resting on something that does not work yet.
 
 ## Runtime — size measured, latency still `[unverified]`
 
 | | |
 |---|---|
 | Parameters | **278.1M** (embedding **192.1M = 69%**) |
-| fp32 ONNX (`model.onnx` + `.data`) | **1061 MB** — measured |
-| int8 | **~265 MB** *(estimate, 1 byte/param — quantization is blocked, so this is NOT measured)* |
+| fp32 ONNX (`model.onnx` + `.data`) | **1061 MB** — measured, verified |
+| int8 | **307 MB** — measured, **REJECTED** (degenerate, see above) |
 | doc 06 §6.2 distillation trigger | ~140 MB |
 
-🔴 **The trigger is effectively fired.** int8 at ~265 MB is 1.9× the budget. Vocabulary trimming
-buys **one** halving and is then exhausted (CLAUDE.md §6.2) → ~133 MB, which clears ~140 MB by
-7 MB with **no margin left**. Any additional pressure — the 1.5–2× runtime multiple over weights,
-WASM overhead — puts distillation from a risk to a Phase 0 requirement.
+🔴 **The trigger fires, and not marginally.** The only verified artifact is **1061 MB**. Even the
+rejected int8 graph is **307 MB** — 2.2× the budget — and vocabulary trimming buys **one** halving
+before it is exhausted (CLAUDE.md §6.2), landing **~154 MB, still above ~140 MB**. That is before
+the 1.5–2× runtime multiple over weights and before WASM overhead.
 
-⚠️ **~265 MB is an estimate and the decision leans on it.** A real int8 graph carries scale and
-zero-point tensors, so the measured figure will be larger, not smaller. **Treat ~133 MB post-trim as
-an optimistic bound.**
+> ⚠️ **This corrects an estimate published earlier in this contract.** int8 was first recorded as
+> "~265 MB *(estimate, 1 byte/param)*" with post-trim ~133 MB, which *cleared* the trigger by 7 MB.
+> **Measured, it is 307 MB and post-trim ~154 MB, which does not clear it.** The estimate was
+> optimistic by 16% for exactly the reason flagged when it was written — a real int8 graph carries
+> scale and zero-point tensors. **The conclusion inverted between the estimate and the measurement.**
+
+**Distillation is therefore a Phase 0 requirement, not a risk**, and quantization cannot be assumed
+as the lever that avoids it.
 
 ⚠️ Per doc 06 §6.3, trimming, quantization and distillation each degrade **BM/ZH first** — three
 taxes on the one asset the wedge is built on.
