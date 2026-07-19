@@ -19,6 +19,8 @@ import json
 from pathlib import Path
 
 from sens.align import align_spans
+from sens.coverage import missing_strata
+from sens.eval_gate import ship_status
 from sens.marking import mark_span
 from sens.metrics import mask_precision_recall
 from sens.schema import Span
@@ -167,7 +169,18 @@ def main() -> None:
     integrated_mask_recall_estimate = mask_full_rate * rc
     integrated_optimistic = (1.0 - miss_rate) * rc
 
+    # This runner, not the gold-span one, is where the gate belongs: it is the only place the
+    # integrated number exists. run_eval.py can no longer return SHIP_CANDIDATE by itself.
+    miss_strata = missing_strata(rows)
+    status, gate_reasons = ship_status(
+        rows, mask_recall=rc, missing_strata=miss_strata, predictions=pred_labels,
+        integrated_mask_recall=integrated_mask_recall_estimate,
+    )
+
     report = {
+        "ship_status": status,
+        "reasons": gate_reasons,
+        "missing_strata": miss_strata,
         "n_gold_spans": total_gold,
         "n_matched_spans": len(gold_labels),
         "classifier_mask_precision_on_ner_spans": pr,
@@ -209,7 +222,7 @@ def main() -> None:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    for k in ("n_gold_spans", "classifier_mask_precision_on_ner_spans",
+    for k in ("ship_status", "reasons", "n_gold_spans", "classifier_mask_precision_on_ner_spans",
               "classifier_mask_recall_on_ner_spans", "mask_full_coverage_rate",
               "mask_effective_miss_rate", "mask_full_coverage_by_lang",
               "span_boundary_quality", "ner_miss_rate",

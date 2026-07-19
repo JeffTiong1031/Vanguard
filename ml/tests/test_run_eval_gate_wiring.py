@@ -64,14 +64,18 @@ def test_always_keep_is_not_shipped():
     assert rep["ship_status"] == "NOT_SHIPPED"
 
 
-def test_perfect_predictions_are_a_candidate():
+def test_perfect_predictions_cannot_ship_on_gold_spans_alone():
+    # A perfect score on author-perfect spans is an UPPER BOUND: it assumes the NER proposes
+    # every span with the right boundaries, and measurement says it does not — 0.996 on gold
+    # spans sat behind an integrated 0.650 before span repair and the org dictionary.
+    # run_eval is the gold-span runner, so it must never certify a ship by itself.
     rows = _exam()
     gold = _gold(rows)
     rep = build_report(rows, gold, list(gold), entities={})
     assert rep["mask_precision"] == 1.0
     assert rep["mask_recall"] == 1.0
-    assert rep["ship_status"] == "SHIP_CANDIDATE"
-    assert rep["reasons"] == []
+    assert rep["ship_status"] == "NOT_SHIPPED"
+    assert any("integrated" in r for r in rep["reasons"])
 
 
 def test_synthetic_exam_never_ships_however_good():
