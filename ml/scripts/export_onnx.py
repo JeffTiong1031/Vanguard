@@ -178,14 +178,15 @@ def main() -> None:
     print("\n--- on-device size (doc 06 §6.2) ---")
     for k, v in sizes.items():
         print(f"  {k:10s} {v:8.1f} MB")
-    smallest = min(sizes.values())
-    if smallest > DISTILLATION_TRIGGER_MB:
-        print(f"\n🔴 smallest artifact is {smallest:.0f} MB, above doc 06's ~{DISTILLATION_TRIGGER_MB} MB "
-              f"trigger.\n   Vocabulary trimming buys ONE halving and is then exhausted "
-              f"(CLAUDE.md §6.2).\n   Estimated post-trim: ~{smallest/2:.0f} MB — "
-              f"{'still above' if smallest/2 > DISTILLATION_TRIGGER_MB else 'under'} the trigger.")
-    else:
-        print(f"\n  smallest artifact {smallest:.0f} MB is within doc 06's ~{DISTILLATION_TRIGGER_MB} MB budget.")
+    # Only VERIFIED artifacts count. A rejected int8 graph has a size and no standing.
+    shippable = {k: v for k, v in sizes.items() if not k.endswith("_rejected")
+                 and not k.endswith("_estimate")}
+    smallest = min(shippable.values()) if shippable else float("inf")
+    print(f"\n  smallest VERIFIED artifact: {smallest:.0f} MB")
+    print(f"  🔴 ~{DISTILLATION_TRIGGER_MB} MB is what doc 06 §6.2 expects TRIMMING to ACHIEVE, "
+          f"not a ceiling to fit under.\n     The budget is ASSUMPTIONS.md D2: ~1-2 GB addressable. "
+          f"Compare against that, and remember\n     doc 06 §6.1 wants the 1.5-2x runtime multiple "
+          f"MEASURED on D2, in Chinese, not inherited.")
 
     tok.save_pretrained(str(args.out))
     (args.out / "labels.json").write_text(json.dumps(model.config.id2label), encoding="utf-8")
