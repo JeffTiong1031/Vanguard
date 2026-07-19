@@ -71,7 +71,14 @@ def main() -> None:
                     help="FREE/public/commercial-OK multilingual NER (licence is [verify] — record it)")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--max-len", type=int, default=512)
+    ap.add_argument("--repair-spans", action="store_true",
+                    help="merge fragmented NER proposals and pull attached honorifics into the "
+                         "span (doc 04 4.3). Measured +22pp full MASK coverage on the exam.")
+    ap.add_argument("--repair-gap", type=int, default=0,
+                    help="also bridge proposals this many chars apart; >0 raises over-extension")
     args = ap.parse_args()
+
+    from sens.span_repair import repair_spans
 
     rows = load_jsonl(args.data)
     ner = pipeline("token-classification", model=args.ner_model, aggregation_strategy="simple")
@@ -91,6 +98,8 @@ def main() -> None:
     with torch.no_grad():
         for ex in rows:
             proposed = _proposed_spans(ner, ex.text)
+            if args.repair_spans:
+                proposed = repair_spans(proposed, ex.text, gap=args.repair_gap)
             res = align_spans(ex.spans, proposed)
             total_gold += len(ex.spans)
             total_miss += len(res.ner_misses)
@@ -170,6 +179,8 @@ def main() -> None:
         "integrated_mask_recall_estimate": integrated_mask_recall_estimate,
         "integrated_mask_recall_optimistic": integrated_optimistic,
         "fragment_examples": fragment_examples,
+        "span_repair_applied": bool(args.repair_spans),
+        "span_repair_gap": args.repair_gap if args.repair_spans else None,
         "ner_model": args.ner_model,
         "ner_licence": "[verify] — confirm free/public/commercial-use before quoting this number",
         "classifier_model": str(args.model),

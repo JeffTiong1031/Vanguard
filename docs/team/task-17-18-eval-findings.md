@@ -167,7 +167,42 @@ classifier backbone, not an NER component — different use, same family).
 performance is pure cross-lingual transfer, so the BM figures are the least stable here — they have
 no training data behind them.
 
-### 3.3 The finding that actually matters
+### 3.3 🟢 22 points recovered by deterministic post-processing — `sens.span_repair`
+
+The gap is not mostly blindness. It is a **definition mismatch**: the NER proposes `Rahman`,
+`鲁迅`, `Acme Corp`, while the rubric requires the honorific **inside** the masked span
+(doc 04 §4.3), so gold is `Encik Rahman`, `鲁迅先生`. Merging fragmented proposals and pulling
+the attached title into the span fixes most of it, with no model involved:
+
+| exam, `bert-base-multilingual-cased-ner-hrl` | raw | **`--repair-spans`** |
+|---|---|---|
+| MASK fully covered | 65.3% | **87.5%** |
+| Effective MASK miss | 34.7% | **12.5%** |
+| Fragment rate | 22.5% | **6.0%** |
+| **Integrated MASK recall** | **0.650** | **0.872** |
+| en | 79.4% | **94.1%** |
+| bm | 73.8% | **90.2%** |
+| mixed | 62.3% | **91.3%** |
+| **zh** | **46.3%** | **74.6%** |
+
+**+22pp — a larger gain than every classifier training round in this track combined**, from
+rules that are testable, explainable, and survive a change of NER.
+
+**Cost, measured:** 3.5% of repaired spans over-extend by a role or department word
+(`会计部的张先生` for `张先生`, `Vendor Acme Corp` for `Acme Corp`). That is a utility cost,
+not a privacy failure — the wider span is still sensitive — and it is the right side to err on.
+Gap-bridging is available (`--repair-gap`) but **off by default**: it bought +0.4pp and caused
+most of the over-extension.
+
+> ⚠️ **This also means the current pipeline violates doc 04 §4.3.** Masking `Rahman` and leaving
+> `Encik` is a re-identification pointer — the section calls that a compliance failure, not a
+> cosmetic one. Span repair is not only an accuracy improvement.
+
+⚠️ The title lists are the instrument. An incomplete list understates the gain silently — this
+session reported honorific counts of 5, 8 and 22 for one file before the list was completed.
+They are maintained data, not finished constants.
+
+### 3.4 The finding that actually matters
 
 **It is not "which stock NER". It is that stock NER leaves ~1 in 3 sensitive entities not fully
 masked, and ~1 in 2 in Chinese.** ADR 0017 selected stock NER for Slice 1; this measurement is
