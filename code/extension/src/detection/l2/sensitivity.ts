@@ -28,30 +28,64 @@
 
 import type { L2Entity } from './messages';
 
-const MODEL_URL_KEY = 'vg_sensitivity_model_url';
+// The key changed with the hosting move (a Hugging Face repo id, not a localhost URL). Renaming
+// it is deliberate: an existing `vg_sensitivity_model_url` holding `http://127.0.0.1:8765` must
+// be IGNORED rather than silently reused as a repo id, which would fail in a way that looks
+// exactly like everything else here has looked.
+const MODEL_ID_KEY = 'vg_sensitivity_model_id';
 const MAX_TOKENS_KEY = 'vg_sensitivity_max_tokens';
 
 /** Skip the classifier above this many tokens. (estimate) — see the header. */
 export const DEFAULT_MAX_TOKENS = 96;
 
-export type SensitivityConfig = { modelUrl: string | null; maxTokens: number };
+export type SensitivityConfig = { modelId: string | null; maxTokens: number };
 
-export async function loadConfig(): Promise<SensitivityConfig> {
-  try {
-    const got = await chrome.storage.local.get([MODEL_URL_KEY, MAX_TOKENS_KEY]);
-    const url = got[MODEL_URL_KEY];
-    const max = got[MAX_TOKENS_KEY];
-    return {
-      modelUrl: typeof url === 'string' && url.trim() ? url.trim().replace(/\/+$/, '') : null,
-      maxTokens: typeof max === 'number' && max > 0 ? max : DEFAULT_MAX_TOKENS,
-    };
-  } catch {
-    return { modelUrl: null, maxTokens: DEFAULT_MAX_TOKENS };
+/**
+ * 🔴 `chrome.storage` does not exist inside an offscreen document.
+ *
+ * Measured 2026-07-20: `await chrome.storage.local.get(...)` in `offscreen.html` throws
+ * "Cannot read properties of undefined (reading 'local')". The `storage` permission is present
+ * and correct in the manifest; the API is simply not exposed in that context.
+ *
+ * The previous version wrapped the read in a bare `try/catch` and returned
+ * `{ modelUrl: null }` on failure. The caller reads that as "the user has not configured a
+ * model", so the classifier was skipped — no fetch, no log, no state change — on every prompt,
+ * for every user, from the day it was written until this was found. A whole session was spent
+ * unable to distinguish "not connected" from "connected and disagreeing", because in that
+ * design they are byte-identical.
+ *
+ * **A catch that returns a default converts a structural failure into a configuration state.**
+ * That is CLAUDE.md §6.5's letter-vs-purpose trap: the handler's wording is "tolerate a storage
+ * read failing"; its effect was to hide a permanent, total failure of the differentiating
+ * feature. A missing API is never recoverable and must never be reported as "off".
+ *
+ * The config now comes from the service worker in the `l2-run` message (ADR 0030).
+ */
+export class SensitivityUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SensitivityUnavailableError';
   }
 }
 
-export async function setModelUrl(url: string | null): Promise<void> {
-  await chrome.storage.local.set({ [MODEL_URL_KEY]: url ?? '' });
+export async function loadConfig(): Promise<SensitivityConfig> {
+  if (typeof chrome === 'undefined' || !chrome.storage?.local) {
+    throw new SensitivityUnavailableError(
+      'chrome.storage.local is unavailable in this context — call loadConfig from the service '
+      + 'worker and pass the result in the l2-run message (ADR 0030).',
+    );
+  }
+  const got = await chrome.storage.local.get([MODEL_ID_KEY, MAX_TOKENS_KEY]);
+  const id = got[MODEL_ID_KEY];
+  const max = got[MAX_TOKENS_KEY];
+  return {
+    modelId: typeof id === 'string' && id.trim() ? id.trim() : null,
+    maxTokens: typeof max === 'number' && max > 0 ? max : DEFAULT_MAX_TOKENS,
+  };
+}
+
+export async function setModelId(id: string | null): Promise<void> {
+  await chrome.storage.local.set({ [MODEL_ID_KEY]: id ?? '' });
 }
 
 /**

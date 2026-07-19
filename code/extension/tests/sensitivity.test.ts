@@ -1,12 +1,49 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   withTimeout,
   DEFAULT_MAX_TOKENS,
   filterBySensitivity,
   isEligible,
+  loadConfig,
+  SensitivityUnavailableError,
   type Verdict,
 } from '../src/detection/l2/sensitivity';
 import type { L2Entity } from '../src/detection/l2/messages';
+
+// 🔴 The bug this file could not catch, and now must.
+//
+// `chrome.storage` is UNDEFINED inside an offscreen document — measured 2026-07-20:
+// `await chrome.storage.local.get(...)` throws "Cannot read properties of undefined (reading
+// 'local')". The `storage` permission is present and correct; the API is simply not exposed in
+// that context. loadConfig read it inside a try, its catch returned `{ modelUrl: null }`, the
+// caller read that as "no model configured", and the classifier was skipped in total silence on
+// every prompt since the day it was written.
+//
+// The rest of this file passes `classify` and `markSpan` in as callbacks — the fixture supplies
+// exactly what the runtime failed to provide, so no test here could ever have failed. These
+// three sit on the real seam.
+describe('loadConfig', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('throws when chrome.storage is absent — a structural failure is never "feature off"', async () => {
+    vi.stubGlobal('chrome', {}); // exactly what an offscreen document sees
+    await expect(loadConfig()).rejects.toBeInstanceOf(SensitivityUnavailableError);
+  });
+
+  it('reports disabled when storage works and no model is configured', async () => {
+    vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}) } } });
+    await expect(loadConfig()).resolves.toEqual({ modelId: null, maxTokens: DEFAULT_MAX_TOKENS });
+  });
+
+  it('reads and trims a configured model id', async () => {
+    vi.stubGlobal('chrome', {
+      storage: { local: { get: async () => ({ vg_sensitivity_model_id: ' vanguard/sens ' }) } },
+    });
+    await expect(loadConfig()).resolves.toEqual({
+      modelId: 'vanguard/sens', maxTokens: DEFAULT_MAX_TOKENS,
+    });
+  });
+});
 
 const ent = (start: number, end: number, text: string): L2Entity =>
   ({ type: 'PERSON', start, end, text });
