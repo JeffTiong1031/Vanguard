@@ -1,14 +1,16 @@
 # Trying the sensitivity classifier
 
-**Status: OFF by default.** With no model URL configured, nothing below runs and the extension
-behaves exactly as it did. This is how to turn it on locally to see whether it fixes the
-false positives you are hitting.
+**Rewritten 2026-07-20.** No Python server. No DevTools commands. If you followed the previous
+version of this page, everything it told you to do is obsolete — see §6.
 
 ---
 
-## What it changes
+## 1. What it changes
 
-| prompt | today | with the classifier |
+Today the extension masks every name and company the detector finds. The classifier decides whether
+each one is **actually sensitive**.
+
+| prompt | without | with the classifier |
 |---|---|---|
 | `Explain Einstein's theory` | 🔴 blocked | **not blocked** |
 | `Summarise Apple's quarterly earnings` | 🔴 blocked | **not blocked** |
@@ -16,70 +18,44 @@ false positives you are hitting.
 | `Einstein from accounting hasn't sent the invoice` | blocked | blocked |
 | `Tolong ingatkan Encik Rahman pasal mesyuarat` | blocked | blocked |
 
-The model scored **precision 1.000 / recall 0.996** on the locked 562-question exam.
+**Everything runs on your own machine.** The model is downloaded once and cached; nothing you type
+is ever sent anywhere.
 
----
+## 2. Setup
 
-## Setup
+1. **Load the extension.** `chrome://extensions` → **Developer mode** on → **Load unpacked** →
+   `code/extension/dist/chrome-mv3`.
+2. **Open the options page.** **Details** on the extension card → **Extension options**.
+3. Under **Sensitivity classifier**, put this in the Model box and press **Save**:
+   ```
+   tehjiajie/vanguard-sens-v0.2.0-trim70k
+   ```
+4. Go to ChatGPT or Claude and send `Explain Einstein's theory`.
 
-### 1. Build the web bundle
+**First use downloads ~535 MB.** The options page shows **Loading model…**, then **Ready**. After
+that it is cached and starts fast.
 
-The ONNX export is a flat directory; transformers.js resolves models by convention
-(`<base>/<id>/config.json`, `tokenizer.json`, `onnx/model.onnx`). Assemble that layout once:
+## 3. Reading the status line
 
-```powershell
-cd ml
-.\.venv\Scripts\python.exe scripts\build_web_bundle.py `
-  --export artifacts\export\sens-v0.2.0-trim70k `
-  --checkpoint artifacts\runs\colab_v7_trim70k `
-  --out artifacts\web\sens
-```
+The options page always says what the engine is doing. **Check it before reporting anything** — the
+reason it exists is that a broken classifier and an absent one used to look identical, and a full
+session was lost to exactly that.
 
-Verify it loads and agrees with the Python model **before** touching the browser — a load
-failure and a wrong answer look identical from inside ChatGPT:
+| Status | Meaning |
+|---|---|
+| **Off — no model configured** | Step 3 was not saved. |
+| **Loading model…** | First download in progress. |
+| **Ready — 3 spans in 210 ms, 2 released, 1 masked** | Working. `released` = judged harmless and left alone. |
+| **Failed — \<reason\>** | Something broke, and the reason is the real error. **Copy it into your report.** The extension keeps masking everything, so you are not exposed — it is over-cautious, not off. |
+| **Skipped — prompt too long** | Expected. See §4. |
+| **Skipped — files are not sensitivity-filtered** | Expected and deliberate (ADR 0018). |
+| **Skipped — nothing to judge** | No names or companies in the prompt. |
 
-```powershell
-cd ..\code\extension
-node scripts\verify-web-bundle.mjs "C:/GitHub/Vanguard/ml/artifacts/web" sens
-```
+## 4. 🔴 Known limit — read this before reporting a bug
 
-Expect `All verdicts match the Python model.`
+**Prompts longer than roughly 400 characters skip the classifier entirely and stay fully masked.**
 
-### 2. Serve it
-
-The bundle is **538 MB** and is not published anywhere, so serve it from disk. Serve the
-**parent** directory — the model id is the folder name:
-
-```powershell
-cd ml\artifacts\web
-python -m http.server 8765 --bind 127.0.0.1
-```
-
-Leave it running. Check: <http://127.0.0.1:8765/sens/config.json> should return JSON.
-
-### 3. Point the extension at it
-
-Open the extension's service worker console (`chrome://extensions` → **Inspect views: service
-worker**) and run:
-
-```javascript
-chrome.storage.local.set({ vg_sensitivity_model_url: 'http://127.0.0.1:8765' })
-```
-
-Reload the extension. First use loads 534 MB from localhost — a few seconds.
-
-### 4. Turn it back off
-
-```javascript
-chrome.storage.local.remove('vg_sensitivity_model_url')
-```
-
----
-
-## 🔴 Short prompts only, and why
-
-The classifier runs **once per span**, and one forward pass costs (measured 2026-07-19,
-single-thread WASM — what the extension actually gets):
+That is deliberate. Measured 2026-07-19, single-thread WASM, **per span**:
 
 | tokens | per span |
 |---|---|
@@ -88,54 +64,55 @@ single-thread WASM — what the extension actually gets):
 | 242 | **2,000 ms** |
 | 512 | **4,758 ms** |
 
-A pasted paragraph is longer *and* carries more entities: 242 tokens × 5 spans is **ten
-seconds**. So anything above ~96 tokens skips the classifier and keeps today's behaviour.
+A pasted paragraph is longer *and* carries more names: 242 tokens × 5 spans is **ten seconds**
+before you could press Send. So above ~96 tokens the classifier is skipped and today's behaviour
+stands.
 
-**Skipping means over-masking, not under-masking.** A long paste stays fully masked, exactly as
-it is now. The cutoff's failure mode is friction, never leakage.
+**You will see long pastes masking Einstein and Apple. That is the cutoff, not a failure**, and the
+direction is the safe one — over-masking, never leaking.
 
-Chinese hits the cutoff sooner for the same visual length — U21-a measured **2.78× the tokens per
-character** — and the eligibility check uses the Chinese ratio whenever it sees CJK, so a Chinese
-paste cannot slip through at three times the intended budget.
+Chinese hits the cutoff sooner for the same visual length (U21-a measured **2.78×** the tokens per
+character), and the check uses the Chinese ratio whenever it sees CJK, so a Chinese paste cannot
+slip through at three times the intended budget.
 
-Adjust it if you want:
+⚠️ **This is also the honest weak spot.** Pasting is the most common way real data leaks, so the
+feature is currently weakest exactly where it matters most. **96 is `(estimate)`** — measured on a
+machine that is not a typical corporate laptop, and `ASSUMPTIONS.md` rates that device assumption
+Medium confidence with HIGH blast radius. Finding the right value is part of what this test is for.
+**If the classifier feels fast on your machine, say so.**
 
-```javascript
-chrome.storage.local.set({ vg_sensitivity_max_tokens: 150 })
-```
+## 5. What to report
 
-⚠️ **96 is `(estimate)`.** It comes from a floor measured on a machine that is not D2 —
-`ASSUMPTIONS.md` rates D2 Medium confidence with HIGH blast radius and asks for a real device
-survey. Corporate laptops will be slower. This is a knob, and the team test is what replaces it.
+- **Anything masked that obviously should not be** (a public figure, a well-known company) — with
+  the prompt and the status line.
+- **Anything NOT masked that should have been** — most valuable of all.
+- **How long you waited** between pressing Send and seeing the dialog.
+- **Any `Failed — …` status**, verbatim.
 
----
+Use **Ignore with reason** when it blocks something it shouldn't. That ranks which detector we fix
+first — it does not label your data, and nothing you type is uploaded.
 
-## What to watch
+## 6. If you followed the previous version of this page
 
-Open the **offscreen document** console (`chrome://extensions` → Inspect views → `offscreen.html`):
+- **Stop the `python -m http.server 8765` process.** No longer used; the permission for it has been
+  removed from the extension.
+- **The `chrome.storage.local.set({ vg_sensitivity_model_url: … })` command is dead.** The key was
+  renamed deliberately, so an old value is ignored rather than silently reused as a repo id.
+- **`build_web_bundle.py` is not needed** to try the classifier. The bundle is published.
 
-```
-[sensitivity] 1 spans in 210 ms — 1 released, 0 masked, 0 unjudged (kept)
-```
+Why: the model now loads from a public, hash-pinned repo
+([ADR 0029](../adr/0029-sensitivity-weights-public-hub-hash-pinned.md)), and the configuration moved
+out of the offscreen document — which turned out never to have had access to it at all
+([ADR 0030](../adr/0030-offscreen-config-through-messages.md)).
 
-- **released** — the classifier said this is not sensitive, so it is no longer masked
-- **masked** — judged sensitive
-- **unjudged (kept)** — could not be judged, so it stays masked. **Fail-safe is to mask.**
+## 7. What this is still not
 
-If the model is unreachable the console says so once and everything stays masked — ADR 0014's
-degrade-not-decide rule.
-
----
-
-## What this is not
-
-- **Not shipping.** 534 MB from localhost is a test rig. ADR 0017 already flags the hash-pinned
-  CDN fetch as *"fine for the team; not the shipping answer"*, and this is three times the size
-  of the model that comment was about.
-- **Not integrated per ADR 0018.** Sequencing is Slice 1 → team test → Slice 2 → then sensitivity.
-  This is a switch you turn on to evaluate, not a decision that it ships.
-- **Not the un-mask UX.** Above the cutoff nothing changes, so the "blocked then released
-  seconds later" behaviour never appears. That design question is still open and is a product
-  decision.
-- **Not validated on real traffic.** Every figure comes from a `human_simulated` exam. ADR 0015's
-  real-substrate requirement is undischarged.
+- **Not validated on real traffic.** Every accuracy figure comes from a `human_simulated` exam.
+  ADR 0015's real-substrate requirement is undischarged.
+- **Not measured on the detector we ship.** The published integrated recall (0.928) was measured
+  against a *different* NER — fp32, and never trained on Malay. The extension runs an int8 one.
+  **That composed measurement is owed before any of these numbers are quoted outside the team.**
+- **Not the un-mask UX.** Above the cutoff nothing changes, so the "blocked, then released a moment
+  later" behaviour never appears. Still an open product question.
+- **Not a size we can ship broadly.** 535 MB is fine for this test. Reaching everyone needs
+  distillation — int8 is blocked and vocabulary trimming is spent (ADR 0029 §4).
