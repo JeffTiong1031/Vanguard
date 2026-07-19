@@ -32,13 +32,15 @@ def test_missing_strata_not_shipped():
 
 
 def test_human_simulated_clean_is_candidate():
-    status, reasons = ship_status([_row("human_simulated")], mask_recall=0.6, missing_strata=[])
+    status, reasons = ship_status([_row("human_simulated")], mask_recall=0.6, missing_strata=[],
+                                  integrated_mask_recall=0.55)
     assert status == "SHIP_CANDIDATE"
     assert reasons == []
 
 
 def test_real_dominant_is_candidate():
-    status, reasons = ship_status([_row("real")], mask_recall=0.6, missing_strata=[])
+    status, reasons = ship_status([_row("real")], mask_recall=0.6, missing_strata=[],
+                                  integrated_mask_recall=0.55)
     assert status == "SHIP_CANDIDATE"
 
 
@@ -67,16 +69,19 @@ def test_always_keep_caught_by_constant_check_too():
 def test_mixed_predictions_still_candidate():
     status, reasons = ship_status(
         [_row("human_simulated")], mask_recall=0.6, missing_strata=[],
-        predictions=["MASK"] * 12 + ["KEEP"] * 8,
+        predictions=["MASK"] * 12 + ["KEEP"] * 8, integrated_mask_recall=0.55,
     )
     assert status == "SHIP_CANDIDATE"
     assert reasons == []
 
 
 def test_predictions_optional_preserves_existing_signature():
-    # Tasks 12/17/18 call ship_status positionally without predictions; that must keep working.
+    # Tasks 12/17/18 call ship_status positionally without predictions; the call must still
+    # WORK. Its verdict is now NOT_SHIPPED, deliberately: a positional gold-span-only call
+    # cannot certify a ship, and that is exactly what the integrated requirement is for.
     status, reasons = ship_status([_row("human_simulated")], 0.6, [])
-    assert status == "SHIP_CANDIDATE"
+    assert status == "NOT_SHIPPED"
+    assert any("integrated" in r for r in reasons)
 
 
 def test_provenance_tie_fails_safe():
@@ -85,3 +90,31 @@ def test_provenance_tie_fails_safe():
     status, reasons = ship_status(rows, mask_recall=0.9, missing_strata=[])
     assert status == "NOT_SHIPPED"
     assert any("clean<=synthetic" in r for r in reasons)
+
+
+def test_gold_span_only_cannot_ship():
+    # The gold-span number assumes perfect NER, so it is an UPPER BOUND. Measured
+    # 2026-07-19: classifier recall 0.996 on gold spans, integrated 0.928 once the NER's
+    # real coverage is included. A gate that certifies on the upper bound is answering a
+    # narrower question than the one it is trusted with.
+    status, reasons = ship_status([_row("human_simulated")], mask_recall=0.99, missing_strata=[])
+    assert status == "NOT_SHIPPED"
+    assert any("integrated" in r for r in reasons)
+
+
+def test_integrated_measurement_allows_a_candidate():
+    status, reasons = ship_status(
+        [_row("human_simulated")], mask_recall=0.99, missing_strata=[],
+        integrated_mask_recall=0.93,
+    )
+    assert status == "SHIP_CANDIDATE"
+    assert reasons == []
+
+
+def test_integrated_zero_is_not_shipped():
+    status, reasons = ship_status(
+        [_row("human_simulated")], mask_recall=0.99, missing_strata=[],
+        integrated_mask_recall=0.0,
+    )
+    assert status == "NOT_SHIPPED"
+    assert any("integrated" in r for r in reasons)

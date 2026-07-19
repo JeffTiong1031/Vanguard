@@ -19,6 +19,8 @@ import json
 from pathlib import Path
 
 from sens.align import align_spans
+from sens.coverage import missing_strata
+from sens.eval_gate import ship_status
 from sens.marking import mark_span
 from sens.metrics import mask_precision_recall
 from sens.schema import Span
@@ -71,7 +73,24 @@ def main() -> None:
                     help="FREE/public/commercial-OK multilingual NER (licence is [verify] — record it)")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--max-len", type=int, default=512)
+    ap.add_argument("--repair-spans", action="store_true",
+                    help="merge fragmented NER proposals and pull attached honorifics into the "
+                         "span (doc 04 4.3). Measured +22pp full MASK coverage on the exam.")
+    ap.add_argument("--repair-gap", type=int, default=0,
+                    help="also bridge proposals this many chars apart; >0 raises over-extension")
+    ap.add_argument("--org-dictionary", type=Path,
+                    help="newline-separated organisation names (ADR 0004, exact match). Proposals "
+                         "are unioned with the NER's. Measured +4.5pp full MASK coverage, and it "
+                         "is what closes the NER's blind spots on known companies.")
     args = ap.parse_args()
+
+    from sens.org_dictionary import normalise_terms, propose
+    from sens.span_repair import repair_spans
+
+    org_terms: list[str] = []
+    if args.org_dictionary:
+        org_terms = normalise_terms(args.org_dictionary.read_text(encoding="utf-8").splitlines())
+        print(f"org dictionary: {len(org_terms)} terms from {args.org_dictionary}")
 
     rows = load_jsonl(args.data)
     ner = pipeline("token-classification", model=args.ner_model, aggregation_strategy="simple")
@@ -91,6 +110,11 @@ def main() -> None:
     with torch.no_grad():
         for ex in rows:
             proposed = _proposed_spans(ner, ex.text)
+            if org_terms:
+                proposed = propose(ex.text, org_terms, ner_spans=proposed)
+            if args.repair_spans:
+                # repair AFTER the dictionary: a dictionary hit can also need a title or tail
+                proposed = repair_spans(proposed, ex.text, gap=args.repair_gap)
             res = align_spans(ex.spans, proposed)
             total_gold += len(ex.spans)
             total_miss += len(res.ner_misses)
@@ -145,7 +169,18 @@ def main() -> None:
     integrated_mask_recall_estimate = mask_full_rate * rc
     integrated_optimistic = (1.0 - miss_rate) * rc
 
+    # This runner, not the gold-span one, is where the gate belongs: it is the only place the
+    # integrated number exists. run_eval.py can no longer return SHIP_CANDIDATE by itself.
+    miss_strata = missing_strata(rows)
+    status, gate_reasons = ship_status(
+        rows, mask_recall=rc, missing_strata=miss_strata, predictions=pred_labels,
+        integrated_mask_recall=integrated_mask_recall_estimate,
+    )
+
     report = {
+        "ship_status": status,
+        "reasons": gate_reasons,
+        "missing_strata": miss_strata,
         "n_gold_spans": total_gold,
         "n_matched_spans": len(gold_labels),
         "classifier_mask_precision_on_ner_spans": pr,
@@ -170,6 +205,10 @@ def main() -> None:
         "integrated_mask_recall_estimate": integrated_mask_recall_estimate,
         "integrated_mask_recall_optimistic": integrated_optimistic,
         "fragment_examples": fragment_examples,
+        "span_repair_applied": bool(args.repair_spans),
+        "span_repair_gap": args.repair_gap if args.repair_spans else None,
+        "org_dictionary_terms": len(org_terms),
+        "org_dictionary_source": str(args.org_dictionary) if args.org_dictionary else None,
         "ner_model": args.ner_model,
         "ner_licence": "[verify] — confirm free/public/commercial-use before quoting this number",
         "classifier_model": str(args.model),
@@ -183,7 +222,7 @@ def main() -> None:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    for k in ("n_gold_spans", "classifier_mask_precision_on_ner_spans",
+    for k in ("ship_status", "reasons", "n_gold_spans", "classifier_mask_precision_on_ner_spans",
               "classifier_mask_recall_on_ner_spans", "mask_full_coverage_rate",
               "mask_effective_miss_rate", "mask_full_coverage_by_lang",
               "span_boundary_quality", "ner_miss_rate",
