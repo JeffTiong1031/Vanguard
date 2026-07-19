@@ -20,8 +20,9 @@ from pathlib import Path
 
 from sens.align import align_spans
 from sens.coverage import missing_strata
+from sens.encoding import encode_marked
 from sens.eval_gate import ship_status
-from sens.marking import mark_span
+from sens.marking import E_CLOSE, E_OPEN, mark_span
 from sens.metrics import mask_precision_recall
 from sens.schema import Span
 from sens.validate_jsonl import load_jsonl
@@ -153,8 +154,10 @@ def main() -> None:
             for (p_start, p_end), gold_label in res.matched:
                 sp = Span(start=p_start, end=p_end, surface=ex.text[p_start:p_end],
                           entity_type="PER", label=gold_label)  # entity_type unused by mark_span
-                enc = tok(mark_span(ex.text, sp), truncation=True, max_length=args.max_len,
-                          return_tensors="pt")
+                # Span-centered windowing, NOT truncation — see export-contract.md.
+                packed, _windowed = encode_marked(tok, mark_span(ex.text, sp), args.max_len,
+                                                  E_OPEN, E_CLOSE)
+                enc = {k: torch.tensor([v]) for k, v in packed.items()}
                 pi = int(clf(**enc).logits.argmax(-1))
                 gold_labels.append(gold_label)
                 pred_labels.append(id2label[pi])
