@@ -40,3 +40,24 @@ describe('manifest host_permissions', () => {
     expect(manifest.permissions).toEqual(expect.arrayContaining(['storage', 'offscreen']));
   });
 });
+
+describe('offscreen model loading', () => {
+  const offscreen = readFileSync(resolve(__dirname, '../entrypoints/offscreen/main.ts'), 'utf8');
+
+  it('pins dtype explicitly for the sensitivity classifier', () => {
+    // 🔴 transformers.js selects the FILE by dtype, and the default is per-device: cpu -> fp32,
+    // wasm -> q8. Leaving it default in the browser asks for onnx/model_quantized.onnx, which
+    // this bundle does not contain and must not — int8 of this model is degenerate
+    // (always-KEEP). The result is a 404, a failed load, and every entity staying masked, which
+    // is indistinguishable from the classifier disagreeing. Fourth cause of that one symptom.
+    const call = offscreen.match(/pipeline<'text-classification'>\([\s\S]*?\)\;/)?.[0] ?? '';
+    expect(call, 'sensitivity pipeline call not found').not.toBe('');
+    expect(call, 'dtype must be explicit — wasm defaults to q8').toContain("dtype: 'fp32'");
+  });
+
+  it('keeps the NER on its pinned quantized dtype', () => {
+    // The NER genuinely ships q8 and its file is pinned in models.manifest.json; only the
+    // classifier needs fp32. Guard against a well-meaning sweep changing both.
+    expect(offscreen).toContain("dtype: 'q8'");
+  });
+});

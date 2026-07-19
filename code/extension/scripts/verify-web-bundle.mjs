@@ -37,12 +37,22 @@ const CASES = [
   ['Tolong ingatkan [E] Encik Rahman [/E] pasal mesyuarat esok.', 'MASK'],
 ];
 
-// The browser uses device 'wasm'; the Node build only offers cpu/dml. What this script proves is
-// the LAYOUT and the VERDICTS, both of which are device-independent. Latency in the browser is a
-// separate measurement (scripts/measure-wasm-latency.mjs) and is ~3x these numbers.
-console.log(`loading ${base}/${modelId} ...`);
+// 🔴 dtype is what picks the FILE, and its default is per-device: `cpu` -> fp32, `wasm` -> q8
+// (DEFAULT_DEVICE_DTYPE_MAPPING, utils/dtypes.js). An earlier version of this script ran cpu
+// with no dtype, resolved onnx/model.onnx, and passed — while the browser asked wasm for
+// onnx/model_quantized.onnx, got a 404, and failed. The verifier certified a file the product
+// never loads.
+//
+// Node offers no wasm device, so the device cannot be matched. The DTYPE can, and it is the part
+// that selects the artifact. Assert the file exists too, since that is the failure mode.
+const DTYPE = 'fp32';   // must match the offscreen document; int8 is BLOCKED for this model
+
+const expected = `${base.replace(/\/+$/, '')}/${modelId}/onnx/model.onnx`;
+console.log(`loading ${base}/${modelId} (dtype=${DTYPE}) ...`);
+console.log(`  expects ${expected}`);
+
 const t0 = performance.now();
-const clf = await pipeline('text-classification', modelId, { device: 'cpu' });
+const clf = await pipeline('text-classification', modelId, { device: 'cpu', dtype: DTYPE });
 console.log(`loaded in ${((performance.now() - t0) / 1000).toFixed(1)} s\n`);
 
 let wrong = 0;

@@ -79,8 +79,16 @@ async function getSensitivity(modelUrl: string): Promise<SensPipe> {
       // not cover it. allowLocalModels lets transformers.js treat localModelPath as the base.
       env.allowLocalModels = true;
       env.localModelPath = modelUrl;
+      // 🔴 dtype MUST be explicit. transformers.js picks a file by dtype, and the default for
+      // `wasm` is q8 (DEFAULT_DEVICE_DTYPE_MAPPING in utils/dtypes.js), which resolves to
+      // onnx/model_quantized.onnx — a file this bundle does not contain and must not: int8
+      // quantization of this model is BLOCKED, it produces a degenerate always-KEEP graph
+      // (ml/contracts/export-contract.md §Quantization). Leaving it default means a 404, a
+      // failed load, and every entity staying masked — the same symptom as the classifier
+      // disagreeing. Observed 2026-07-20; the Node verifier missed it because `cpu` defaults
+      // to fp32 and so exercised a different file.
       const pipe = await pipeline<'text-classification'>(
-        'text-classification', SENSITIVITY_MODEL_ID, { device: 'wasm' },
+        'text-classification', SENSITIVITY_MODEL_ID, { device: 'wasm', dtype: 'fp32' },
       );
       return (async (text: string) => (await pipe(text)) as never) as SensPipe;
     })().catch((e) => {
