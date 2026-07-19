@@ -9,6 +9,7 @@ import { attachCharOffsets, mergeNerTokens } from '../../src/detection/l2/messag
 import { verifyPinnedModel } from '../../src/detection/l2/pin';
 import { repairEntities } from '../../src/detection/l2/span-repair';
 import { loadOrgTerms, proposeOrgs } from '../../src/detection/l2/org-dictionary';
+import { filterBySensitivity, isEligible, loadConfig } from '../../src/detection/l2/sensitivity';
 
 const MODEL_ID = 'Xenova/bert-base-multilingual-cased-ner-hrl';
 
@@ -55,6 +56,32 @@ async function getNer(): Promise<TokenClassificationPipeline> {
   return nerPromise;
 }
 
+// --- Sensitivity classifier (ADR 0017's missing "is it actually sensitive?" step) -----------
+//
+// OFF unless a model URL is configured, so the default build behaves exactly as before. Loaded
+// lazily and only when a prompt is eligible, because the artifact is ~534 MB.
+type SensPipe = (text: string) => Promise<Array<{ label: string; score: number }>>;
+let sensPromise: Promise<SensPipe> | null = null;
+
+async function getSensitivity(modelUrl: string): Promise<SensPipe> {
+  if (!sensPromise) {
+    sensPromise = (async () => {
+      // A bare URL, not an HF repo id: this model is not published, and ADR 0017's hash-pinned
+      // CDN story does not cover it yet. `env.allowLocalModels` must be on for a custom host.
+      env.allowLocalModels = true;
+      env.localModelPath = modelUrl;
+      const pipe = await pipeline<'text-classification'>('text-classification', '', {
+        device: 'wasm',
+      });
+      return (async (text: string) => (await pipe(text)) as never) as SensPipe;
+    })().catch((e) => {
+      sensPromise = null; // a failed load must not become permanent
+      throw e;
+    });
+  }
+  return sensPromise;
+}
+
 chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) => {
   if (msg?.kind !== 'l2-scan') return;
   (async () => {
@@ -77,7 +104,36 @@ chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) =
       // proposal at all, and the misses are Proton, TNB, 腾讯, 阿里巴巴, Boeing (ADR 0004).
       // Empty by default, so this is inert until a dictionary is supplied.
       const withDict = proposeOrgs(msg.text, await loadOrgTerms(), mergeNerTokens(withOffsets));
-      const entities = repairEntities(withDict, msg.text);
+      let entities = repairEntities(withDict, msg.text);
+
+      // Sensitivity: drop entities that are merely entities. Short prompts only — measured
+      // 2026-07-19, one forward pass is 174 ms at 21 tokens and 2.0 s at 242, ONCE PER SPAN,
+      // and doc 06 §3 puts paste on the critical path. A long paste therefore keeps today's
+      // behaviour, which over-masks: the cutoff's failure mode is friction, not leakage.
+      const sens = await loadConfig();
+      if (sens.modelUrl && entities.length && isEligible(msg.text, sens.maxTokens)) {
+        try {
+          const pipe = await getSensitivity(sens.modelUrl);
+          const t0 = performance.now();
+          const { kept, released, failed } = await filterBySensitivity(
+            msg.text, entities,
+            async (marked) => {
+              const [top] = await pipe(marked);
+              return { keep: top?.label === 'KEEP', confidence: top?.score ?? 0 };
+            },
+            (text, e) => `${text.slice(0, e.start)}[E] ${e.text} [/E]${text.slice(e.end)}`,
+          );
+          console.debug(
+            `[sensitivity] ${entities.length} spans in ${(performance.now() - t0).toFixed(0)} ms — `
+            + `${released.length} released, ${kept.length} masked, ${failed} unjudged (kept)`);
+          entities = kept;
+        } catch (e) {
+          // ADR 0014: a dead engine degrades, it does not decide. Masking everything the NER
+          // found is the safe direction, so the original list stands.
+          console.warn('[sensitivity] unavailable, keeping all NER spans masked:', e);
+        }
+      }
+
       sendResponse({ kind: 'l2-result', id: msg.id, ok: true, entities } satisfies ScanResponse);
     } catch (e) {
       sendResponse({ kind: 'l2-result', id: msg.id, ok: false, error: String(e) } satisfies ScanResponse);
