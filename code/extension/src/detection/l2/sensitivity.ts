@@ -106,6 +106,28 @@ export function isEligible(text: string, maxTokens: number): boolean {
 
 export type Verdict = { keep: boolean; confidence: number };
 
+/**
+ * Does the MARKED string fit the model's window?
+ *
+ * The window is 512 tokens (`max_position_embeddings`, config.json, verified 2026-07-17). The
+ * export contract forbids clipping past a marker: a truncated `[/E]` silently changes which span
+ * the model is being asked about, and it answers confidently about the wrong thing. Full
+ * span-centred windowing is out of scope here; the safe action for an oversize span is to keep
+ * it MASKED and judge nothing.
+ *
+ * ⚠️ This is unreachable today, because `isEligible` caps the prompt at ~96 tokens. It is
+ * unreachable *by coincidence of a number*, not by construction — and that number is explicitly
+ * a knob the team test is expected to move.
+ *
+ * Character proxy, because the decision is made before tokenizing. Ratios measured (U21-a,
+ * 2026-07-19): en/bm ~0.26 tokens/char, zh 0.72. The conservative ratio applies whenever CJK is
+ * present — the English ratio on Chinese text would admit ~2.8x the intended budget.
+ */
+export function markedFitsWindow(marked: string): boolean {
+  const hasCJK = /[㐀-鿿豈-﫿]/.test(marked);
+  return marked.length * (hasCJK ? 0.72 : 0.26) <= 512;
+}
+
 /** Per-span budget. (estimate) — one forward pass measured 174 ms at 21 tokens and 342 ms at 44
  *  on this machine, and D2 is slower, so this leaves generous headroom while still failing
  *  inside the gate's own budget rather than consuming it. */
@@ -169,9 +191,16 @@ export async function filterBySensitivity(
       kept.push(e);
       continue;
     }
+    const marked = markSpan(text, e);
+    if (!markedFitsWindow(marked)) {
+      // Never truncate past a marker — keep masking instead of asking a corrupted question.
+      failed += 1;
+      kept.push(e);
+      continue;
+    }
     try {
       const verdict = await withTimeout(
-        classify(markSpan(text, e)), Math.min(spanMs, left), 'sensitivity',
+        classify(marked), Math.min(spanMs, left), 'sensitivity',
       );
       if (verdict.keep) released.push(e);
       else kept.push(e);

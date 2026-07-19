@@ -5,6 +5,7 @@ import {
   filterBySensitivity,
   isEligible,
   loadConfig,
+  markedFitsWindow,
   SensitivityUnavailableError,
   type Verdict,
 } from '../src/detection/l2/sensitivity';
@@ -195,5 +196,35 @@ describe('timeouts — a try/catch does not catch "never returns"', () => {
       );
       expect(out.released).toEqual([]);
     }
+  });
+});
+
+describe('markedFitsWindow — never clip past a marker', () => {
+  it('accepts a short marked string', () => {
+    expect(markedFitsWindow('Explain [E] Einstein [/E] theory')).toBe(true);
+  });
+
+  it('rejects a marked string that would exceed the 512-token window', () => {
+    expect(markedFitsWindow('a'.repeat(5000))).toBe(false);
+  });
+
+  it('uses the Chinese ratio for CJK (0.72 tok/char, U21-a), not the English one', () => {
+    // 1000 CJK chars: 0.72 => 720 tokens (rejected). The English 0.26 would say 260 (accepted),
+    // i.e. it would hand the model a string ~1.4x its window with a marker clipped off the end.
+    expect(markedFitsWindow('你'.repeat(1000))).toBe(false);
+    expect(markedFitsWindow('你'.repeat(100))).toBe(true);
+  });
+});
+
+describe('filterBySensitivity — the oversize guard', () => {
+  it('keeps an oversize span masked without asking the model a corrupted question', async () => {
+    let called = 0;
+    const classify = async (): Promise<Verdict> => { called += 1; return { keep: true, confidence: 1 }; };
+    const long = 'x'.repeat(5000);
+    const res = await filterBySensitivity(long, [ent(0, 1, 'x')], classify, markSpan);
+    expect(called).toBe(0);
+    expect(res.kept).toHaveLength(1);
+    expect(res.released).toHaveLength(0);
+    expect(res.failed).toBe(1);
   });
 });
