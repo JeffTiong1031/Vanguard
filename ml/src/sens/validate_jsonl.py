@@ -21,6 +21,12 @@ def load_jsonl(path: Path) -> list[Example]:
 
 def validate_path(path: Path) -> list[str]:
     errors: list[str] = []
+    # id -> first line it appeared on. Duplicate ids are a FILE-level property, so a per-line
+    # validator cannot see them: an exam amended by appending rows numbered from an id that was
+    # already taken passed both this check and the coverage check, with two rows sharing an id
+    # and one of them silently shadowing the other in any dict-keyed consumer (observed
+    # 2026-07-19 on exam-501/502). merge_audit and disagreement both key by id.
+    seen: dict[str, int] = {}
     with path.open(encoding="utf-8") as f:
         for line_no, line in enumerate(f, start=1):
             line = line.strip()
@@ -29,6 +35,13 @@ def validate_path(path: Path) -> list[str]:
             try:
                 ex = Example.model_validate_json(line)
                 assert_spans_valid(ex)
+                if ex.id in seen:
+                    errors.append(
+                        f"{path.name}:{line_no}: duplicate id {ex.id!r} "
+                        f"(first seen on line {seen[ex.id]})"
+                    )
+                else:
+                    seen[ex.id] = line_no
             except Exception as e:  # noqa: BLE001
                 errors.append(f"{path.name}:{line_no}: {e}")
     return errors
