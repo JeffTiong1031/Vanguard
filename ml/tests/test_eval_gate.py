@@ -42,6 +42,43 @@ def test_real_dominant_is_candidate():
     assert status == "SHIP_CANDIDATE"
 
 
+def test_always_mask_not_shipped():
+    # The mirror of always-KEEP, and the one the recall check cannot see: a model that
+    # masks EVERYTHING has recall 1.0 and sails through. It is also the worst outcome for
+    # this product — precision is quasi-contractual (ADR 0001) and every span is a false
+    # alarm. Observed for real on 2026-07-18 (dev precision 0.4474 = the MASK base rate).
+    status, reasons = ship_status(
+        [_row("human_simulated")], mask_recall=1.0, missing_strata=[],
+        predictions=["MASK"] * 20,
+    )
+    assert status == "NOT_SHIPPED"
+    assert any("single class" in r for r in reasons)
+
+
+def test_always_keep_caught_by_constant_check_too():
+    status, reasons = ship_status(
+        [_row("human_simulated")], mask_recall=0.0, missing_strata=[],
+        predictions=["KEEP"] * 20,
+    )
+    assert status == "NOT_SHIPPED"
+    assert any("single class" in r for r in reasons)
+
+
+def test_mixed_predictions_still_candidate():
+    status, reasons = ship_status(
+        [_row("human_simulated")], mask_recall=0.6, missing_strata=[],
+        predictions=["MASK"] * 12 + ["KEEP"] * 8,
+    )
+    assert status == "SHIP_CANDIDATE"
+    assert reasons == []
+
+
+def test_predictions_optional_preserves_existing_signature():
+    # Tasks 12/17/18 call ship_status positionally without predictions; that must keep working.
+    status, reasons = ship_status([_row("human_simulated")], 0.6, [])
+    assert status == "SHIP_CANDIDATE"
+
+
 def test_provenance_tie_fails_safe():
     # equal human_simulated vs llm_synthetic -> clean (1) <= synth (1) -> NOT_SHIPPED
     rows = [_row("human_simulated"), _row("llm_synthetic")]
