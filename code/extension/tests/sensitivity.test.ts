@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  withTimeout,
   DEFAULT_MAX_TOKENS,
   filterBySensitivity,
   isEligible,
@@ -103,5 +104,59 @@ describe('filterBySensitivity', () => {
     }, markSpan);
     expect(seen[0]).toContain('[E] Einstein [/E]');
     expect(seen[0]).toContain('call Ahmad'); // context on both sides is preserved
+  });
+});
+
+describe('timeouts — a try/catch does not catch "never returns"', () => {
+  // The first version of this module had no clock. The caller's timeout is 120 s, sized for a
+  // crashed engine, so a stalled model load presented as "pressing Send does nothing" for two
+  // minutes while the catch block never ran. Observed 2026-07-20.
+
+  it('withTimeout rejects a promise that never settles', async () => {
+    const never = new Promise<never>(() => {});
+    await expect(withTimeout(never, 20, 'thing')).rejects.toThrow(/timed out after 20 ms/);
+  });
+
+  it('withTimeout passes a value straight through', async () => {
+    await expect(withTimeout(Promise.resolve(7), 1000, 'thing')).resolves.toBe(7);
+  });
+
+  it('a hanging classifier does NOT hang the scan — the span stays masked', async () => {
+    const text = 'Explain Einstein theory';
+    const hangs = () => new Promise<Verdict>(() => {});
+    const out = await filterBySensitivity(
+      text, [ent(8, 16, 'Einstein')], hangs, markSpan, { spanTimeoutMs: 20, totalTimeoutMs: 100 },
+    );
+    expect(out.kept).toHaveLength(1);       // fail-safe is to mask
+    expect(out.released).toEqual([]);
+    expect(out.failed).toBe(1);
+  });
+
+  it('stops spending once the whole-prompt budget is gone', async () => {
+    // Each span finishing just inside its own budget still blows the prompt's, which is why the
+    // per-span clock is not sufficient on its own.
+    const slow = () => new Promise<Verdict>((r) => setTimeout(() => r({ keep: true, confidence: 1 }), 30));
+    const many = Array.from({ length: 10 }, (_, i) => ent(i, i + 1, 'x'));
+    const t0 = Date.now();
+    const out = await filterBySensitivity(
+      'x'.repeat(20), many, slow, markSpan, { spanTimeoutMs: 100, totalTimeoutMs: 90 },
+    );
+    expect(Date.now() - t0).toBeLessThan(400);
+    expect(out.timedOut).toBe(true);
+    expect(out.kept.length + out.released.length).toBe(10); // nothing is silently dropped
+    expect(out.kept.length).toBeGreaterThan(0);             // the unjudged remainder stays masked
+  });
+
+  it('never releases a span it could not judge, however the failure arrives', async () => {
+    for (const classify of [
+      () => new Promise<Verdict>(() => {}),                       // hangs
+      async () => { throw new Error('boom'); },                   // throws
+    ]) {
+      const out = await filterBySensitivity(
+        'Explain Einstein theory', [ent(8, 16, 'Einstein')], classify, markSpan,
+        { spanTimeoutMs: 20, totalTimeoutMs: 60 },
+      );
+      expect(out.released).toEqual([]);
+    }
   });
 });

@@ -72,6 +72,35 @@ export function isEligible(text: string, maxTokens: number): boolean {
 
 export type Verdict = { keep: boolean; confidence: number };
 
+/** Per-span budget. (estimate) — one forward pass measured 174 ms at 21 tokens and 342 ms at 44
+ *  on this machine, and D2 is slower, so this leaves generous headroom while still failing
+ *  inside the gate's own budget rather than consuming it. */
+export const DEFAULT_SPAN_TIMEOUT_MS = 3_000;
+
+/** Total budget for a whole prompt, however many spans it has. */
+export const DEFAULT_TOTAL_TIMEOUT_MS = 8_000;
+
+/**
+ * 🔴 A `try/catch` does not catch "never returns".
+ *
+ * The first version of this module awaited the classifier with no timeout. The caller does have
+ * one (`l2Scan`), but it is **120 seconds** — sized for a crashed engine, not for a new step
+ * that stalls. A model load that hung therefore presented to the user as "pressing Send does
+ * nothing", for two minutes, with the catch block never running. Observed 2026-07-20.
+ *
+ * ADR 0014 says a dead engine degrades rather than deciding. Degrading requires noticing, and
+ * noticing a hang requires a clock.
+ */
+export function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 /**
  * Drop entities the classifier says are KEEP.
  *
@@ -85,14 +114,31 @@ export async function filterBySensitivity(
   entities: readonly L2Entity[],
   classify: (marked: string) => Promise<Verdict>,
   markSpan: (text: string, e: L2Entity) => string,
-): Promise<{ kept: L2Entity[]; released: L2Entity[]; failed: number }> {
+  opts: { spanTimeoutMs?: number; totalTimeoutMs?: number } = {},
+): Promise<{ kept: L2Entity[]; released: L2Entity[]; failed: number; timedOut: boolean }> {
+  const spanMs = opts.spanTimeoutMs ?? DEFAULT_SPAN_TIMEOUT_MS;
+  const totalMs = opts.totalTimeoutMs ?? DEFAULT_TOTAL_TIMEOUT_MS;
+  const deadline = Date.now() + totalMs;
+
   const kept: L2Entity[] = [];
   const released: L2Entity[] = [];
   let failed = 0;
+  let timedOut = false;
 
   for (const e of entities) {
+    // The per-span clock is not enough on its own: N spans each finishing just inside their
+    // budget still blows the prompt's. Both are needed.
+    const left = deadline - Date.now();
+    if (left <= 0) {
+      timedOut = true;
+      failed += 1;
+      kept.push(e);
+      continue;
+    }
     try {
-      const verdict = await classify(markSpan(text, e));
+      const verdict = await withTimeout(
+        classify(markSpan(text, e)), Math.min(spanMs, left), 'sensitivity',
+      );
       if (verdict.keep) released.push(e);
       else kept.push(e);
     } catch {
@@ -100,5 +146,5 @@ export async function filterBySensitivity(
       kept.push(e); // could not judge -> keep masking
     }
   }
-  return { kept, released, failed };
+  return { kept, released, failed, timedOut };
 }

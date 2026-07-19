@@ -9,7 +9,9 @@ import { attachCharOffsets, mergeNerTokens } from '../../src/detection/l2/messag
 import { verifyPinnedModel } from '../../src/detection/l2/pin';
 import { repairEntities } from '../../src/detection/l2/span-repair';
 import { loadOrgTerms, proposeOrgs } from '../../src/detection/l2/org-dictionary';
-import { filterBySensitivity, isEligible, loadConfig } from '../../src/detection/l2/sensitivity';
+import {
+  filterBySensitivity, isEligible, loadConfig, withTimeout,
+} from '../../src/detection/l2/sensitivity';
 
 const MODEL_ID = 'Xenova/bert-base-multilingual-cased-ner-hrl';
 
@@ -113,9 +115,13 @@ chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) =
       const sens = await loadConfig();
       if (sens.modelUrl && entities.length && isEligible(msg.text, sens.maxTokens)) {
         try {
-          const pipe = await getSensitivity(sens.modelUrl);
+          // 🔴 The load is the step that stalls: 534 MB over HTTP, and a wrong URL or a stopped
+          // server produces a promise that never settles rather than an error. The gate's own
+          // timeout is 120 s (content.ts), sized for a crashed engine — long enough that a stall
+          // here reads to the user as "pressing Send does nothing". Observed 2026-07-20.
+          const pipe = await withTimeout(getSensitivity(sens.modelUrl), 20_000, 'model load');
           const t0 = performance.now();
-          const { kept, released, failed } = await filterBySensitivity(
+          const { kept, released, failed, timedOut } = await filterBySensitivity(
             msg.text, entities,
             async (marked) => {
               const [top] = await pipe(marked);
@@ -125,7 +131,8 @@ chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) =
           );
           console.debug(
             `[sensitivity] ${entities.length} spans in ${(performance.now() - t0).toFixed(0)} ms — `
-            + `${released.length} released, ${kept.length} masked, ${failed} unjudged (kept)`);
+            + `${released.length} released, ${kept.length} masked, ${failed} unjudged (kept)`
+            + (timedOut ? ' — BUDGET EXHAUSTED, remaining spans kept masked' : ''));
           entities = kept;
         } catch (e) {
           // ADR 0014: a dead engine degrades, it does not decide. Masking everything the NER
