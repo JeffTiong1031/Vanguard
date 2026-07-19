@@ -77,7 +77,8 @@ def _predict(model_dir: str, rows, max_len: int):
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-    from sens.marking import iter_span_instances
+    from sens.encoding import encode_marked
+    from sens.marking import E_CLOSE, E_OPEN, iter_span_instances
 
     tok = AutoTokenizer.from_pretrained(model_dir)
     model = AutoModelForSequenceClassification.from_pretrained(model_dir).eval()
@@ -85,10 +86,16 @@ def _predict(model_dir: str, rows, max_len: int):
 
     gold, pred = [], []
     entities: dict[str, list[bool]] = {}
+    n_windowed = 0
     with torch.no_grad():
         for ex in rows:
             for (marked, label, _etype), sp in zip(iter_span_instances(ex), ex.spans):
-                enc = tok(marked, truncation=True, max_length=max_len, return_tensors="pt")
+                # Span-centered windowing, NOT truncation. export-contract.md tells eng to
+                # reproduce this exact behaviour; until this call existed it described
+                # something the eval did not do.
+                packed, windowed = encode_marked(tok, marked, max_len, E_OPEN, E_CLOSE)
+                n_windowed += int(windowed)
+                enc = {k: torch.tensor([v]) for k, v in packed.items()}
                 pi = int(model(**enc).logits.argmax(-1))
                 plabel = id2label[pi]
                 gold.append(label)
@@ -96,6 +103,7 @@ def _predict(model_dir: str, rows, max_len: int):
                 if label == "MASK":  # 100%-mention coverage is measured over true-MASK mentions
                     key = f"{ex.id}:{sp.surface.lower()}"
                     entities.setdefault(key, []).append(plabel == "MASK")
+    print(f"instances windowed (exceeded max_len {max_len}): {n_windowed} / {len(gold)}")
     return gold, pred, entities
 
 
