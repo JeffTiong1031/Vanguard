@@ -37,6 +37,29 @@ def _proposed_spans(ner, text: str) -> list[tuple[int, int]]:
     return spans
 
 
+def gold_coverage(gold_start: int, gold_end: int, proposed: list[tuple[int, int]]) -> float:
+    """Fraction of the gold span's characters covered by ANY proposal.
+
+    🔴 This exists because align_spans counts any overlap as a match, and for masking that
+    is the wrong question. A one-character proposal against 阿里巴巴 overlaps, so it aligns
+    — but masking 阿 and leaving 里巴巴 in the prompt is not a detection, it is a leak with
+    a receipt. Measured 2026-07-19: ~23% of gold spans are covered only in fragments
+    (Encik Rahman -> "En" + "Rahman"; 鲁迅先生 -> "鲁" + "鲁迅"), so ner_miss_rate reported
+    3.8% where the effective miss was ~34%.
+
+    Partial coverage is counted as a miss for MASK purposes: the sensitive value is only
+    protected if the whole of it is replaced. Over-long proposals are not penalised here —
+    masking extra text is a utility cost, not a privacy failure.
+    """
+    if gold_end <= gold_start:
+        return 0.0
+    covered: set[int] = set()
+    for ps, pe in proposed:
+        for i in range(max(ps, gold_start), min(pe, gold_end)):
+            covered.add(i)
+    return len(covered) / (gold_end - gold_start)
+
+
 def main() -> None:
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
@@ -58,18 +81,47 @@ def main() -> None:
 
     gold_labels, pred_labels = [], []
     total_gold = total_miss = total_extra = 0
+    full_cov = partial_cov = zero_cov = 0
+    mask_full = mask_total = 0
     miss_by_lang: dict[str, list[int]] = {}
+    mask_cov_by_lang: dict[str, list[int]] = {}
     miss_examples = []
+    fragment_examples = []
 
     with torch.no_grad():
         for ex in rows:
-            res = align_spans(ex.spans, _proposed_spans(ner, ex.text))
+            proposed = _proposed_spans(ner, ex.text)
+            res = align_spans(ex.spans, proposed)
             total_gold += len(ex.spans)
             total_miss += len(res.ner_misses)
             total_extra += len(res.ner_extras)
             m = miss_by_lang.setdefault(ex.lang, [0, 0])
             m[0] += len(res.ner_misses)
             m[1] += len(ex.spans)
+
+            # Boundary quality — the number align_spans cannot see.
+            for g in ex.spans:
+                frac = gold_coverage(g.start, g.end, proposed)
+                if frac >= 0.999:
+                    full_cov += 1
+                elif frac > 0:
+                    partial_cov += 1
+                    if len(fragment_examples) < 15:
+                        frags = [ex.text[ps:pe] for ps, pe in proposed
+                                 if max(0, min(pe, g.end) - max(ps, g.start)) > 0]
+                        fragment_examples.append({
+                            "id": ex.id, "lang": ex.lang, "gold": g.surface,
+                            "label": g.label, "fragments": frags,
+                            "covered_fraction": round(frac, 3)})
+                else:
+                    zero_cov += 1
+                if g.label == "MASK":
+                    mask_total += 1
+                    c = mask_cov_by_lang.setdefault(ex.lang, [0, 0])
+                    c[1] += 1
+                    if frac >= 0.999:
+                        mask_full += 1
+                        c[0] += 1
             for g in res.ner_misses[:1]:
                 miss_examples.append({"id": ex.id, "lang": ex.lang, "surface": g.surface,
                                       "entity_type": g.entity_type, "label": g.label,
@@ -85,20 +137,39 @@ def main() -> None:
 
     pr, rc = mask_precision_recall(gold_labels, pred_labels) if gold_labels else (0.0, 0.0)
     miss_rate = (total_miss / total_gold) if total_gold else 0.0
+    mask_full_rate = (mask_full / mask_total) if mask_total else 0.0
 
-    # The number that matters for the product: a span the NER never proposes can never be
-    # masked, whatever the classifier does. Integrated recall is bounded by NER recall.
-    integrated_mask_recall_upper = (1.0 - miss_rate) * rc
+    # 🔴 Read THIS one, not ner_miss_rate. A fragment aligns but does not protect anything,
+    # so the effective miss is 1 - mask_full_coverage_rate, roughly ten times ner_miss_rate
+    # on the models measured so far.
+    integrated_mask_recall_estimate = mask_full_rate * rc
+    integrated_optimistic = (1.0 - miss_rate) * rc
 
     report = {
         "n_gold_spans": total_gold,
         "n_matched_spans": len(gold_labels),
         "classifier_mask_precision_on_ner_spans": pr,
         "classifier_mask_recall_on_ner_spans": rc,
+        "mask_full_coverage_rate": mask_full_rate,
+        "mask_effective_miss_rate": 1.0 - mask_full_rate,
+        "mask_full_coverage_by_lang": {k: (v[0] / v[1] if v[1] else 0.0)
+                                       for k, v in sorted(mask_cov_by_lang.items())},
+        "span_boundary_quality": {
+            "full_coverage": full_cov,
+            "fragment_only": partial_cov,
+            "no_overlap": zero_cov,
+            "fragment_rate": (partial_cov / total_gold) if total_gold else 0.0,
+        },
         "ner_miss_rate": miss_rate,
+        "ner_miss_rate_note": (
+            "counts only spans with NO overlap. It IGNORES fragments, which align but do not "
+            "protect the value — use mask_effective_miss_rate for the product number."
+        ),
         "ner_extra_count": total_extra,
         "ner_miss_rate_by_lang": {k: (v[0] / v[1] if v[1] else 0.0) for k, v in sorted(miss_by_lang.items())},
-        "integrated_mask_recall_estimate": integrated_mask_recall_upper,
+        "integrated_mask_recall_estimate": integrated_mask_recall_estimate,
+        "integrated_mask_recall_optimistic": integrated_optimistic,
+        "fragment_examples": fragment_examples,
         "ner_model": args.ner_model,
         "ner_licence": "[verify] — confirm free/public/commercial-use before quoting this number",
         "classifier_model": str(args.model),
@@ -112,10 +183,13 @@ def main() -> None:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    for k in ("n_gold_spans", "n_matched_spans", "classifier_mask_precision_on_ner_spans",
-              "classifier_mask_recall_on_ner_spans", "ner_miss_rate", "ner_extra_count",
-              "ner_miss_rate_by_lang", "integrated_mask_recall_estimate", "ner_model"):
-        print(f"{k:42s} {report[k]}")
+    for k in ("n_gold_spans", "classifier_mask_precision_on_ner_spans",
+              "classifier_mask_recall_on_ner_spans", "mask_full_coverage_rate",
+              "mask_effective_miss_rate", "mask_full_coverage_by_lang",
+              "span_boundary_quality", "ner_miss_rate",
+              "integrated_mask_recall_estimate", "integrated_mask_recall_optimistic",
+              "ner_model"):
+        print(f"{k:38s} {report[k]}")
 
 
 if __name__ == "__main__":
