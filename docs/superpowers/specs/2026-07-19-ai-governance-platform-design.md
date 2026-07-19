@@ -52,13 +52,18 @@ departure and its scope limit.
 ## 2. Scope decomposition
 
 Three independent subsystems. This spec covers all three because they share a data model and a demo
-narrative, but they build in this order and each is separately testable:
+narrative, but **each gets its own implementation plan** (founder, 2026-07-19) and each is separately
+testable:
 
-1. **Org identity & policy distribution** — enrolment token, policy fetch, extension settings
-2. **LLM allowlist & approval workflow** — admin console, request queue, registry detection, warn UI
-3. **Ethics & risk classifier** — six categories, LinearSVC, local blocking modal
+| Plan | Subsystem | Contains | Depends on |
+|---|---|---|---|
+| **A** | Policy service + admin console | `code/policy/` API, SQLite schema, enrolment, approval queue, usage dashboard, admin SPA | — |
+| **B** | Extension integration | Enrolment UI, policy client in the background SW, registry detection, warn banner, request UI, event shipping | Plan A |
+| **C** | Ethics classifier | Corpus, training, JSON export, in-extension runtime, red modal | — |
 
-(3) is fully independent of (1) and (2) and could ship alone. (2) requires (1).
+**Plan C is fully independent and may be built at any time, including first or in parallel.** Plan B
+requires Plan A's API to exist. Plan A is demoable on its own in a browser, which makes it the safest
+place to start.
 
 ---
 
@@ -100,7 +105,8 @@ output is a committed JSON artifact.
 ## 4. Data model
 
 ```
-orgs             id · name · enroll_token_hash · admin_password_hash · policy_version
+orgs             id · name · admin_password_hash · policy_version
+enroll_tokens    id · org_id · department · token_hash · label · created_at · revoked
 employees        id · org_id · pseudo_id · department · created_at
 llm_registry     id · host · display_name                    ← seeded catalog, ~8-10 rows
 org_llm_policy   org_id · llm_id · status(approved|blocked)
@@ -112,6 +118,11 @@ usage_events     id · org_id · employee_id · host · type · category · find
 **`policy_version`** bumps on every org policy write and doubles as the HTTP ETag. Consequences: a
 revocation propagates within one poll cycle, and the overwhelming majority of polls are a bodyless
 `304`.
+
+**Enrolment tokens are per-department, not per-org** (founder, 2026-07-19). The department is encoded
+in the token rather than chosen by the employee, so it cannot be misreported — and department is the
+axis the whole usage dashboard is organised on, so its integrity matters. The admin console mints and
+revokes them; the plaintext token is displayed once at mint time and only its hash is stored.
 
 **`employees.pseudo_id`** is a random opaque identifier minted at enrolment. **No names, no email
 addresses.** `department` is the only attribute stored, because it is the only one the dashboard
@@ -127,15 +138,24 @@ salted-hash finding reference, per decision #5 and invariant I3.
 ### 5.1 End-to-end flow
 
 ```
-enrol     employee pastes org token → POST /v1/enroll {token, department}
-                                    → {org_id, pseudo_id, policy, version} → chrome.storage.local
+enrol     employee pastes department token → POST /v1/enroll {token}
+                                    → {org_id, pseudo_id, department, policy, version}
+                                    → chrome.storage.local
 poll      GET /v1/policy  (If-None-Match: version)  every 30s + on tab focus  → 304 | new policy
 detect    content script on a registry host → host not approved? → warn banner + "Request access"
 request   POST /v1/requests {llm_host, reason} → admin queue
 approve   admin approves → org policy_version bumps → employee's next poll clears the banner
 ethics    prompt submit → local classifier → violation? → red modal naming the category → blocked
-audit     POST /v1/events (batched) {pseudo_id, department, host, type, category, hash, ts}
+audit     POST /v1/events {pseudo_id, department, host, type, category, hash, ts}
 ```
+
+🔴 **Every call to the policy service originates in the background service worker, never a content
+script.** See §5.4 — this is forced by the demo topology, not a style preference.
+
+**Event flush timing:** immediate, with a short debounce to coalesce bursts. The demo requires the
+admin's dashboard to reflect an employee's block within a second or two; an interval-based batch
+would kill that beat. A production build would batch on an interval to spare battery and network,
+and **that interval is a number to measure rather than invent.**
 
 ### 5.2 Admin console screens
 
@@ -144,6 +164,8 @@ audit     POST /v1/events (batched) {pseudo_id, department, host, type, category
 3. **Requests** — pending access requests with employee department, requested tool, and reason.
    Approve / Deny.
 4. **Usage** — events by department, by tool, by ethics category, over time. Satisfies use case 3.
+5. **Enrolment tokens** — mint a token per department, display once, revoke. Cheap once the table
+   exists, and it gives the demo a natural opening beat.
 
 ### 5.3 Extension changes
 
@@ -157,6 +179,35 @@ audit     POST /v1/events (batched) {pseudo_id, department, host, type, category
   events. It already produces the correct shape (class + salted fingerprint, never raw text).
 
 Host permissions grow from 4 to ~10 (the curated registry). **Still no `<all_urls>`** — see §9.
+
+### 5.4 🔴 Network topology — the two-laptop demo forces an architectural change
+
+The demo runs on **two laptops** (founder, 2026-07-19): employee on one, admin on the other. That is
+more convincing than two Chrome profiles on one machine, and it breaks the current fetch design.
+
+**The defect.** [`api.ts`](../../../code/extension/src/files/api.ts) calls `fetch()` directly from
+content-script code running on `https://chatgpt.com`. This works today **only because
+`http://localhost` is a Chrome special case** — localhost is treated as potentially trustworthy, so
+mixed-content blocking does not apply. `http://192.168.x.x:8000` gets no such exemption: an HTTPS page
+fetching plain HTTP on a LAN address is **blocked as mixed content**. The demo would fail on stage,
+and it would look like the product was broken rather than the network.
+
+**Two fixes, both required:**
+
+1. **All policy-service traffic originates in the background service worker.** It runs on a
+   `chrome-extension://` origin — a secure context — so with host permissions it may fetch `http://`.
+   This is also simply where a poll loop belongs. Plan B must not reuse `api.ts`'s content-script
+   fetch pattern for policy calls.
+2. **Bake two origins into `host_permissions` before the build.** `host_permissions` is static at
+   manifest-build time, so **the venue's IP cannot be added on the day.** Ship both:
+   - a known LAN address, made predictable with a phone hotspot and a reserved IP, and
+   - a stable HTTPS tunnel hostname (a *named* `cloudflared` tunnel gives a fixed URL).
+
+   The tunnel path also sidesteps mixed content entirely, which makes it the better primary and the
+   LAN path the offline fallback.
+
+⚠️ **This is a build-time decision with a stage-day consequence. It cannot be deferred to
+rehearsal.**
 
 ---
 
@@ -268,7 +319,7 @@ surface. The pseudonymous floor in §4 is the mitigation, not a claim that the s
 | Shortcut | The honest answer if asked |
 |---|---|
 | Admin password is a single per-org secret, checked server-side | *"Real deployments use SSO/SAML against the corporate IdP. The check is server-side today, which is the part that matters — the client never adjudicates it."* |
-| Enrolment token is shared per-org, not per-employee | *"Production issues per-employee tokens through the same MDM channel as `ExtensionInstallForcelist`. The demo seeds one so we can enrol on stage."* |
+| Enrolment token is per-department, not per-employee | *"Production issues per-employee tokens through the same MDM channel as `ExtensionInstallForcelist`. Per-department is enough to prove the model, and it keeps department integrity — the employee cannot self-declare."* |
 | Curated LLM registry (~10 hosts) rather than `<all_urls>` | 🟢 **Not a shortcut — a better answer.** *"AI surfaces are a known, finite, curated set. We do not need permission to watch the entire web, and asking for it would fail your own security review."* (doc 02 §6.4) |
 | Classifier trained on synthetic data | *"Demo-grade. Production needs a real substrate — that's what [ADR 0015](../../adr/0015-eval-corpus-is-real.md) already commits us to for the sensitivity model."* |
 | SQLite, single process | *"Postgres and per-tenant DEKs from day one in production — that's [ADR 0009](../../adr/0009-org-dictionary-key-custody.md), already decided."* |
@@ -311,12 +362,18 @@ fixture.
 
 ---
 
-## 12. Open questions for the implementation plan
+## 12. Decisions resolved 2026-07-19
 
-1. **Department assignment** — employee picks from a list at enrolment, or encoded in the token?
-   (Leaning: picks from a list; one fewer token to mint on stage.)
-2. **Event batching interval** — needs a value; derive from demo behaviour rather than inventing one.
-3. **Whether the demo runs one machine or two.** Two Chrome profiles against one localhost service is
-   sufficient and is the safer stage setup; two laptops is more convincing and adds network risk.
-4. **Whether to mint an ADR for the ADR 0016 departure** (§1.1). Recommended: yes, at implementation
-   time, numbered 0029.
+All four open questions are now closed by founder decision. Recorded here rather than deleted, so a
+fresh session sees what was considered and does not reopen them.
+
+| Question | Decision | Consequence |
+|---|---|---|
+| Department: employee-picked or token-encoded? | **Token-encoded** | Per-department `enroll_tokens` table (§4) + a minting screen (§5.2) |
+| Event batching interval | **Immediate, short debounce** | Demo needs sub-second dashboard updates (§5.1); production interval stays a measured number |
+| One machine or two? | **Two laptops** | Forces §5.4 — background-SW fetch and two baked-in origins |
+| ADR for the ADR 0016 departure? | **Yes — ADR 0029**, at implementation time | Records the sequencing departure and its scope limit (§1.1) |
+
+**Remaining, and deliberately unset:** the production event-batching interval, and the per-category
+classifier thresholds (§6.2) — both are measurements, and this package does not launder an estimate
+into a constant by writing it in code.
