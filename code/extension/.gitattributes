@@ -15,5 +15,15 @@
 # platform assumption, made explicit.
 dist/** -text
 
-# The self-hosted ONNX Runtime pair is binary//vendored — never touch it either.
+# The self-hosted ONNX Runtime pair is binary/vendored — never touch it either.
 public/ort/** -text
+
+# 🔴 And the build's INPUTS matter as much as its outputs. WXT copies entrypoint HTML through
+# to dist/ byte-for-byte, so a source file checked out as CRLF produces a CRLF dist file while
+# the commit holds LF — the same drift, arriving from the other end. Observed on options.html:
+# the fresh build emitted `</div>\r\r\n  </body>` where the commit has `</div>\n  </body>`,
+# which reads as a stray blank line and looks like a real source change.
+#
+# Pinning the tree to LF also makes the build reproducible across the team's machines, which is
+# what ADR 0017's committed-dist decision quietly depends on.
+* text=auto eol=lf
