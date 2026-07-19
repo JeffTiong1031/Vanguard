@@ -65,16 +65,23 @@ async function getNer(): Promise<TokenClassificationPipeline> {
 type SensPipe = (text: string) => Promise<Array<{ label: string; score: number }>>;
 let sensPromise: Promise<SensPipe> | null = null;
 
+// transformers.js resolves a model by CONVENTION: <localModelPath>/<id>/config.json,
+// tokenizer.json, and onnx/model.onnx. It is NOT a pointer to a file, and an id of '' does not
+// mean "the directory you gave me" — it produces paths that do not exist, and the load then
+// stalls or rejects without anything naming the layout. Build the directory with
+// `ml/scripts/build_web_bundle.py`, serve its PARENT, and leave this id matching the folder.
+const SENSITIVITY_MODEL_ID = 'sens';
+
 async function getSensitivity(modelUrl: string): Promise<SensPipe> {
   if (!sensPromise) {
     sensPromise = (async () => {
-      // A bare URL, not an HF repo id: this model is not published, and ADR 0017's hash-pinned
-      // CDN story does not cover it yet. `env.allowLocalModels` must be on for a custom host.
+      // Not an HF repo id: this model is unpublished, and ADR 0017's hash-pinned CDN story does
+      // not cover it. allowLocalModels lets transformers.js treat localModelPath as the base.
       env.allowLocalModels = true;
       env.localModelPath = modelUrl;
-      const pipe = await pipeline<'text-classification'>('text-classification', '', {
-        device: 'wasm',
-      });
+      const pipe = await pipeline<'text-classification'>(
+        'text-classification', SENSITIVITY_MODEL_ID, { device: 'wasm' },
+      );
       return (async (text: string) => (await pipe(text)) as never) as SensPipe;
     })().catch((e) => {
       sensPromise = null; // a failed load must not become permanent

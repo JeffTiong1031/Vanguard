@@ -22,19 +22,42 @@ The model scored **precision 1.000 / recall 0.996** on the locked 562-question e
 
 ## Setup
 
-### 1. Serve the model
+### 1. Build the web bundle
 
-The artifact is **534 MB** and is not published anywhere, so serve it from disk. From the repo
-root, in its own terminal:
+The ONNX export is a flat directory; transformers.js resolves models by convention
+(`<base>/<id>/config.json`, `tokenizer.json`, `onnx/model.onnx`). Assemble that layout once:
 
 ```powershell
-cd ml\artifacts\export\sens-v0.2.0-trim70k
+cd ml
+.\.venv\Scripts\python.exe scripts\build_web_bundle.py `
+  --export artifacts\export\sens-v0.2.0-trim70k `
+  --checkpoint artifacts\runs\colab_v7_trim70k `
+  --out artifacts\web\sens
+```
+
+Verify it loads and agrees with the Python model **before** touching the browser — a load
+failure and a wrong answer look identical from inside ChatGPT:
+
+```powershell
+cd ..\code\extension
+node scripts\verify-web-bundle.mjs "C:/GitHub/Vanguard/ml/artifacts/web" sens
+```
+
+Expect `All verdicts match the Python model.`
+
+### 2. Serve it
+
+The bundle is **538 MB** and is not published anywhere, so serve it from disk. Serve the
+**parent** directory — the model id is the folder name:
+
+```powershell
+cd ml\artifacts\web
 python -m http.server 8765 --bind 127.0.0.1
 ```
 
-Leave it running. Check it: <http://127.0.0.1:8765/model.onnx> should start downloading.
+Leave it running. Check: <http://127.0.0.1:8765/sens/config.json> should return JSON.
 
-### 2. Point the extension at it
+### 3. Point the extension at it
 
 Open the extension's service worker console (`chrome://extensions` → **Inspect views: service
 worker**) and run:
@@ -45,7 +68,7 @@ chrome.storage.local.set({ vg_sensitivity_model_url: 'http://127.0.0.1:8765' })
 
 Reload the extension. First use loads 534 MB from localhost — a few seconds.
 
-### 3. Turn it back off
+### 4. Turn it back off
 
 ```javascript
 chrome.storage.local.remove('vg_sensitivity_model_url')
