@@ -7,6 +7,7 @@ import { pipeline, env, type TokenClassificationPipeline } from '@huggingface/tr
 import type { PipelineNerToken, ScanRequest, ScanResponse } from '../../src/detection/l2/messages';
 import { attachCharOffsets, mergeNerTokens } from '../../src/detection/l2/messages';
 import { verifyPinnedModel } from '../../src/detection/l2/pin';
+import { repairEntities } from '../../src/detection/l2/span-repair';
 
 const MODEL_ID = 'Xenova/bert-base-multilingual-cased-ner-hrl';
 
@@ -65,7 +66,12 @@ chrome.runtime.onMessage.addListener((msg: ScanRequest, _sender, sendResponse) =
       // and the documented example at line ~370). mergeNerTokens drops O afterward.
       const raw = (await ner(msg.text, { ignore_labels: [] })) as unknown as PipelineNerToken[];
       const withOffsets = attachCharOffsets(msg.text, raw);
-      const entities = mergeNerTokens(withOffsets);
+      // Repair boundaries before anything downstream masks by position. Measured on this exact
+      // pipeline (scripts/measure-span-coverage.mjs, 265 gold MASK spans): the raw NER covers
+      // 64.2% of them in full — it proposes `Rahman` where doc 04 §4.3 requires `Encik Rahman`,
+      // and `阿里` + `巴` where the entity is `阿里巴巴`. Masking half of either leaves the rest
+      // in the prompt, so this is a compliance fix as much as an accuracy one.
+      const entities = repairEntities(mergeNerTokens(withOffsets), msg.text);
       sendResponse({ kind: 'l2-result', id: msg.id, ok: true, entities } satisfies ScanResponse);
     } catch (e) {
       sendResponse({ kind: 'l2-result', id: msg.id, ok: false, error: String(e) } satisfies ScanResponse);
