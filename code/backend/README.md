@@ -42,6 +42,86 @@ Doc 01 §6 calls this **"the stack decision I'd defend hardest"**:
   `setAccessLevel()`. *"Defaults are where the letter-vs-purpose trap lives, because a default is a
   decision nobody remembers making."*
 
+## Running it (Slice 2 team test)
+
+**Default — run it locally.** No shared/cloud API is required for the team test. Full walkthrough
+(extension + API): [`../../README.md`](../../README.md) §Quick start.
+
+### Preferred — uvicorn (Python 3.11+)
+
+```bash
+cd code/backend
+python -m venv .venv
+
+# Windows (PowerShell):  .\.venv\Scripts\Activate.ps1
+# macOS / Linux:         source .venv/bin/activate
+
+pip install -e ".[dev]"
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+### Optional — Docker
+
+```bash
+cd code/backend
+docker compose up --build
+```
+
+### Verify
+
+```bash
+curl -s http://127.0.0.1:8000/healthz
+curl -s -F "file=@tests/fixtures/zip_bomb.docx" http://127.0.0.1:8000/v1/extract
+```
+
+Expected: `{"ok":true}` then `{"error":{"code":"suspicious_archive",…}}`.
+
+Point the extension **Options → File checking API URL** at `http://localhost:8000` (that is already
+the default). Host permission for localhost is in `code/extension/wxt.config.ts`.
+
+### Optional later — founder-hosted shared API
+
+Only if several non-engineers cannot run Python/Docker. Stand up an HTTPS origin, put the URL in
+Options, and extend `host_permissions` to match. Placeholder: `https://vanguard-extract.example.com`.
+Until then, **do not block the team test on a shared instance.**
+
+## What testers should know
+
+**Local default:** file bytes go to `127.0.0.1` on **your** machine and are not kept after the
+request. Prompt text never leaves the browser either way.
+
+If you later use a **shared** instance, real work files leave the tester’s machine and are parsed on
+a server the founder runs. That matches the commercial file posture (ADR 0008 — cloud parse,
+in-region, zero-retention, under DPA), but the informal team is not a customer with a DPA — say so
+up front.
+
+**PDF redaction uses PyMuPDF** (`app/redact/pdf.py`). That is fine for pitch demos and Load unpacked
+team tests. **Before Chrome Web Store submission or paying customers, resolve the licence** —
+PyMuPDF is AGPL-3.0 or commercial; see the U30 spike notes in the Slice 2 plan.
+
+## What this service does not keep
+
+Doc 02 §4.3 names four ways zero-retention silently becomes short-retention. Each is closed here:
+
+| Trap | How we close it |
+|---|---|
+| **Async retry** (needs the payload to still exist) | No retry queue, Celery, SQS, or similar — `test_zero_retention.py::test_the_app_declares_no_retry_or_queue_dependency` greps `app/main.py` for banned imports |
+| **Dead-letter queue** (persistence for failed content) | Same structural guard — no DLQ dependency in the codebase |
+| **Debug retention** ("easier with the file") | `app/routes/extract.py` docstring: *"Parse a file to text. Return the text. Keep nothing."* No upload volume mounts in `Dockerfile`; `docker-compose.yml` sets `restart: "no"` |
+| **APM body capture** (nobody notices for six months) | `app/main.py` — no APM; `test_zero_retention.py::test_no_file_content_reaches_the_logs` and `test_a_parse_failure_does_not_log_the_body` |
+
+**Framework default (F4):** Starlette's `UploadFile` spools files over 1 MB to disk. We read the raw
+stream under a cap instead — `app/routes/extract.py` `/v1/extract`, guarded by
+`test_no_temp_file_survives_a_request`. The container adds `read_only: true` and a 16 MB tmpfs so
+even a slipped write has nowhere to land.
+
+## Residency
+
+**`ap-southeast-5`** is the commercial target for MY tenants (doc 02 §6.2, U13 ✅). The Slice 2 team
+test runs on **localhost** or one **founder-hosted** instance and **does not exercise the residency
+path**. U17 (per-service availability in that region) is still unverified and still gates Phase 1
+sizing.
+
 ## Doc 07 §7.3 — read this before adding analytics
 
 The class-level **Ignore rate** is a legitimate detector-prioritization signal, and it rides I3's

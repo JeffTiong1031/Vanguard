@@ -1,14 +1,20 @@
-# `extension/` — Slice 1 chat-text gate (L1 + L2)
+# `extension/` — Slice 1 chat gate + Slice 2 file checking (L1 + L2)
 
-Working Manifest V3 extension for the **team test**: ChatGPT + Claude, typing hints, send-time review, on-device NER. Load unpacked from committed `dist/` — see the [repo README](../../README.md).
+Working Manifest V3 extension for the **team test**: ChatGPT + Claude, typing hints, send-time
+review, on-device NER, and attach-time file checking. Load unpacked from committed `dist/`.
 
-Acceptance checklist: [`ACCEPTANCE.md`](ACCEPTANCE.md). Technical choices: [ADR 0017](../../docs/adr/0017-slice-1-technical-choices.md). Typing hints: [ADR 0024](../../docs/adr/0024-slice-1-5-l1-composer-hints.md). Send review: [ADR 0025](../../docs/adr/0025-send-time-per-span-review.md).
+**Full runbook (backend + extension):** [repo README](../../README.md).  
+Chat-only works without the API; **attachments need** the local backend on `http://localhost:8000`.
+
+Acceptance checklist: [`ACCEPTANCE.md`](ACCEPTANCE.md). Technical choices: [ADR 0017](../../docs/adr/0017-slice-1-technical-choices.md). Typing hints: [ADR 0024](../../docs/adr/0024-slice-1-5-l1-composer-hints.md). Send review: [ADR 0025](../../docs/adr/0025-send-time-per-span-review.md). Files: [ADR 0027](../../docs/adr/0027-cleaned-extract-replaces-attachment.md) · [ADR 0028](../../docs/adr/0028-backend-parses-extension-detects.md).
 
 ## Load unpacked (no build)
 
 ```text
 code/extension/dist/chrome-mv3
 ```
+
+Options → **File checking API URL** defaults to `http://localhost:8000`.
 
 ## Develop
 

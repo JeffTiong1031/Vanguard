@@ -20,4 +20,5 @@ export const claudeAdapter: SurfaceAdapter = {
   onPaste(cb) {
     document.addEventListener('paste', (e) => { const t = e.clipboardData?.getData('text'); if (t) cb(t); }, true);
   },
+  fileInputs() { return [...document.querySelectorAll<HTMLInputElement>('input[type="file"]')]; },
 };
