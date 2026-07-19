@@ -236,9 +236,17 @@ One-vs-rest **LinearSVC** over TF-IDF: word 1–2 grams plus char 3–5 grams. C
 robustness to paraphrase and typos.
 
 **A LinearSVC is a dot product.** Training happens in Python; the artifact exported to the extension
-is vocabulary + IDF + per-category coefficients as JSON (**~40 KB, estimate**). The runtime is
-tokenize → TF-IDF → dot product → argmax over a per-category threshold. No ONNX, no WASM, no model
-download, no first-run fetch.
+is vocabulary + IDF + per-category coefficients as JSON. The runtime is tokenize → TF-IDF → dot
+product → argmax over a per-category threshold. No ONNX, no WASM, no model download, no first-run
+fetch.
+
+> 🔴 **Corrected 2026-07-19. This read "(~40 KB, estimate)". The figure was never derived and is
+> wrong by roughly an order of magnitude.** Six categories over a realistic vocabulary is a few
+> hundred thousand coefficients — **1–3 MB of dense JSON**. Pruning to the top-N coefficients per
+> category and storing them sparsely brings it to the low hundreds of KB, but **the number is a
+> measurement, not an assertion**, and Plan C's export task prints it and records it. **A plausible
+> number nobody checked is this package's named failure mode (CLAUDE.md §9); it should not have
+> survived into a spec, and it did.**
 
 **Latency is expected to be sub-millisecond `(estimate — to be measured, not asserted)`.** No figure
 is published in the demo until it has been measured on the demo machine.
