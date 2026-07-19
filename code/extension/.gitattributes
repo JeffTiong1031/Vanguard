@@ -1,0 +1,19 @@
+# Build artifacts are compared BYTE-FOR-BYTE by scripts/check-dist-drift.mjs, so git must not
+# rewrite their line endings on checkout.
+#
+# Without this, on Windows (core.autocrlf=true, the installer default) git checks dist/ out with
+# CRLF while `wxt build` writes LF. The drift check then reports "dist/ is stale" on a FRESH
+# CLONE, with no source change whatsoever — and the two gates become unsatisfiable at the same
+# time: check:dist passes only when the working tree holds LF, `git status` is clean only when
+# it holds CRLF.
+#
+# That lands on the first line of ACCEPTANCE.md ("local gates pass and dist is in sync"), so the
+# team test would have opened on a failure that is not a failure. Measured 2026-07-19: with the
+# line endings normalised, the committed and freshly built files were byte-identical.
+#
+# ADR 0017 accepted a committed dist/ with a drift check as the guard. This is the guard's own
+# platform assumption, made explicit.
+dist/** -text
+
+# The self-hosted ONNX Runtime pair is binary//vendored — never touch it either.
+public/ort/** -text
