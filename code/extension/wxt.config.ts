@@ -11,6 +11,18 @@ export default defineConfig({
       'https://chatgpt.com/*',
       'https://claude.ai/*',
       'http://localhost:8000/*',
+      // 🔴 `localhost` and `127.0.0.1` are DIFFERENT origins for host_permissions matching --
+      // a rule for one does not cover the other. Both are listed, on both the Slice 2 backend
+      // port and the local model server, because a missing permission fails as a blocked fetch
+      // inside the offscreen document: the load simply never completes, and the user sees
+      // "still blocked", which is indistinguishable from the classifier disagreeing.
+      // Observed 2026-07-20, after two other causes with the identical symptom.
+      'http://127.0.0.1:8000/*',
+      // Local model server for the sensitivity classifier (docs/team/try-the-sensitivity-classifier.md).
+      // Test-rig only: the artifact is 538 MB and unpublished, and ADR 0017 already calls the
+      // hash-pinned CDN fetch "not the shipping answer" for a model a third this size.
+      'http://localhost:8765/*',
+      'http://127.0.0.1:8765/*',
       // [set this to the founder-hosted team-test origin before the team test]
       'https://vanguard-extract.example.com/*',
     ],
