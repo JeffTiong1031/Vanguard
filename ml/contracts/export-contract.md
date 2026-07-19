@@ -78,19 +78,43 @@ a shippable number by way of int8 is resting on something that does not work yet
 | int8 | **307 MB** — measured, **REJECTED** (degenerate, see above) |
 | doc 06 §6.2 distillation trigger | ~140 MB |
 
-🔴 **The trigger fires, and not marginally.** The only verified artifact is **1061 MB**. Even the
-rejected int8 graph is **307 MB** — 2.2× the budget — and vocabulary trimming buys **one** halving
-before it is exhausted (CLAUDE.md §6.2), landing **~154 MB, still above ~140 MB**. That is before
-the 1.5–2× runtime multiple over weights and before WASM overhead.
+### Does it fit? Probably — and an earlier version of this section said otherwise
 
-> ⚠️ **This corrects an estimate published earlier in this contract.** int8 was first recorded as
-> "~265 MB *(estimate, 1 byte/param)*" with post-trim ~133 MB, which *cleared* the trigger by 7 MB.
-> **Measured, it is 307 MB and post-trim ~154 MB, which does not clear it.** The estimate was
-> optimistic by 16% for exactly the reason flagged when it was written — a real int8 graph carries
-> scale and zero-point tensors. **The conclusion inverted between the estimate and the measurement.**
+🔴 **Read doc 06 §6.2's trigger carefully, because this contract first read it wrong.** It says
+distillation becomes a Phase 0 requirement *"if the D2 memory budget lands below ~140 MB of
+weights"*. **~140 MB is what trimming is expected to ACHIEVE, not a ceiling to fit under.** The
+budget is `ASSUMPTIONS.md` **D2: ~1–2 GB addressable by the extension before the user notices**.
 
-**Distillation is therefore a Phase 0 requirement, not a risk**, and quantization cannot be assumed
-as the lever that avoids it.
+Measured, against that budget:
+
+| | weights | × 1.5–2 runtime multiple | vs D2's ~1–2 GB |
+|---|---|---|---|
+| Untrimmed fp32 | 1061 MB | 1.6–2.1 GB | 🔴 over |
+| **Trimmed to 70K vocab, fp32** | **533 MB** | **0.8–1.1 GB** | ✅ **within budget** |
+
+**Vocabulary trimming in fp32 is very likely sufficient. int8 being broken is not fatal, because
+int8 was never required to reach the budget.**
+
+> ⚠️ **This section previously concluded "distillation is a Phase 0 requirement, not a risk".**
+> That was wrong, and it came from reading ~140 MB as a ceiling rather than as trimming's target.
+> The measurements were right; the proposition they were compared against was not.
+
+**Trimming figures, measured** (not assumed): the backbone is **86.0M parameters and irreducible by
+trimming**, and 70K vocabulary gives **139.8M total** — both confirming CLAUDE.md §6.2's derivation
+exactly. Trimming buys one halving and is then exhausted.
+
+⚠️ **The binding uncertainty is D2, not the model.** `ASSUMPTIONS.md` rates D2 **Medium** confidence
+with **HIGH** blast radius and says it *"should be replaced with a real device survey from the first
+design partner"*. An 8 GB floor makes trimming mandatory; a 16 GB floor makes the budget
+comfortable. **The size question is now gated on a device survey, not on more engineering here.**
+
+⚠️ Also unresolved: doc 06 §6.1 requires the **1.5–2× runtime multiple to be measured, not
+inherited** — resident set on D2, warm, at P95 sequence length, **in Chinese** because the wedge's
+languages produce the longest sequences. That measurement has not been taken. The 0.8–1.1 GB row
+above inherits the rule of thumb doc 06 explicitly refuses to assert.
+
+⚠️ Per doc 06 §6.3, trimming, quantization and distillation each degrade **BM/ZH first** — three
+taxes on the one asset the wedge is built on.
 
 ⚠️ Per doc 06 §6.3, trimming, quantization and distillation each degrade **BM/ZH first** — three
 taxes on the one asset the wedge is built on.
