@@ -80,9 +80,15 @@ def test_pseudo_id_is_a_fresh_uuid4_not_derived_from_the_token():
     DIFFERENT on every call while still being fully determined by public
     inputs (the token plus how many times it's been used) -- i.e. guessable,
     which defeats pseudonymity just as badly as a constant id. A 64-hex-char
-    sha256 digest can never parse as a UUID, so asserting the id is a real
-    UUIDv4 catches that whole family of "distinct but derived" mutants that
-    an inequality check (a != b) alone would miss.
+    sha256 digest cannot parse as a UUID, so this assertion catches the NAIVE
+    derivation family that an inequality check (a != b) alone would miss.
+
+    Scope, stated honestly: this pins the FORMAT, not the entropy source. A
+    deliberately crafted mutant -- truncate the digest to 32 hex chars and force
+    the version and variant nibbles -- is still fully derived from the token and
+    still parses as a UUIDv4, so it would pass. Closing that would need a
+    statistical or source-level check, which is not worth it here: the shipped
+    code is uuid.uuid4(), whose randomness comes from the platform CSPRNG.
     """
     token = _mint("Engineering")
     a = client.post("/v1/enroll", json={"token": token}).json()["pseudo_id"]
