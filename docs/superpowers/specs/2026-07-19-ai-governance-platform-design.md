@@ -108,7 +108,7 @@ output is a committed JSON artifact.
 orgs             id · name · admin_password_hash · policy_version
 enroll_tokens    id · org_id · department · token_hash · label · created_at · revoked
 employees        id · org_id · pseudo_id · department · created_at
-llm_registry     id · host · display_name                    ← seeded catalog, ~8-10 rows
+llm_registry     id · host · display_name                    ← seeded catalog, 8 rows
 org_llm_policy   org_id · llm_id · status(approved|blocked)
 policy_category  org_id · key · label · enabled              ← the six ethics categories
 access_requests  id · org_id · employee_id · llm_id · reason · status · created_at · decided_at
@@ -178,7 +178,8 @@ and **that interval is a number to measure rather than invent.**
 - **`src/audit/`** — extend [`audit.ts`](../../../code/extension/src/audit/audit.ts) to batch-ship
   events. It already produces the correct shape (class + salted fingerprint, never raw text).
 
-Host permissions grow from 4 to ~10 (the curated registry). **Still no `<all_urls>`** — see §9.
+Host permissions grow from 4 to **13** — 8 registry hosts, 2 file-service origins, 3 policy-service
+origins (§5.4). **Still no `<all_urls>`** — see §9.
 
 ### 5.4 🔴 Network topology — the two-laptop demo forces an architectural change
 
@@ -328,7 +329,7 @@ surface. The pseudonymous floor in §4 is the mitigation, not a claim that the s
 |---|---|
 | Admin password is a single per-org secret, checked server-side | *"Real deployments use SSO/SAML against the corporate IdP. The check is server-side today, which is the part that matters — the client never adjudicates it."* |
 | Enrolment token is per-department, not per-employee | *"Production issues per-employee tokens through the same MDM channel as `ExtensionInstallForcelist`. Per-department is enough to prove the model, and it keeps department integrity — the employee cannot self-declare."* |
-| Curated LLM registry (~10 hosts) rather than `<all_urls>` | 🟢 **Not a shortcut — a better answer.** *"AI surfaces are a known, finite, curated set. We do not need permission to watch the entire web, and asking for it would fail your own security review."* (doc 02 §6.4) |
+| Curated LLM registry (8 hosts) rather than `<all_urls>` | 🟢 **Not a shortcut — a better answer.** *"AI surfaces are a known, finite, curated set. We do not need permission to watch the entire web, and asking for it would fail your own security review."* (doc 02 §6.4) |
 | Classifier trained on synthetic data | *"Demo-grade. Production needs a real substrate — that's what [ADR 0015](../../adr/0015-eval-corpus-is-real.md) already commits us to for the sensitivity model."* |
 | SQLite, single process | *"Postgres and per-tenant DEKs from day one in production — that's [ADR 0009](../../adr/0009-org-dictionary-key-custody.md), already decided."* |
 | Policy propagates on a 30s poll | *"Push in production. 30s is a demo simplification, and revocation latency is a number we'd publish."* |

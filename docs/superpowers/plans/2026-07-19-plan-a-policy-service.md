@@ -586,7 +586,7 @@ Expected: `ModuleNotFoundError: No module named 'app.seed'`
 """Seed data: the curated AI-tool registry and a demo org.
 
 The registry is deliberately a short, explicit list. It is why the extension
-asks for ten host permissions instead of <all_urls> -- doc 02 section 6.4's
+asks for eight host permissions instead of <all_urls> -- doc 02 section 6.4's
 un-N/A-able security-questionnaire row.
 """
 import sqlite3
