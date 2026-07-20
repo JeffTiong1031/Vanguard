@@ -48,7 +48,7 @@ def verify_password(pw: str, stored: str) -> bool:
             n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P,
         )
         return secrets.compare_digest(got.hex(), want_hex)
-    except ValueError:
+    except (ValueError, AttributeError):
         return False
 
 
