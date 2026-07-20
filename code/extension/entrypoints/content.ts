@@ -1,7 +1,19 @@
 import { pickAdapter } from '../src/adapters/registry';
 import { recordFindings, recordIgnore } from '../src/audit/audit';
+import type { GovernanceEvent } from '../src/policy/types';
+import type { PolicyRequest } from '../src/policy/messages';
+
+/** Fire-and-forget. A governance event must never delay the gate, and a policy
+ *  service that is down must never stop someone sending a prompt (ADR 0014). */
+function emitGovernance(event: GovernanceEvent): void {
+  void (chrome.runtime.sendMessage({ kind: 'policy-event', event } satisfies PolicyRequest)
+    .catch(() => undefined));
+}
+
 import { sha256Hex } from '../src/detection/hash';
 import { scanInto } from '../src/detection/scan';
+import { checkEthics } from '../src/detection/ethics';
+import { showEthicsModal } from '../src/ui/ethics-modal';
 import { VerdictCache } from '../src/detection/verdict-cache';
 import { attachFiles } from '../src/files/attach';
 import { buildCleanedFile } from '../src/files/cleaned';
@@ -124,10 +136,39 @@ export default defineContentScript({
         const verdict = cache.getSync(hashes.get(text) ?? '');
         const promptDirty = verdict?.state === 'DIRTY';
 
+        // Ethics is checked FIRST and blocks outright. A prompt asking for a
+        // covert-surveillance script is not made acceptable by masking a name,
+        // so the PII path below must not be able to wave it through.
+        const ethics = checkEthics(text);
+        if (ethics) {
+          emitGovernance({
+            host: location.hostname,
+            type: 'ethics_block',
+            category: ethics.category,
+            ts: new Date().toISOString(),
+          });
+          showEthicsModal({
+            label: ethics.label,
+            orgName: 'your organisation',
+            onEdit: () => adapter.getComposer()?.focus(),
+          });
+          return;
+        }
+
         // Always open review when we hold a file — including the all-clean
         // case. Silent re-attach felt like "nothing happened" and skipped the
         // same Proceed confirmation dirty files get. Attach only on Proceed.
         if (!promptDirty && !files.hasHeld()) return;
+
+        // I3: the CLASS of each finding and a count. Never the matched text.
+        for (const finding of promptDirty ? verdict!.findings : []) {
+          emitGovernance({
+            host: location.hostname,
+            type: 'pii_block',
+            category: finding.cls,
+            ts: new Date().toISOString(),
+          });
+        }
 
         showModal({
           text,

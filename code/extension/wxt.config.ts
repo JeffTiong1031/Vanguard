@@ -8,8 +8,20 @@ export default defineConfig({
     version: '0.1.0',
     permissions: ['storage', 'offscreen'],
     host_permissions: [
+      // --- AI tool registry. Keep in step with code/policy/app/seed.py. ---
+      // A curated, finite list is the answer to "why not <all_urls>?": AI
+      // surfaces are known and enumerable, and asking for the whole web would
+      // fail the buyer's own security review (doc 02 section 6.4).
       'https://chatgpt.com/*',
       'https://claude.ai/*',
+      'https://gemini.google.com/*',
+      'https://copilot.microsoft.com/*',
+      'https://www.perplexity.ai/*',
+      'https://chat.deepseek.com/*',
+      'https://chat.mistral.ai/*',
+      'https://grok.com/*',
+
+      // --- File-extract service (Slice 2, unchanged) ---
       'http://localhost:8000/*',
       // 🔴 `localhost` and `127.0.0.1` are DIFFERENT origins for host_permissions matching --
       // a rule for one does not cover the other. Both are listed, on both the Slice 2 backend
@@ -23,6 +35,18 @@ export default defineConfig({
       // listed. The local model server it replaced needed two entries here and a Python process.
       // [set this to the founder-hosted team-test origin before the team test]
       'https://vanguard-extract.example.com/*',
+
+      // --- Policy service (Plan A) ---
+      // 🔴 THREE origins, and all three must ship. host_permissions is baked at
+      // build time, so the venue's address cannot be added on the day.
+      //   1. localhost      -- development
+      //   2. the LAN address -- two-laptop demo over a phone hotspot with a
+      //      reserved IP. EDIT THIS to the reserved address before building.
+      //   3. the tunnel      -- a named cloudflared tunnel. HTTPS, so it also
+      //      sidesteps mixed content entirely; prefer it as the primary path.
+      'http://localhost:8001/*',
+      'http://192.168.1.50:8001/*',
+      'https://vanguard-policy.example.com/*',
     ],
     // No webRequest (ADR 0017 §6.2). No <all_urls>. Two hosts only.
     // MV3 default *should* include wasm-unsafe-eval; live Chrome applied script-src 'self'

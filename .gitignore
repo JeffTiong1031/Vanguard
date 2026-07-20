@@ -7,3 +7,7 @@ ml/artifacts/
 *.pt
 *.bin
 *.safetensors
+
+# code/policy/
+policy.db
+code/policy/app/static/

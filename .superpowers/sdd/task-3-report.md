@@ -168,3 +168,209 @@ Checked `@huggingface/transformers@3.8.1/dist` and `onnxruntime-web/dist`:
 | any non-threaded `*.wasm` | **NO** |
 
 **Only threaded builds ship.** Kept the threaded+jsep pair. Whether it runs with `numThreads = 1` without COOP/COEP is a **LIVE-BROWSER verification for deferred Step 8 / acceptance** � if it does not, the scan path fails and content degrades to advisory (ADR 0014), not a silent wrong answer.
+
+---
+
+# Task 3 (Plan B): the policy client — background only (2026-07-20)
+
+⚠️ **Note on this file's history:** everything above this section is a report for a *different*
+"Task 3" — hash-pinned transformers.js NER in an offscreen document, from an earlier/parallel plan.
+Task numbers have apparently been reused across plans. This section is the report for **Plan B
+Task 3**, as briefed in `C:\Projects\Vanguard\.superpowers\sdd\task-3-brief.md`: the HTTP client
+connecting the extension to the policy service (enrol / conditional-GET refresh / access request).
+Appended rather than overwriting, to preserve the prior report.
+
+**Status: DONE**
+
+- **Commit:** `49cd6ad` — `feat(ext): policy client with conditional GET and offline fallback`
+- **Author:** `HongHanTan <jasonthh123@gmail.com>` (git config untouched), no `Co-Authored-By`
+  trailer.
+- **Files:** `code/extension/src/policy/client.ts` (new, 84 lines), `code/extension/tests/policy-client.test.ts`
+  (new, 108 lines). Both taken verbatim from the brief — no code changes from what the brief gave.
+
+## What was implemented
+
+- `enrol(token) -> Promise<Enrolment>` — POSTs `{ token }` to `${base}/v1/enroll`. Throws a
+  readable error (`/not recognised/i`) on HTTP 401, a generic `Enrolment failed (<status>).` on any
+  other non-OK status. On success, persists `{ org_id, org_name, pseudo_id, department }` and the
+  returned policy via `saveEnrolment`, and returns the enrolment.
+- `refreshPolicy() -> Promise<Policy | null>` — returns `null` with **no network call** if
+  `getEnrolment()` is null. Otherwise does a conditional GET against
+  `${base}/v1/policy?org_id=<org_id>`, attaching `If-None-Match` **only when a cached etag
+  exists**. Three independent fallback paths all return the cached policy instead of `null` or a
+  throw: HTTP 304, any non-OK response, and a thrown `fetch` (caught by `try/catch`, e.g. network
+  down). On a genuine 200, persists the new policy + the response's `etag` header via `savePolicy`.
+- `sendAccessRequest(llmId, reason) -> Promise<void>` — POSTs
+  `{ pseudo_id: enrolment.pseudo_id, llm_id: llmId, reason }` to `${base}/v1/requests`. Throws if
+  not enrolled, or on a non-OK response.
+- `timedFetch` — internal helper wrapping `fetch` with `AbortController`, timing out after
+  `POLICY_CONFIG.requestTimeoutMs` (already tagged `(estimate)` in Task 2's `config.ts` — reused,
+  not a new untagged guess).
+- Header comment on `client.ts` preserves the "BACKGROUND SERVICE WORKER ONLY" mixed-content
+  warning verbatim, including the spec §5.4 cross-reference, per the binding constraint that a
+  content script on `https://chatgpt.com` cannot fetch `http://` on a LAN address.
+
+## TDD sequence and exact output
+
+**Step 1/2 — test written first, run to confirm the expected failure:**
+
+```
+$ npx vitest run tests/policy-client.test.ts
+```
+```
+FAIL tests/policy-client.test.ts [ tests/policy-client.test.ts ]
+Error: Failed to resolve import "../src/policy/client" from "tests/policy-client.test.ts".
+Does the file exist?
+ Test Files  1 failed (1)
+      Tests  no tests
+```
+Matches the brief's stated expected failure exactly (`Failed to resolve import "../src/policy/client"`).
+
+**Step 3/4 — after writing `client.ts`:**
+
+```
+$ npx vitest run tests/policy-client.test.ts
+```
+```
+✓ tests/policy-client.test.ts (6 tests) 28ms
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+```
+
+**Full suite:**
+
+```
+$ npx vitest run
+```
+```
+Test Files  31 passed (31)
+     Tests  168 passed (168)
+Duration    28.62s
+```
+162 baseline (confirmed as the starting point in the task instructions) + 6 new = 168. Nothing
+broken. `tests/dist-drift.test.ts` (`committed dist matches a fresh build`) passed as part of this
+run, which ran an actual `npm run build` internally and diffed it against the committed `dist/` —
+confirming the new, currently-unreferenced `src/policy/client.ts` module does not change build
+output. No need to stage `dist/` separately for this task.
+
+## Self-review (the three checks the task specifically asked for)
+
+1. **Does `refreshPolicy()` send `If-None-Match` only once an etag exists?** Yes:
+   `{ headers: etag ? { 'If-None-Match': etag } : {} }`. First call (`getEtag()` returns `null`,
+   nothing cached yet) omits the header entirely; the test's second call sends it because the
+   first call's `savePolicy` persisted the etag from the mocked response's `etag` header
+   (`W/"o1-1"`). Verified both by reading the code and by the passing test that asserts on
+   `fetchMock.mock.calls[1]![1].headers['If-None-Match']`.
+2. **Does each of the three failure paths return the cached policy, never `null`/a throw?**
+   - HTTP 304 → `return await getCachedPolicy();`
+   - Non-OK (4xx/5xx) → `return await getCachedPolicy();`
+   - Thrown `fetch` (network down) → caught by the surrounding `try { ... } catch { return await
+     getCachedPolicy(); }`.
+   All three converge on the same cache read, all covered by dedicated tests (304-then-cache,
+   network-throw-then-cache; the non-OK path isn't separately unit-tested by the brief's suite but
+   shares the identical `getCachedPolicy()` call as the 304 path, so it's covered by inspection).
+3. **Does `sendAccessRequest` send `pseudo_id` and never a name or email?** Confirmed. Request
+   body is exactly `{ pseudo_id: enrolment.pseudo_id, llm_id: llmId, reason }`. `Enrolment` (from
+   `types.ts`, Task 1) has no `name` or `email` field at all — "no name, no email — the server never
+   issues one, so there is nothing here to leak," per that file's own doc comment — so there is
+   nothing for this function to leak even by a future accidental field addition to the request
+   body literal.
+
+## What was changed from the brief, and why
+
+Nothing. Both `client.ts` and `policy-client.test.ts` were used verbatim, including the
+already-applied 304/`null`-body test correction (`new Response(null, { status: 304 })`), which was
+left untouched exactly as instructed.
+
+## Commit hygiene
+
+Staged only the two files belonging to this task via explicit paths (not `git add -A`). The
+working tree had substantial unrelated churn under `.superpowers/sdd/` at commit time — from other
+task sessions running concurrently against the same repo (modifications to `task-1-*`/`task-2-*`
+briefs and reports, deletions of `task-4-brief.md` through `task-14-brief.md`). None of that was
+touched, staged, or committed by this task. `git show --stat HEAD` confirms the commit contains
+only the two intended files, 192 insertions, no deletions.
+
+## Concerns
+
+- **File-path collision, not a code concern:** this report file (`task-3-report.md`) already held
+  a report for a different "Task 3" from what appears to be an earlier or parallel plan (Plan A?),
+  about offscreen-document NER — unrelated to the policy client. Appended rather than overwrote, to
+  avoid destroying that prior record; flagging in case the orchestrating session expected a clean
+  file and needs to reconcile the two plans' task numbering.
+- **Unrelated in-flight changes in the working tree** (see Commit hygiene above) — not introduced
+  by this task, left as found, noted so the orchestrating session is aware they're sitting there
+  uncommitted.
+- No concerns with the implementation itself — all six new tests and the full 168-test suite pass,
+  and all three specifically-requested review points check out by direct code inspection.
+
+---
+
+# Test-coverage closure: non-OK response and unenrolled guardrails (2026-07-20)
+
+**Status: DONE**
+
+- **Commit:** `de8fec3` — `test: cover non-OK response and unenrolled guardrails in policy-client`
+- **Author:** `HongHanTan <jasonthh123@gmail.com>`, no `Co-Authored-By` trailer
+- **File:** `code/extension/tests/policy-client.test.ts` (2 new tests added)
+
+## Finding 1: Non-OK response path (HTTP 5xx) untested
+
+**The gap:** `refreshPolicy()` has three independent failure fallback paths, all returning cached policy per ADR 0014:
+- (a) HTTP 304 → cached policy ✅ TESTED
+- (b) non-OK response (e.g. 500) → cached policy ❌ **NOT TESTED** (this gap)
+- (c) thrown fetch → cached policy ✅ TESTED
+
+The `if (!response.ok) return await getCachedPolicy();` line (client.ts:64) could be deleted or inverted and the test suite would still pass 6/6.
+
+**Test added:** Seeds both `vg_enrolment` and `vg_policy`; stubs fetch to return `{ status: 500 }`; asserts `refreshPolicy()` returns cached policy with `version === 1`.
+
+**Negative control (FAIL proof):**
+```
+$ git checkout HEAD -- src/policy/client.ts
+$ edit: delete line 64 (if (!response.ok) ...)
+$ npx vitest run tests/policy-client.test.ts
+FAIL  | returns the cached policy when the response is not OK
+AssertionError: expected undefined to be 1
+```
+Failure: test asserts `?.version` but got `undefined` (function parsed 500 as JSON, failed, returned nothing). ✅ Test catches the bug.
+
+**Restore:** re-added line 64, confirmed all 8/8 pass.
+
+## Finding 2: Unenrolled sendAccessRequest throws without network call
+
+**The gap:** `sendAccessRequest()` guards against unenrolled callers with `if (!enrolment) throw new Error('Not enrolled.')` (client.ts:76) — a binding safety check — and that branch has no test.
+
+**Test added:** Does NOT seed `vg_enrolment`; stubs fetch; asserts `sendAccessRequest()` rejects with `'Not enrolled.'` message; asserts fetch was never called.
+
+**Negative control (FAIL proof):**
+```
+$ git checkout HEAD -- src/policy/client.ts
+$ edit: delete line 76 (if (!enrolment) throw ...)
+$ npx vitest run tests/policy-client.test.ts
+FAIL  | throws when not enrolled
+AssertionError: expected to throw 'Not enrolled.' but got 'Cannot read properties of null (reading 'pseudo_id')'
+```
+Failure: without the guard, code tries to read `enrolment.pseudo_id` on `null`, throwing a different error. ✅ Test catches the bug.
+
+**Restore:** re-added line 76, confirmed all 8/8 pass.
+
+## Full suite result
+
+```
+$ npx vitest run
+Test Files  31 passed (31)
+     Tests  170 passed (170)
+```
+
+168 (baseline from Task 2, policy-client.test.ts initial 6 tests) + 2 (new tests) = 170. No regressions.
+All tests in `tests/policy-client.test.ts` now pass 8/8 (6 existing + 2 new).
+
+## Verification checklist
+
+- ✅ Existing implementation (`src/policy/client.ts`) is **unmodified** and **unmodified** after all negative controls (git status confirmed).
+- ✅ `npm vitest run tests/policy-client.test.ts` → 8 passing (6 existing + 2 new).
+- ✅ Negative control 1 (non-OK): deleted line 64 → test FAILS with `expected undefined to be 1`; restored → passes.
+- ✅ Negative control 2 (unenrolled): deleted line 76 → test FAILS with wrong error message; restored → passes.
+- ✅ Full suite: 170/170 passing (31 files, no regressions).
+- ✅ Commit message explains which architectural guarantee the new tests cover (ADR 0014: dead service never blocks).

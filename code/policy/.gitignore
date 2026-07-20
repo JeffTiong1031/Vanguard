@@ -1,0 +1,11 @@
+*.egg-info/
+__pycache__/
+.pytest_cache/
+.venv/
+policy.db
+app/static/
+
+# Local demo credentials — regenerated per policy.db, never commit
+DEMO-TOKENS.md
+server.log
+jar.txt
