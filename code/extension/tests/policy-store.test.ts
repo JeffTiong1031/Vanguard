@@ -34,6 +34,7 @@ describe('policy store', () => {
   it('round-trips an enrolment', async () => {
     await saveEnrolment(enrolment, policy);
     expect(await getEnrolment()).toEqual(enrolment);
+    expect(await getCachedPolicy()).toEqual(policy);
   });
 
   it('returns null before enrolment rather than throwing', async () => {
