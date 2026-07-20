@@ -1,0 +1,17 @@
+# scripts/check-dist-drift.mjs compares committed dist/ against a fresh build
+# byte-for-byte (sha256 per file). With core.autocrlf=true on Windows, git
+# rewrites LF to CRLF on checkout while the build emits LF, so every text file
+# reads as drifted when nothing actually changed. Worse, a CRLF *input* is
+# copied into dist verbatim, so the drift survives rebuilding.
+#
+# Pin every build input and output to LF so the hash comparison is honest and
+# a Windows build matches a Linux one.
+
+# Build output, hashed by the drift check.
+dist/** -text
+
+# Copied verbatim into dist/ by WXT.
+public/** -text
+
+# Processed into dist/ by WXT; their line endings survive into the output.
+entrypoints/**/*.html eol=lf
