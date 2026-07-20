@@ -4,3 +4,8 @@ __pycache__/
 .venv/
 policy.db
 app/static/
+
+# Local demo credentials — regenerated per policy.db, never commit
+DEMO-TOKENS.md
+server.log
+jar.txt
