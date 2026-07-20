@@ -117,6 +117,64 @@ def test_deciding_a_request_approves_the_tool_and_bumps_the_version():
     assert after > before
 
 
+def test_setting_an_unknown_tool_is_404_and_does_not_bump_the_version():
+    """The UPDATE in set_tool matches zero rows for a made-up llm_id --
+    previously that was silently treated as success and the version bumped
+    anyway, so every enrolled extension discarded a valid cache and
+    refetched a byte-identical policy. Mirrors POST /v1/requests, which
+    already 404s an unknown llm_id."""
+    c = _login()
+    org_id = bootstrap_demo()
+    before = get_conn().execute(
+        "SELECT policy_version AS v FROM orgs WHERE id = ?", (org_id,)
+    ).fetchone()["v"]
+
+    r = c.post("/v1/admin/tools/NOT_A_TOOL", json={"status": "approved"})
+    assert r.status_code == 404
+
+    after = get_conn().execute(
+        "SELECT policy_version AS v FROM orgs WHERE id = ?", (org_id,)
+    ).fetchone()["v"]
+    assert after == before
+
+
+def test_deciding_an_already_decided_request_is_409_and_does_not_re_decide():
+    """A decided request must not be decidable again -- the console hides the
+    buttons on decided rows, but authority is server-side, so the server
+    itself must refuse a second decision rather than rely on the client not
+    offering one. Denied-then-approved must not flip a denial into an
+    approval, and the version must not move on the rejected second call."""
+    c = _login()
+    pid = _pseudo_id()
+    req_id = client.post("/v1/requests", json={
+        "pseudo_id": pid, "llm_id": "xai", "reason": "first pass",
+    }).json()["id"]
+
+    first = c.post(f"/v1/admin/requests/{req_id}", json={"decision": "denied"})
+    assert first.status_code == 200
+
+    org_id = bootstrap_demo()
+    before_status = get_conn().execute(
+        "SELECT status FROM access_requests WHERE id = ?", (req_id,)
+    ).fetchone()["status"]
+    before_version = get_conn().execute(
+        "SELECT policy_version AS v FROM orgs WHERE id = ?", (org_id,)
+    ).fetchone()["v"]
+
+    second = c.post(f"/v1/admin/requests/{req_id}", json={"decision": "approved"})
+    assert second.status_code == 409
+
+    after_status = get_conn().execute(
+        "SELECT status FROM access_requests WHERE id = ?", (req_id,)
+    ).fetchone()["status"]
+    after_version = get_conn().execute(
+        "SELECT policy_version AS v FROM orgs WHERE id = ?", (org_id,)
+    ).fetchone()["v"]
+
+    assert after_status == before_status == "denied"
+    assert after_version == before_version
+
+
 def test_usage_aggregates_by_department_and_category():
     c = _login()
     pid = _pseudo_id()

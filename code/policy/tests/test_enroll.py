@@ -2,7 +2,8 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from app.main import app, bootstrap_demo, get_conn
+from app.deps import get_conn
+from app.main import app, bootstrap_demo
 from app.security import new_token, now_iso
 
 client = TestClient(app)

@@ -95,10 +95,15 @@ async def set_tool(
     if status not in ("approved", "blocked"):
         raise HTTPException(status_code=422, detail="status must be approved or blocked")
     conn = get_conn()
-    conn.execute(
+    cur = conn.execute(
         "UPDATE org_llm_policy SET status = ? WHERE org_id = ? AND llm_id = ?",
         (status, org_id, llm_id),
     )
+    if cur.rowcount == 0:
+        # No row matched -- either llm_id doesn't exist or this org has no
+        # policy row for it. Either way nothing changed, so nothing to
+        # commit and nothing to bump: a no-op write must not look like one.
+        raise HTTPException(status_code=404, detail="unknown tool")
     conn.commit()
     # Changes what GET /v1/policy serves for this org -- bump.
     return {"version": bump_policy_version(conn, org_id)}
@@ -191,14 +196,26 @@ async def decide_request(
         raise HTTPException(status_code=422, detail="decision must be approved or denied")
     conn = get_conn()
     row = conn.execute(
-        "SELECT llm_id FROM access_requests WHERE id = ? AND org_id = ?",
+        "SELECT llm_id FROM access_requests WHERE id = ? AND org_id = ? AND status = 'pending'",
         (request_id, org_id),
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="unknown request")
+        # Distinguish "no such request" (404) from "exists, already decided"
+        # (409) -- the console is a view, so the server must not silently
+        # accept a re-decision the client merely declined to offer. A denied
+        # request re-posted as "approved" must not flip, and a decided
+        # request re-posted with the SAME decision must not double-bump.
+        exists = conn.execute(
+            "SELECT 1 FROM access_requests WHERE id = ? AND org_id = ?",
+            (request_id, org_id),
+        ).fetchone()
+        if exists is None:
+            raise HTTPException(status_code=404, detail="unknown request")
+        raise HTTPException(status_code=409, detail="request already decided")
 
     conn.execute(
-        "UPDATE access_requests SET status = ?, decided_at = ? WHERE id = ? AND org_id = ?",
+        "UPDATE access_requests SET status = ?, decided_at = ?"
+        " WHERE id = ? AND org_id = ? AND status = 'pending'",
         (decision, now_iso(), request_id, org_id),
     )
     if decision == "approved":
