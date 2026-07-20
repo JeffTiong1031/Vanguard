@@ -1,15 +1,52 @@
+/** Typed error classes for programmatic error handling. */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+export class UnauthorisedError extends ApiError {
+  constructor() {
+    super('unauthorised', 401);
+    this.name = 'UnauthorisedError';
+  }
+}
+
+export class NetworkError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
 /** Typed fetch wrapper. `credentials: 'include'` carries the HttpOnly session
  *  cookie the admin login sets — the console never holds a token itself. */
 async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
-  const response = await fetch(path, {
-    method,
-    credentials: 'include',
-    headers: body ? { 'content-type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (response.status === 401) throw new Error('unauthorised');
-  if (!response.ok) throw new Error(`${method} ${path} failed: ${response.status}`);
-  return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method,
+      credentials: 'include',
+      headers: body ? { 'content-type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    throw new NetworkError(`Could not reach the policy service. Is it running? (${err instanceof Error ? err.message : String(err)})`);
+  }
+
+  if (response.status === 401) throw new UnauthorisedError();
+  if (!response.ok) throw new ApiError(`${method} ${path} failed: ${response.status}`, response.status);
+
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return undefined as T;
+  }
+
+  try {
+    return (await response.json()) as T;
+  } catch (err) {
+    return undefined as T;
+  }
 }
 
 export const api = {

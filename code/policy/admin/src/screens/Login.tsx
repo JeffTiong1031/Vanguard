@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { api } from '../api';
+import { api, UnauthorisedError, NetworkError } from '../api';
 
 export function Login({ onDone }: { onDone: (org: string) => void }) {
   const [orgName, setOrgName] = useState('Acme Corp');
@@ -14,8 +14,16 @@ export function Login({ onDone }: { onDone: (org: string) => void }) {
         org_name: orgName, password,
       });
       onDone(r.org_name);
-    } catch {
-      setError('Organisation or password not recognised.');
+    } catch (err) {
+      if (err instanceof UnauthorisedError) {
+        setError('Organisation or password not recognised.');
+      } else if (err instanceof NetworkError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        setError(`Service error: ${err.message}`);
+      } else {
+        setError('An unexpected error occurred.');
+      }
     }
   }
 
