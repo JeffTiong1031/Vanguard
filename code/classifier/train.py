@@ -75,7 +75,7 @@ def train(rows: list[Row]) -> tuple[FeatureUnion, dict[str, LinearSVC]]:
         y = [1 if r["label"] == category else 0 for r in rows]
         # class_weight balanced: negatives outnumber each category ~10:1, and
         # without it the model learns to always say no.
-        model = LinearSVC(C=1.0, class_weight="balanced", max_iter=5000)
+        model = LinearSVC(C=1.0, class_weight="balanced", max_iter=5000, random_state=0)
         model.fit(x, y)
         models[category] = model
     return union, models

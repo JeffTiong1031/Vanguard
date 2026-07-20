@@ -55,13 +55,11 @@ def main() -> None:
         })
 
     def branch(vectorizer, offset: int) -> dict:
-        """Emit only vocabulary entries some category actually uses."""
         vocab, idf = {}, {}
         for term, index in vectorizer.vocabulary_.items():
             global_index = int(index) + offset
-            if global_index in kept_indices:
-                vocab[term] = global_index
-                idf[str(global_index)] = round(float(vectorizer.idf_[index]), 6)
+            vocab[term] = global_index
+            idf[str(global_index)] = round(float(vectorizer.idf_[index]), 6)
         return {"vocab": vocab, "idf": idf}
 
     model = {

@@ -41,9 +41,15 @@ export function charWbNgrams(text: string, min = 3, max = 5): string[] {
   const out: string[] = [];
   for (const word of words) {
     const padded = ` ${word} `;
-    for (let n = min; n <= max; n++) {
-      if (padded.length < n) { out.push(padded); continue; }
-      for (let i = 0; i + n <= padded.length; i++) out.push(padded.slice(i, i + n));
+    if (padded.length < min) {
+      out.push(padded);
+      continue;
+    }
+    const maxN = Math.min(max, padded.length);
+    for (let n = min; n <= maxN; n++) {
+      for (let i = 0; i + n <= padded.length; i++) {
+        out.push(padded.slice(i, i + n));
+      }
     }
   }
   return out;
