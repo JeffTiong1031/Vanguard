@@ -19,3 +19,7 @@ hard-negative gate:
   clean — 34 hard negatives, none fired
 
 PASS
+
+- Exported model: **450 KB** — measured by `export.py`, not estimated.
+- Coefficients kept per category: 3000 (pruned by magnitude; `evaluate.py` re-run
+  against the pruned model and the hard-negative gate stayed clean).
