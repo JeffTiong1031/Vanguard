@@ -1,14 +1,22 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, UnauthorisedError, type RequestRow } from '../api';
 
 export function Requests() {
   const [rows, setRows] = useState<RequestRow[]>([]);
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
+  // Monotonic counter to discard stale poll responses. When the admin clicks Approve,
+  // decide() calls load(), which resolves; but the poll's response may still be in flight
+  // and arrive after. A later load increments seq, so if the poll response lands after
+  // a newer load has started, it is discarded. Prevents a flickering revert of an
+  // approved row back to pending.
+  const seq = useRef(0);
 
   async function load() {
+    const mine = ++seq.current;
     try {
       const data = await api.get<RequestRow[]>('/v1/admin/requests');
+      if (mine !== seq.current) return;   // a newer load started; this response is stale
       setRows(data);
       setError('');
     } catch (err) {

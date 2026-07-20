@@ -6,7 +6,18 @@ export function Tools() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
 
-  async function load() { setTools(await api.get<Tool[]>('/v1/admin/tools')); }
+  async function load() {
+    try {
+      setTools(await api.get<Tool[]>('/v1/admin/tools'));
+      setError('');
+    } catch (err) {
+      // Let the shell handle session expiry -- swallowing it here would
+      // break the unhandledrejection-driven 401 bounce in main.tsx.
+      if (err instanceof UnauthorisedError) throw err;
+      setError(err instanceof Error ? err.message : 'Could not load tools.');
+    }
+  }
+
   useEffect(() => { void load(); }, []);
 
   async function toggle(tool: Tool) {

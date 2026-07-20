@@ -9,7 +9,18 @@ export function Tokens() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
 
-  async function load() { setRows(await api.get<TokenRow[]>('/v1/admin/tokens')); }
+  async function load() {
+    try {
+      setRows(await api.get<TokenRow[]>('/v1/admin/tokens'));
+      setError('');
+    } catch (err) {
+      // Let the shell handle session expiry -- swallowing it here would
+      // break the unhandledrejection-driven 401 bounce in main.tsx.
+      if (err instanceof UnauthorisedError) throw err;
+      setError(err instanceof Error ? err.message : 'Could not load tokens.');
+    }
+  }
+
   useEffect(() => { void load(); }, []);
 
   async function mint() {
