@@ -89,11 +89,13 @@ def bootstrap_demo(name: str = "Acme Corp", password: str = "vanguard") -> str:
     return org_id
 
 
-from app.routes import enroll as _enroll  # noqa: E402  (import after `app` exists)
+from app.routes import admin as _admin  # noqa: E402  (import after `app` exists)
+from app.routes import enroll as _enroll  # noqa: E402
 from app.routes import events as _events  # noqa: E402
 from app.routes import policy as _policy  # noqa: E402
 from app.routes import requests as _requests  # noqa: E402
 
+app.include_router(_admin.router)
 app.include_router(_enroll.router)
 app.include_router(_events.router)
 app.include_router(_policy.router)
