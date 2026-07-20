@@ -84,3 +84,85 @@ def test_the_422_body_does_not_echo_the_reason_text():
     })
     assert r.status_code == 422
     assert "SECRET" not in r.text
+
+
+def test_two_employees_requesting_same_tool_get_separate_rows():
+    """Dedup must consider both employee_id AND llm_id independently."""
+    pid1 = _pseudo_id(department="Engineering")
+    pid2 = _pseudo_id(department="Engineering")
+
+    # Both request the same tool
+    payload = {"llm_id": "perplexity", "reason": "Need it for translation QA"}
+    first = client.post("/v1/requests", json={**payload, "pseudo_id": pid1}).json()["id"]
+    second = client.post("/v1/requests", json={**payload, "pseudo_id": pid2}).json()["id"]
+
+    # They must get different IDs
+    assert first != second
+
+    # Both rows must exist in the database (filtering by both employees and tool)
+    all_rows = get_conn().execute(
+        "SELECT access_requests.id FROM access_requests"
+        " JOIN employees ON employees.id = access_requests.employee_id"
+        " WHERE (employees.pseudo_id = ? OR employees.pseudo_id = ?)"
+        " AND access_requests.llm_id = ? AND access_requests.status = 'pending'",
+        (pid1, pid2, "perplexity"),
+    ).fetchall()
+    assert len(all_rows) == 2
+
+
+def test_one_employee_requesting_two_tools_gets_separate_rows():
+    """Dedup must consider both employee_id AND llm_id independently."""
+    pid = _pseudo_id()
+
+    # Same employee requests two different tools
+    payload1 = {"pseudo_id": pid, "llm_id": "google", "reason": "Translation QA"}
+    payload2 = {"pseudo_id": pid, "llm_id": "perplexity", "reason": "Research"}
+
+    first = client.post("/v1/requests", json=payload1).json()["id"]
+    second = client.post("/v1/requests", json=payload2).json()["id"]
+
+    # They must get different IDs
+    assert first != second
+
+    # Both rows must exist for this employee
+    all_rows = get_conn().execute(
+        "SELECT access_requests.id FROM access_requests"
+        " JOIN employees ON employees.id = access_requests.employee_id"
+        " WHERE employees.pseudo_id = ? AND access_requests.status = 'pending'",
+        (pid,),
+    ).fetchall()
+    assert len(all_rows) == 2
+
+
+def test_denied_request_can_be_re_requested():
+    """After a request is denied, the employee can raise a fresh one."""
+    pid = _pseudo_id()
+    payload = {"pseudo_id": pid, "llm_id": "microsoft", "reason": "Code review"}
+
+    # Create initial request
+    first_id = client.post("/v1/requests", json=payload).json()["id"]
+
+    # Manually update its status to denied in the database
+    get_conn().execute(
+        "UPDATE access_requests SET status = 'denied' WHERE id = ?",
+        (first_id,),
+    )
+    get_conn().commit()
+
+    # Employee re-requests the same tool
+    second_id = client.post("/v1/requests", json=payload).json()["id"]
+
+    # Should get a NEW id (not the denied one)
+    assert first_id != second_id
+
+    # Both rows must exist: the denied one and the new pending one
+    all_rows = get_conn().execute(
+        "SELECT id, status FROM access_requests"
+        " WHERE employee_id = ("
+        "   SELECT id FROM employees WHERE pseudo_id = ?"
+        " ) AND llm_id = ?",
+        (pid, "microsoft"),
+    ).fetchall()
+    assert len(all_rows) == 2
+    statuses = {row["status"] for row in all_rows}
+    assert statuses == {"denied", "pending"}
