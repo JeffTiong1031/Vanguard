@@ -100,3 +100,12 @@ app.include_router(_enroll.router)
 app.include_router(_events.router)
 app.include_router(_policy.router)
 app.include_router(_requests.router)
+
+from pathlib import Path  # noqa: E402
+
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+_STATIC = Path(__file__).parent / "static"
+if _STATIC.exists():
+    # Registered LAST so /v1/* and /healthz resolve first.
+    app.mount("/", StaticFiles(directory=str(_STATIC), html=True), name="console")
