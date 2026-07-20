@@ -81,7 +81,13 @@ async def healthz() -> dict[str, bool]:
 def bootstrap_demo(name: str = "Acme Corp", password: str = "vanguard") -> str:
     """Create the demo org if the database has none. Called by scripts/seed.py."""
     conn = get_conn()
-    row = conn.execute("SELECT id FROM orgs LIMIT 1").fetchone()
+    # ORDER BY rowid, not a bare LIMIT 1. Without it SQLite may return ANY
+    # org once a second one exists, so "the demo org" silently became
+    # whichever row the planner happened to reach -- which is how a test
+    # reset one org's policy and then enrolled into a different one. There
+    # is one org in a real demo, so this only ever bites in a suite that
+    # makes a second; that is exactly when a wrong answer is hardest to see.
+    row = conn.execute("SELECT id FROM orgs ORDER BY rowid LIMIT 1").fetchone()
     if row:
         return row["id"]
     org_id = seed_demo_org(conn, name, password)

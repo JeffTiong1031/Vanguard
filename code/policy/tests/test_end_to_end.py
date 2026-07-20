@@ -22,26 +22,32 @@ admin = TestClient(app)
 
 
 def test_the_whole_demo_sequence():
-    org_id = bootstrap_demo("Acme Corp", "vanguard")
+    bootstrap_demo("Acme Corp", "vanguard")
 
-    # app/deps.py's connection is a process-wide singleton, so every test
-    # file in this run shares one "Acme Corp" org -- and test_admin.py's own
-    # tests legitimately approve "google" as part of exercising that route,
-    # leaving it approved for whichever test runs next. Force the seeded
-    # "blocked" state back explicitly so this test's own walkthrough (block
-    # -> request -> approve) describes what THIS test does, not an accident
-    # of file ordering. This is setup, the same "reach into the connection
-    # directly" idiom test_admin.py already uses -- not a workaround for a
-    # production defect.
+    # Log in FIRST, and take the org id from the login response rather than
+    # from bootstrap_demo(). app/deps.py's connection is a process-wide
+    # singleton, so every test file shares one database -- and test_admin.py
+    # creates a SECOND org ("Umbrella Corp") while exercising cross-org
+    # isolation. Resolving the org any way other than "the one this test
+    # actually authenticates as" reset one org's policy and then enrolled
+    # into another, which is precisely the bug this ordering avoids.
+    login = admin.post("/v1/admin/login", json={
+        "org_name": "Acme Corp", "password": "vanguard",
+    })
+    assert login.status_code == 200
+    org_id = login.json()["org_id"]
+
+    # test_admin.py legitimately approves "google" as part of exercising that
+    # route, leaving it approved for whichever test runs next. Force the
+    # seeded "blocked" state back so this walkthrough (block -> request ->
+    # approve) describes what THIS test does, not an accident of file
+    # ordering. Setup, using the same direct-connection idiom test_admin.py
+    # already uses -- not a workaround for a production defect.
     get_conn().execute(
         "UPDATE org_llm_policy SET status = 'blocked' WHERE org_id = ? AND llm_id = 'google'",
         (org_id,),
     )
     get_conn().commit()
-
-    assert admin.post("/v1/admin/login", json={
-        "org_name": "Acme Corp", "password": "vanguard",
-    }).status_code == 200
 
     # The admin client now carries a session cookie. The employee client
     # never logs in and never will -- if any admin route were reachable
