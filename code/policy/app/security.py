@@ -41,15 +41,15 @@ def hash_password(pw: str) -> str:
 def verify_password(pw: str, stored: str) -> bool:
     try:
         scheme, salt_hex, want_hex = stored.split("$")
+        if scheme != "scrypt":
+            return False
+        got = hashlib.scrypt(
+            pw.encode(), salt=bytes.fromhex(salt_hex),
+            n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P,
+        )
+        return secrets.compare_digest(got.hex(), want_hex)
     except ValueError:
         return False
-    if scheme != "scrypt":
-        return False
-    got = hashlib.scrypt(
-        pw.encode(), salt=bytes.fromhex(salt_hex),
-        n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P,
-    )
-    return secrets.compare_digest(got.hex(), want_hex)
 
 
 def issue_session(conn: sqlite3.Connection, org_id: str) -> str:
