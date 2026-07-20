@@ -72,7 +72,7 @@ class UsageEvent(BaseModel):
             return v
         if len(v) != 64 or any(c not in "0123456789abcdef" for c in v.lower()):
             raise ValueError("finding_hash must be a 64-character hex digest")
-        return v
+        return v.lower()
 
 
 class EventBatch(BaseModel):
