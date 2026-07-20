@@ -1,5 +1,15 @@
 import { pickAdapter } from '../src/adapters/registry';
 import { recordFindings, recordIgnore } from '../src/audit/audit';
+import type { GovernanceEvent } from '../src/policy/types';
+import type { PolicyRequest } from '../src/policy/messages';
+
+/** Fire-and-forget. A governance event must never delay the gate, and a policy
+ *  service that is down must never stop someone sending a prompt (ADR 0014). */
+function emitGovernance(event: GovernanceEvent): void {
+  void (chrome.runtime.sendMessage({ kind: 'policy-event', event } satisfies PolicyRequest)
+    .catch(() => undefined));
+}
+
 import { sha256Hex } from '../src/detection/hash';
 import { scanInto } from '../src/detection/scan';
 import { VerdictCache } from '../src/detection/verdict-cache';
@@ -128,6 +138,16 @@ export default defineContentScript({
         // case. Silent re-attach felt like "nothing happened" and skipped the
         // same Proceed confirmation dirty files get. Attach only on Proceed.
         if (!promptDirty && !files.hasHeld()) return;
+
+        // I3: the CLASS of each finding and a count. Never the matched text.
+        for (const finding of promptDirty ? verdict!.findings : []) {
+          emitGovernance({
+            host: location.hostname,
+            type: 'pii_block',
+            category: finding.cls,
+            ts: new Date().toISOString(),
+          });
+        }
 
         showModal({
           text,
