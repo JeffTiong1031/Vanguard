@@ -1,24 +1,49 @@
 import { useEffect, useState } from 'preact/hooks';
-import { api, type TokenRow } from '../api';
+import { api, UnauthorisedError, type TokenRow } from '../api';
 
 export function Tokens() {
   const [rows, setRows] = useState<TokenRow[]>([]);
   const [department, setDepartment] = useState('Engineering');
   const [minted, setMinted] = useState('');
+  // '' | 'mint' | the id of the row being revoked
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
 
   async function load() { setRows(await api.get<TokenRow[]>('/v1/admin/tokens')); }
   useEffect(() => { void load(); }, []);
 
   async function mint() {
-    const r = await api.post<{ token: string }>('/v1/admin/tokens', { department });
-    setMinted(r.token);   // shown once; the server stores only its hash, so this
-                           // is the only chance to see the plaintext at all
-    await load();
+    setBusy('mint');
+    setError('');
+    try {
+      const r = await api.post<{ token: string }>('/v1/admin/tokens', { department });
+      setMinted(r.token);   // shown once; the server stores only its hash, so this
+                             // is the only chance to see the plaintext at all
+      await load();
+    } catch (err) {
+      // Let the shell handle session expiry -- swallowing it here would
+      // break the unhandledrejection-driven 401 bounce in main.tsx.
+      if (err instanceof UnauthorisedError) throw err;
+      setError(err instanceof Error ? err.message : 'Could not mint a token.');
+    } finally {
+      // Always clear busy, whatever happened above -- a 5xx or a dropped
+      // connection must not leave the button permanently disabled.
+      setBusy('');
+    }
   }
 
   async function revoke(id: string) {
-    await api.post(`/v1/admin/tokens/${id}/revoke`);
-    await load();
+    setBusy(id);
+    setError('');
+    try {
+      await api.post(`/v1/admin/tokens/${id}/revoke`);
+      await load();
+    } catch (err) {
+      if (err instanceof UnauthorisedError) throw err;
+      setError(err instanceof Error ? err.message : 'Could not revoke the token.');
+    } finally {
+      setBusy('');
+    }
   }
 
   return (
@@ -29,8 +54,9 @@ export function Tokens() {
       <div>
         <input value={department}
                onInput={(e) => setDepartment((e.target as HTMLInputElement).value)} />
-        <button onClick={mint}>Mint token</button>
+        <button disabled={busy === 'mint'} onClick={mint}>Mint token</button>
       </div>
+      {error && <p class="error">{error}</p>}
       {minted && (
         <p class="card mint-result">
           <strong>Copy this token now — it will not be shown again.</strong><br />
@@ -58,7 +84,7 @@ export function Tokens() {
               </span></td>
               <td>
                 {!row.revoked && (
-                  <button onClick={() => revoke(row.id)}>Revoke</button>
+                  <button disabled={busy === row.id} onClick={() => revoke(row.id)}>Revoke</button>
                 )}
               </td>
             </tr>

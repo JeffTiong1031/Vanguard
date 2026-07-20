@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api, UnauthorisedError } from './api';
 import { Login } from './screens/Login';
 import { Tools } from './screens/Tools';
+import { Requests } from './screens/Requests';
 import { Tokens } from './screens/Tokens';
 import './style.css';
 
@@ -75,9 +76,9 @@ function App() {
         ))}
       </nav>
       <main>
-        {/* Requests and Usage land in Tasks 12-13. */}
+        {/* Usage lands in Task 13. */}
         {screen === 'tools' && <Tools />}
-        {screen === 'requests' && <p>Requests</p>}
+        {screen === 'requests' && <Requests />}
         {screen === 'usage' && <p>Usage</p>}
         {screen === 'tokens' && <Tokens />}
       </main>
