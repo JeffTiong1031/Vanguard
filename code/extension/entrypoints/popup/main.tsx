@@ -45,7 +45,7 @@ function Popup() {
     );
   }
 
-  const tool: Tool | undefined = toolForHost(policy, host);
+  const tool = toolForHost(policy, host);
 
   return (
     <div style="width:300px;padding:0;font:14px/1.5 system-ui,sans-serif">
