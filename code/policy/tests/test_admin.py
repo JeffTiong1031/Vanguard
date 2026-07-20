@@ -35,6 +35,30 @@ def test_login_with_the_wrong_password_is_401():
     assert r.status_code == 401
 
 
+def test_login_nonexistent_org_and_wrong_password_return_same_response():
+    """Both "no such org" and "wrong password" return 401 with an identical
+    body. This prevents user enumeration via timing side-channel: scrypt is
+    deliberately slow, so the absence of hash verification when the org does
+    not exist would make that case measurably faster. By always running the
+    KDF against a dummy hash, both failure modes take the same time."""
+    bootstrap_demo("Acme Corp", "vanguard")
+
+    # Nonexistent org
+    r_missing = client.post("/v1/admin/login", json={
+        "org_name": "Does Not Exist", "password": "any-password"
+    })
+
+    # Existing org, wrong password
+    r_wrong = client.post("/v1/admin/login", json={
+        "org_name": "Acme Corp", "password": "wrong"
+    })
+
+    # Both must return 401 with identical body
+    assert r_missing.status_code == 401
+    assert r_wrong.status_code == 401
+    assert r_missing.json() == r_wrong.json()
+
+
 def test_every_admin_route_refuses_an_unauthenticated_caller():
     fresh = TestClient(app)
     for method, path in [

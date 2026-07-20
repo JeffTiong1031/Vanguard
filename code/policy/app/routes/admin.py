@@ -28,7 +28,12 @@ from fastapi import APIRouter, Body, Cookie, HTTPException, Response
 from app.db import bump_policy_version
 from app.deps import get_conn
 from app.models import AdminLogin
-from app.security import issue_session, new_token, now_iso, session_org, verify_password
+from app.security import hash_password, issue_session, new_token, now_iso, session_org, verify_password
+
+# Compute dummy hash once at import time for timing-side-channel defense in login.
+# Always running the KDF eliminates the timing difference between "no such org" and
+# "wrong password" -- scrypt is deliberately slow, so its absence is itself a signal.
+_DUMMY_HASH = hash_password("dummy")
 
 router = APIRouter(prefix="/v1/admin")
 SESSION_COOKIE = "vg_admin"
@@ -47,7 +52,12 @@ async def login(body: AdminLogin, response: Response) -> dict[str, str]:
     row = conn.execute(
         "SELECT id, admin_password_hash FROM orgs WHERE name = ?", (body.org_name,)
     ).fetchone()
-    if row is None or not verify_password(body.password, row["admin_password_hash"]):
+    # Always run the KDF, even on a miss. Short-circuiting here would make
+    # "no such org" measurably faster than "wrong password" -- scrypt is
+    # deliberately slow, so the absence of that work is itself a signal.
+    stored = row["admin_password_hash"] if row else _DUMMY_HASH
+    ok = verify_password(body.password, stored)
+    if row is None or not ok:
         raise HTTPException(status_code=401, detail="invalid credentials")
     token = issue_session(conn, row["id"])
     response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax")
@@ -127,6 +137,23 @@ async def mint_token(
 
 @router.post("/tokens/{token_id}/revoke")
 async def revoke_token(token_id: str, vg_admin: str | None = Cookie(default=None)) -> dict[str, bool]:
+    """Revoke an enrolment token to prevent FUTURE enrolments.
+
+    Revoking a token marks it as revoked in the database, preventing new
+    employees from enrolling with that token. However, this endpoint does NOT
+    deprovisioning employees who already enrolled with the token -- employees
+    are keyed by (org_id, pseudo_id) and have no foreign key back to
+    enroll_tokens, so they continue polling indefinitely.
+
+    For a compliance product where "revoke" typically means cutting off access,
+    this is a gap. A real deprovisioning feature would require:
+    - A per-employee revocation mechanism to mark specific (org_id, pseudo_id)
+      pairs as inactive.
+    - A policy change so polling against a revoked employee returns a distinct
+      status signaling their access is cut.
+
+    For Phase 0 (demo), this limitation is acceptable; it must not be silent.
+    """
     org_id = _require_admin(vg_admin)
     conn = get_conn()
     conn.execute(
