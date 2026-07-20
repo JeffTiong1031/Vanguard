@@ -91,6 +91,15 @@ describe('refreshPolicy', () => {
     vi.stubGlobal('fetch', async () => { throw new Error('offline'); });
     expect((await refreshPolicy())?.version).toBe(1);
   });
+
+  it('returns the cached policy when the response is not OK, so a dead service never blocks anyone', async () => {
+    await chrome.storage.local.set({
+      vg_enrolment: { org_id: 'o1', org_name: 'A', pseudo_id: 'p1', department: 'Eng' },
+      vg_policy: policy,
+    });
+    vi.stubGlobal('fetch', async () => new Response('{}', { status: 500 }));
+    expect((await refreshPolicy())?.version).toBe(1);
+  });
 });
 
 describe('sendAccessRequest', () => {
@@ -104,5 +113,12 @@ describe('sendAccessRequest', () => {
     await sendAccessRequest('google', 'Translation QA');
     const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
     expect(body).toEqual({ pseudo_id: 'p1', llm_id: 'google', reason: 'Translation QA' });
+  });
+
+  it('throws when not enrolled', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(sendAccessRequest('google', 'Test')).rejects.toThrow('Not enrolled.');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
