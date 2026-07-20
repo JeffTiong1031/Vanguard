@@ -17,12 +17,25 @@ hashed audit ingest"* — that is **this** service. What was built under
 
 ## Run it
 
+🔴 **Build the console BEFORE starting the server. The order below is not a
+suggestion.** `app/static/` is git-ignored and only exists after `npm run
+build`; whether `/` serves the console is decided **once, at import time**
+(`app/main.py`, `_STATIC.exists()`). Start uvicorn first and `/` 404s until
+you **restart the process** -- finishing the build afterwards does not fix
+a server that already imported. On stage that reads as a broken product.
+
 ```bash
 python -m venv .venv && .venv/Scripts/pip install -e ".[dev]"
-cd admin && npm install && npm run build && cd ..
+cd admin && npm install && npm run build && cd ..   # MUST run before uvicorn starts
 .venv/Scripts/python scripts/seed.py          # prints the department tokens
 .venv/Scripts/python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
+
+If you started the server before building: build the console, then **restart**
+uvicorn -- reloading `/` in the browser is not enough. The server also logs a
+loud warning at startup (`console not built: ... / will 404 ...`) if it was
+launched with no build present, so a missing console is visible in the log,
+not just as a mysterious 404.
 
 `--host 0.0.0.0` is required for the two-laptop demo (spec §5.4).
 

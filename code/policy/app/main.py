@@ -115,3 +115,16 @@ _STATIC = Path(__file__).parent / "static"
 if _STATIC.exists():
     # Registered LAST so /v1/* and /healthz resolve first.
     app.mount("/", StaticFiles(directory=str(_STATIC), html=True), name="console")
+else:
+    # app/static/ is git-ignored -- it only exists after `npm run build` in
+    # admin/. This is evaluated ONCE at import time, so starting uvicorn
+    # before the build leaves / 404ing until the server is RESTARTED, not
+    # just until the build finishes. On stage that reads as a broken
+    # product, so this has to be loud enough that an operator notices it in
+    # a scrolling log, not a debug-level line nobody greps for.
+    log.warning(
+        "console not built: %s does not exist -- / will 404. "
+        "Run `npm run build` in admin/, then RESTART this server "
+        "(the mount is decided once, at import time).",
+        _STATIC,
+    )

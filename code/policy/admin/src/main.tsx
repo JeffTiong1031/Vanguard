@@ -32,10 +32,20 @@ function App() {
   // name is left alone -- that's not evidence the session is invalid, just
   // that this check couldn't complete -- and the user sees Login until a
   // retry (reload) succeeds.
+  //
+  // A REJECTED fetch falls through to Login correctly on its own, but a
+  // HUNG one (server unreachable mid-request, network stall) would leave
+  // this screen on "Checking session..." forever, with no retry available.
+  // Race the verification against a timeout so a hang degrades the same way
+  // a rejection does: back to Login, cached name left alone (the cookie may
+  // still be valid -- logging in again is cheap; being stuck is not
+  // recoverable without a reload).
   useEffect(() => {
     const cached = localStorage.getItem(ORG_KEY);
     if (!cached) return;
-    api.get('/v1/admin/tools')
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('session check timed out')), 5000));
+    Promise.race([api.get('/v1/admin/tools'), timeout])
       .then(() => { setOrg(cached); setChecking(false); })
       .catch((err) => {
         if (err instanceof UnauthorisedError) localStorage.removeItem(ORG_KEY);
