@@ -1,7 +1,10 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.requests import Request
 
 from app.deps import get_conn
 from app.seed import seed_demo_org
@@ -23,6 +26,42 @@ app.add_middleware(
     allow_headers=["content-type", "if-none-match", "x-vanguard-session"],
     expose_headers=["etag"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Return WHICH field was rejected, never WHAT was in it.
+
+    `UsageEvent` and `EnrollRequest` both set `extra="forbid"` so that a
+    field we never wanted stored (prompt text, an enrolment token typed
+    under the wrong key) gets a 422 instead of being written to SQLite or
+    our own logs. That defence has a hole FastAPI's DEFAULT handler doesn't
+    close: pydantic's `RequestValidationError.errors()` includes the
+    offending value verbatim under `input` -- for `extra_forbidden` that is
+    literally the rejected field's value, and for a `missing`-field error
+    it can be the *entire request body*, secret fields and all (proven
+    while testing this handler: a mistyped `token` key surfaces the whole
+    body, token included, under the `missing` error's `input`). FastAPI's
+    default handler serialises `errors()` straight into the response, so
+    the value that was never supposed to reach SQLite or our logs reaches
+    an HTTP response body instead -- exactly the kind of place a reverse
+    proxy, API gateway, or error-tracking SDK captures by default, per this
+    service's own posture on APM tools that capture bodies "and nobody
+    notices for six months."
+
+    Registered app-wide (not per-router): every model in `app/models.py`
+    that sets `extra="forbid"` is protected by construction, including ones
+    added later. `type`, `loc`, and `msg` are kept -- a developer still
+    needs to know WHICH field was rejected and WHY. Only `input` (and any
+    non-JSON-serialisable `ctx`, which some pydantic error kinds attach) is
+    stripped. Do not "simplify" this back to FastAPI's default handler: the
+    default is the vulnerability.
+    """
+    scrubbed = [
+        {k: v for k, v in error.items() if k not in ("input", "ctx")}
+        for error in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": scrubbed})
 
 
 @app.get("/healthz")

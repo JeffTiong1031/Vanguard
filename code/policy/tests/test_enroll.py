@@ -99,6 +99,33 @@ def test_pseudo_id_is_a_fresh_uuid4_not_derived_from_the_token():
     assert a != b
 
 
+def test_the_422_body_never_echoes_a_rejected_token_value():
+    """Critical: same defect as the events endpoint. `EnrollRequest` also sets
+    extra="forbid", and pydantic's default validation error embeds the
+    offending value verbatim. Reproduced two ways:
+
+    (a) the task's literal repro shape -- a valid token plus an extra
+    `department` field. The value that actually gets echoed here by pydantic
+    is the extra field's own value ("Executive"), so this is the genuine
+    RED-to-GREEN case for *this* endpoint's scrubbing.
+
+    (b) a client that mistypes the token's field name (a realistic bug) sends
+    the actual secret token value under an unrecognised key -- extra="forbid"
+    then echoes the enrolment token itself verbatim in `input`. This is the
+    scenario the finding names explicitly: "an enrolment token would come
+    back in a 422 body."
+    """
+    r = client.post("/v1/enroll", json={"token": "some-token-value", "department": "Executive"})
+    assert r.status_code == 422
+    assert "some-token-value" not in r.text
+    assert "Executive" not in r.text
+
+    SECRET_TOKEN = "ENG-9f3c7b1a2e4d5f60"
+    r2 = client.post("/v1/enroll", json={"toke": SECRET_TOKEN})
+    assert r2.status_code == 422
+    assert SECRET_TOKEN not in r2.text
+
+
 def test_two_different_tokens_same_department_get_different_pseudo_ids_and_correct_department():
     """Cross-check the department comes from each token's own row, not a shared default."""
     eng_token = _mint("Engineering")

@@ -47,6 +47,36 @@ def test_an_event_carrying_prompt_text_is_REJECTED_not_silently_ignored():
     assert r.status_code == 422
 
 
+def test_the_422_body_never_echoes_the_rejected_prompt_value():
+    """Critical: pydantic's default error includes `input` verbatim, and
+    FastAPI's default handler serialises it straight into the response body.
+    An `extra="forbid"` rejection must not become a secondary leak channel --
+    a reverse proxy, API gateway, or error-tracking SDK that captures response
+    bodies by default would otherwise walk away with the exact prompt text the
+    whole endpoint exists to keep out of storage.
+    """
+    pid = _enrolled_pseudo_id()
+    r = client.post("/v1/events", json={
+        "pseudo_id": pid,
+        "events": [_event(prompt=SECRET)],
+    })
+    assert r.status_code == 422
+    assert SECRET not in r.text
+
+
+def test_the_422_body_still_names_the_rejected_field():
+    """The fix must scrub the VALUE, not blind developers to WHICH field
+    failed and why -- `loc` and `msg` are still owed."""
+    pid = _enrolled_pseudo_id()
+    r = client.post("/v1/events", json={
+        "pseudo_id": pid,
+        "events": [_event(prompt=SECRET)],
+    })
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert any("prompt" in e.get("loc", []) for e in detail)
+
+
 def test_a_non_hex_finding_hash_is_rejected():
     pid = _enrolled_pseudo_id()
     r = client.post("/v1/events", json={
@@ -59,11 +89,18 @@ def test_a_non_hex_finding_hash_is_rejected():
 def test_no_event_payload_reaches_the_logs(caplog):
     import logging
     pid = _enrolled_pseudo_id()
+    DISTINCTIVE_CATEGORY = "nric-collision-canary"
+    DISTINCTIVE_HASH = "ab" * 32  # valid 64-hex finding_hash
     with caplog.at_level(logging.DEBUG):
-        client.post("/v1/events", json={"pseudo_id": pid, "events": [_event()]})
+        client.post("/v1/events", json={
+            "pseudo_id": pid,
+            "events": [_event(category=DISTINCTIVE_CATEGORY, finding_hash=DISTINCTIVE_HASH)],
+        })
     joined = "\n".join(r.getMessage() for r in caplog.records)
     assert SECRET not in joined
     assert "gemini.google.com" not in joined
+    assert DISTINCTIVE_CATEGORY not in joined
+    assert DISTINCTIVE_HASH not in joined
 
 
 def test_an_unknown_pseudo_id_is_401():
