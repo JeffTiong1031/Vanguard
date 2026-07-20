@@ -5,6 +5,10 @@ admin console at `/`.
 
 **Spec:** [`docs/superpowers/specs/2026-07-19-ai-governance-platform-design.md`](../../docs/superpowers/specs/2026-07-19-ai-governance-platform-design.md)
 
+> **Testing the whole product (backend + extension + ethics)?** The end-to-end
+> setup and test cases for Plans A + B + C live in
+> [`../extension/README.md`](../extension/README.md#ai-governance-platform-plans-a--b--c--setup--testing).
+
 ## The boundary with `backend/` — do not merge these
 
 `backend/` parses files and keeps nothing;

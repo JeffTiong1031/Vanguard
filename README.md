@@ -8,6 +8,8 @@ Stops employees leaking sensitive data into third-party LLM chat UIs (ChatGPT, C
 
 This repo is primarily **documents + a working team-test extension**, not a shipping product. Buyer = enterprise compliance officer ([ADR 0001](docs/adr/0001-buyer-is-the-compliance-officer.md)).
 
+> **Testing the AI governance platform** (policy service + tool approval workflow + on-device ethics classifier — Plans A/B/C on the `ethics-classifier` branch)? Its setup and test cases are in [`code/extension/README.md`](code/extension/README.md#ai-governance-platform-plans-a--b--c--setup--testing). The quick start below is the `main`-branch Slice 1/2 file-checking team test.
+
 ---
 
 ## Quick start — team test (Slice 1 + Slice 2)
