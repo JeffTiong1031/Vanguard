@@ -4,6 +4,7 @@ import { api, UnauthorisedError } from './api';
 import { Login } from './screens/Login';
 import { Tools } from './screens/Tools';
 import { Requests } from './screens/Requests';
+import { Usage } from './screens/Usage';
 import { Tokens } from './screens/Tokens';
 import './style.css';
 
@@ -76,10 +77,9 @@ function App() {
         ))}
       </nav>
       <main>
-        {/* Usage lands in Task 13. */}
         {screen === 'tools' && <Tools />}
         {screen === 'requests' && <Requests />}
-        {screen === 'usage' && <p>Usage</p>}
+        {screen === 'usage' && <Usage />}
         {screen === 'tokens' && <Tokens />}
       </main>
     </div>
