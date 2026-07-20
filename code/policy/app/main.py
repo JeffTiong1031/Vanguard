@@ -56,6 +56,15 @@ async def _validation_error(request: Request, exc: RequestValidationError) -> JS
     non-JSON-serialisable `ctx`, which some pydantic error kinds attach) is
     stripped. Do not "simplify" this back to FastAPI's default handler: the
     default is the vulnerability.
+
+    🔴 ONE OBLIGATION THIS HANDLER CANNOT DISCHARGE FOR YOU. `msg` is passed
+    through untouched, and a custom `field_validator` controls its text. If
+    you ever write `raise ValueError(f"bad reason: {v}")`, the value you
+    just refused travels out in `msg` and this scrubbing buys nothing.
+    Validators must describe the RULE, never quote the INPUT -- see
+    `finding_hash` in models.py, whose message names the expected format and
+    not the value it rejected. This matters most for free text the user
+    typed, such as `AccessRequestCreate.reason`.
     """
     scrubbed = [
         {k: v for k, v in error.items() if k not in ("input", "ctx")}
