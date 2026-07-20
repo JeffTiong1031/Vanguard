@@ -1,108 +1,206 @@
-### Task 1: WXT project that loads unpacked with a committed `dist/`
+## Task 1: Policy types, config, and the pure lookup
 
 **Files:**
-- Create: `code/extension/package.json`
-- Create: `code/extension/wxt.config.ts`
-- Create: `code/extension/tsconfig.json`
-- Create: `code/extension/entrypoints/background.ts`
-- Create: `code/extension/entrypoints/content.ts`
+- Create: `code/extension/src/policy/types.ts`
+- Create: `code/extension/src/policy/config.ts`
+- Create: `code/extension/src/policy/lookup.ts`
+- Test: `code/extension/tests/policy-lookup.test.ts`
 
 **Interfaces:**
-- Consumes: none
-- Produces: a buildable WXT extension; `npm run build` writes `dist/chrome-mv3/`
+- Consumes: nothing
+- Produces: types `Tool`, `Category`, `Policy`, `Enrolment` · `POLICY_CONFIG` · `toolForHost(policy, hostname) -> Tool | null` · `isApproved(policy, hostname) -> boolean`
 
-- [ ] **Step 1: Create `package.json`**
+Start with the pure function: it has every interesting edge case and needs no browser.
 
-```json
-{
-  "name": "vanguard-slice1",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "wxt",
-    "build": "wxt build",
-    "postbuild": "node scripts/check-dist-drift.mjs --write",
-    "check:dist": "node scripts/check-dist-drift.mjs",
-    "test": "vitest run"
-  },
-  "devDependencies": {
-    "wxt": "^0.19.0",
-    "typescript": "^5.5.0",
-    "vitest": "^2.0.0"
-  },
-  "dependencies": {
-    "@huggingface/transformers": "^3.0.0",
-    "preact": "^10.22.0"
-  }
+- [ ] **Step 1: Write the types**
+
+`code/extension/src/policy/types.ts`:
+
+```typescript
+/** Wire types, mirroring code/policy/app/models.py. If you change one, change both. */
+export type Tool = {
+  llm_id: string;
+  host: string;
+  display_name: string;
+  status: 'approved' | 'blocked';
+};
+
+export type Category = { key: string; label: string; enabled: boolean };
+
+export type Policy = {
+  org_id: string;
+  org_name: string;
+  version: number;
+  tools: Tool[];
+  categories: Category[];
+};
+
+/** What enrolment returns and what we persist. No name, no email — the server
+ *  never issues one, so there is nothing here to leak. */
+export type Enrolment = {
+  org_id: string;
+  org_name: string;
+  pseudo_id: string;
+  department: string;
+};
+
+export type GovernanceEventType =
+  | 'visit_unapproved' | 'warn_shown' | 'request_sent' | 'ethics_block' | 'pii_block';
+
+export type GovernanceEvent = {
+  host: string;
+  type: GovernanceEventType;
+  category?: string;
+  finding_hash?: string;
+  ts: string;
+};
+```
+
+- [ ] **Step 2: Write the config**
+
+`code/extension/src/policy/config.ts`:
+
+```typescript
+/**
+ * Policy-service settings. Every value that is a guess is tagged, matching
+ * src/files/config.ts: "the scaffold does not launder an estimate into a
+ * constant by writing it in code."
+ */
+export const POLICY_CONFIG = {
+  /** Content script asks the background this often. NOT a background timer --
+   *  the service worker is terminated after ~30s idle (U10), so it cannot hold
+   *  one. This message traffic is also what keeps the worker alive.
+   *
+   *  5s rather than the spec's 30s (estimate): the demo's pivotal beat is an
+   *  admin approving while the employee's tab is on screen, and 30s of dead air
+   *  kills it. Recorded as a deliberate deviation in the plan header. */
+  pollMs: 5_000,
+  /** Coalesce event bursts before shipping. Immediate-ish, because the usage
+   *  dashboard must reflect a block within a second or two on stage. (estimate) */
+  eventDebounceMs: 500,
+  /** A poll that hangs must not wedge the banner. (estimate) */
+  requestTimeoutMs: 8_000,
+} as const;
+
+const KEY = 'vg_policy_base';
+/** Overridden in the options page. Default matches Plan A's uvicorn port. */
+const DEFAULT_BASE = 'http://localhost:8001';
+
+export async function getPolicyBase(): Promise<string> {
+  const stored = (await chrome.storage.local.get(KEY))[KEY] as string | undefined;
+  return (stored || DEFAULT_BASE).replace(/\/+$/, '');
+}
+
+export async function setPolicyBase(base: string): Promise<void> {
+  await chrome.storage.local.set({ [KEY]: base.replace(/\/+$/, '') });
 }
 ```
 
-> **`[verify]`** the exact latest WXT (`^0.19`) and transformers.js (`^3`) majors at install time; pin the resolved versions in the lockfile and commit it.
+- [ ] **Step 3: Write the failing test**
 
-- [ ] **Step 2: Create `wxt.config.ts`**
+`code/extension/tests/policy-lookup.test.ts`:
 
-```ts
-import { defineConfig } from 'wxt';
+```typescript
+import { describe, it, expect } from 'vitest';
+import { isApproved, toolForHost } from '../src/policy/lookup';
+import type { Policy } from '../src/policy/types';
 
-export default defineConfig({
-  outDir: 'dist',
-  manifest: {
-    name: 'Vanguard (Slice 1)',
-    description: 'On-device prompt-privacy gate for ChatGPT and Claude. Team test build.',
-    version: '0.1.0',
-    permissions: ['storage', 'offscreen'],
-    host_permissions: ['https://chatgpt.com/*', 'https://claude.ai/*'],
-    // No webRequest (ADR 0017 §6.2). No <all_urls>. Two hosts only.
-  },
+const policy: Policy = {
+  org_id: 'o1', org_name: 'Acme Corp', version: 3,
+  tools: [
+    { llm_id: 'openai', host: 'chatgpt.com', display_name: 'ChatGPT', status: 'approved' },
+    { llm_id: 'google', host: 'gemini.google.com', display_name: 'Google Gemini', status: 'blocked' },
+  ],
+  categories: [],
+};
+
+describe('toolForHost', () => {
+  it('matches an exact host', () => {
+    expect(toolForHost(policy, 'chatgpt.com')?.llm_id).toBe('openai');
+  });
+  it('matches a subdomain of a registry host', () => {
+    expect(toolForHost(policy, 'www.chatgpt.com')?.llm_id).toBe('openai');
+  });
+  it('does NOT match a lookalike domain', () => {
+    // "notchatgpt.com".endsWith("chatgpt.com") is true — a naive endsWith is a
+    // real bug here, so the boundary must be a dot.
+    expect(toolForHost(policy, 'notchatgpt.com')).toBeNull();
+  });
+  it('returns null for a host that is not in the registry at all', () => {
+    expect(toolForHost(policy, 'example.com')).toBeNull();
+  });
+});
+
+describe('isApproved', () => {
+  it('is true for an approved tool', () => {
+    expect(isApproved(policy, 'chatgpt.com')).toBe(true);
+  });
+  it('is false for a blocked tool', () => {
+    expect(isApproved(policy, 'gemini.google.com')).toBe(false);
+  });
+  it('is true for a host we do not govern — we warn about known tools, not the whole web', () => {
+    expect(isApproved(policy, 'example.com')).toBe(true);
+  });
+  it('is true when there is no policy at all, so an unenrolled user is never blocked', () => {
+    expect(isApproved(null, 'gemini.google.com')).toBe(true);
+  });
 });
 ```
 
-- [ ] **Step 3: Create `tsconfig.json`**
+- [ ] **Step 4: Run it and watch it fail**
 
-```json
-{
-  "extends": "./.wxt/tsconfig.json",
-  "compilerOptions": { "strict": true, "noUncheckedIndexedAccess": true }
-}
-```
-
-- [ ] **Step 4: Minimal `background.ts` and `content.ts` so the build has entrypoints**
-
-```ts
-// entrypoints/background.ts
-export default defineBackground(() => {
-  console.info('[vanguard] background alive');
-});
-```
-
-```ts
-// entrypoints/content.ts
-export default defineContentScript({
-  matches: ['https://chatgpt.com/*', 'https://claude.ai/*'],
-  runAt: 'document_start',
-  world: 'ISOLATED',
-  main() {
-    console.info('[vanguard] content script alive on', location.hostname);
-  },
-});
-```
-
-- [ ] **Step 5: Install and build**
-
-Run:
 ```bash
-cd code/extension && npm install && npm run build
+cd code/extension && npx vitest run tests/policy-lookup.test.ts
 ```
-Expected: `dist/chrome-mv3/manifest.json` exists; no type errors.
 
-- [ ] **Step 6: Manual load check**
+Expected: `Failed to resolve import "../src/policy/lookup"`
 
-Load `code/extension/dist/chrome-mv3` unpacked in Chrome (Developer mode). Open `chatgpt.com` and `claude.ai`. Expected: `[vanguard] content script alive on chatgpt.com` / `claude.ai` in the page console, and `[vanguard] background alive` in the service-worker console.
+- [ ] **Step 5: Write `src/policy/lookup.ts`**
+
+```typescript
+import type { Policy, Tool } from './types';
+
+/**
+ * Find the registry entry governing a hostname.
+ *
+ * The dot boundary matters: a bare `endsWith('chatgpt.com')` also matches
+ * `notchatgpt.com`, which would hand an attacker-controlled domain the policy
+ * of a tool we approved.
+ */
+export function toolForHost(policy: Policy | null, hostname: string): Tool | null {
+  if (!policy) return null;
+  const host = hostname.toLowerCase();
+  return policy.tools.find(
+    (t) => host === t.host || host.endsWith(`.${t.host}`),
+  ) ?? null;
+}
+
+/**
+ * Governed and blocked → false. Everything else → true.
+ *
+ * An unknown host is approved by design: we warn about a curated set of known
+ * AI tools, not about the whole web. An unenrolled user is never warned at all.
+ */
+export function isApproved(policy: Policy | null, hostname: string): boolean {
+  const tool = toolForHost(policy, hostname);
+  return tool === null || tool.status === 'approved';
+}
+```
+
+- [ ] **Step 6: Run the tests**
+
+```bash
+npx vitest run tests/policy-lookup.test.ts
+```
+
+Expected: 8 passed.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add code/extension/package.json code/extension/wxt.config.ts code/extension/tsconfig.json code/extension/entrypoints code/extension/dist code/extension/package-lock.json
-git commit -m "feat(ext): WXT scaffold that loads unpacked on ChatGPT and Claude"
+git add code/extension/src/policy/ code/extension/tests/policy-lookup.test.ts
+git commit -m "feat(ext): policy types, config, and host lookup"
 ```
+
+---
 

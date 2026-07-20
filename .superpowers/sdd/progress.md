@@ -492,3 +492,34 @@ Task 11: complete (commit e573314).
 
 
 
+T a s k   1 :   c o m p l e t e   ( c o m m i t   9 0 e 5 b a 9 ) .  
+     D e l i v e r e d :   p y p r o j e c t . t o m l ,   t e s t s / t e s t _ c o r p u s . p y ,   c o r p u s / s c h e m a . p y .   T e s t s   f a i l e d   a s   e x p e c t e d   d u e   t o   m i s s i n g   c o r p u s   f i l e s .  
+  
+ T a s k   2 :   c o m p l e t e   ( c o m m i t   f d d d 4 3 6 ) .  
+     D e l i v e r e d :   c o r p u s / p o s i t i v e s . j s o n l ,   c o r p u s / n e g a t i v e s . j s o n l ,   c o r p u s / h a r d _ n e g a t i v e s . j s o n l .   A l l   t e s t s   p a s s .  
+  
+ T a s k   3 :   c o m p l e t e   ( c o m m i t   a 1 c 1 f b 7 ) .  
+     D e l i v e r e d :   t r a i n . p y ,   t e s t s / t e s t _ v e c t o r i z e r _ c o n t r a c t . p y .   T e s t s   p a s s .  
+  
+ T a s k   4 :   c o m p l e t e   ( c o m m i t   0 3 7 6 0 a d ) .  
+     D e l i v e r e d :   e v a l u a t e . p y .   M e t r i c s   r e c o r d e d   i n   R E A D M E . m d .   H a r d   n e g a t i v e   g a t e   p a s s e s .  
+  
+ T a s k   5 :   c o m p l e t e   ( c o m m i t   e e 1 8 4 b 2 ) .  
+     D e l i v e r e d :   e x p o r t . p y ,   s r c / d e t e c t i o n / e t h i c s / m o d e l . j s o n .   R E A D M E   u p d a t e d   w i t h   m e a s u r e d   s i z e   ( 4 5 0   K B ) .  
+  
+ T a s k   6 :   c o m p l e t e   ( c o m m i t   a 7 2 9 3 b 0 ) .  
+     D e l i v e r e d :   s r c / d e t e c t i o n / e t h i c s / v e c t o r i z e . t s ,   t e s t s / e t h i c s - v e c t o r i z e . t e s t . t s .   T e s t s   p a s s .  
+  
+  
+ T a s k   7 :   c o m p l e t e   ( c o m m i t   T O D O ) .  
+         D e l i v e r e d :   p a r i t y   t e s t   p a s s e s !   J S   m a t c h e s   P y t h o n !  
+  
+ T a s k   8 :   c o m p l e t e   ( c o m m i t   6 a b 9 b 9 d ) .  
+         D e l i v e r e d :   i n d e x . t s ,   l a t e n c y   0 . 5 9 1 m s ,   t e s t s   p a s s .  
+  
+ T a s k   9 :   c o m p l e t e   ( c o m m i t   T O D O ) .  
+         D e l i v e r e d :   e t h i c s - m o d a l . t s ,   c o n t e n t . t s   i n t e g r a t i o n .  
+  
+ T a s k   1 0 :   c o m p l e t e   ( c o m m i t   0 8 8 0 4 9 f ) .  
+         D e l i v e r e d :   R E A D M E . m d   u p d a t e d   w i t h   m e a s u r e d   l i m i t s .  
+ 
