@@ -1,17 +1,28 @@
-# scripts/check-dist-drift.mjs compares committed dist/ against a fresh build
-# byte-for-byte (sha256 per file). With core.autocrlf=true on Windows, git
-# rewrites LF to CRLF on checkout while the build emits LF, so every text file
-# reads as drifted when nothing actually changed. Worse, a CRLF *input* is
-# copied into dist verbatim, so the drift survives rebuilding.
+# scripts/check-dist-drift.mjs compares committed dist/ against a fresh build BYTE-FOR-BYTE
+# (sha256 per file), so git must never rewrite line endings on anything that comparison touches.
 #
-# Pin every build input and output to LF so the hash comparison is honest and
-# a Windows build matches a Linux one.
+# Without this, on Windows (core.autocrlf=true, the installer default) git checks dist/ out with
+# CRLF while `wxt build` writes LF. The drift check then reports "dist/ is stale" on a FRESH
+# CLONE, with no source change whatsoever — and the two gates become unsatisfiable at the same
+# time: check:dist passes only when the working tree holds LF, `git status` is clean only when it
+# holds CRLF. That lands on the first line of ACCEPTANCE.md ("local gates pass and dist is in
+# sync"), so the team test would open on a failure that is not a failure.
+#
+# The build's INPUTS matter as much as its outputs: WXT copies public/ and the entrypoint HTML
+# into dist/ verbatim, so a CRLF *input* produces a CRLF dist file and the drift survives
+# rebuilding. Observed on options.html — a fresh build emitted `</div>\r\r\n  </body>` where the
+# commit has `</div>\n  </body>`. Measured 2026-07-19/20: with endings normalised, the committed
+# and freshly built files are byte-identical.
+#
+# ADR 0017 accepted a committed dist/ with a drift check as the guard; pinning the tree to LF is
+# that guard's own platform assumption, made explicit, and makes the build reproducible across
+# the team's machines.
 
-# Build output, hashed by the drift check.
+# Pin the whole working tree to LF for a reproducible cross-machine build.
+* text=auto eol=lf
+
+# Build output, hashed by the drift check — never convert.
 dist/** -text
 
-# Copied verbatim into dist/ by WXT.
+# Copied verbatim into dist/ by WXT, including the vendored/binary ONNX Runtime pair — never convert.
 public/** -text
-
-# Processed into dist/ by WXT; their line endings survive into the output.
-entrypoints/**/*.html eol=lf

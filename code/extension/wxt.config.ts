@@ -23,6 +23,17 @@ export default defineConfig({
 
       // --- File-extract service (Slice 2, unchanged) ---
       'http://localhost:8000/*',
+      // 🔴 `localhost` and `127.0.0.1` are DIFFERENT origins for host_permissions matching --
+      // a rule for one does not cover the other. Both are listed, on both the Slice 2 backend
+      // port and the local model server, because a missing permission fails as a blocked fetch
+      // inside the offscreen document: the load simply never completes, and the user sees
+      // "still blocked", which is indistinguishable from the classifier disagreeing.
+      // Observed 2026-07-20, after two other causes with the identical symptom.
+      'http://127.0.0.1:8000/*',
+      // The sensitivity classifier loads from a public, hash-pinned Hugging Face repo (ADR 0029).
+      // No host_permission is needed for it: the NER already fetches remote weights with none
+      // listed. The local model server it replaced needed two entries here and a Python process.
+      // [set this to the founder-hosted team-test origin before the team test]
       'https://vanguard-extract.example.com/*',
 
       // --- Policy service (Plan A) ---

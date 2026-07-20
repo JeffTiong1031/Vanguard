@@ -5,6 +5,7 @@ import { getPolicyBase, setPolicyBase } from '../../src/policy/config';
 import type { PolicyRequest, PolicyResponse } from '../../src/policy/messages';
 import { clearEnrolment } from '../../src/policy/store';
 import type { Enrolment, Policy } from '../../src/policy/types';
+import { SensitivityPanel } from '../../src/ui/sensitivity-panel';
 
 function ask(msg: PolicyRequest): Promise<PolicyResponse> {
   return chrome.runtime.sendMessage(msg) as Promise<PolicyResponse>;
@@ -117,4 +118,10 @@ function Options() {
   );
 }
 
-render(<Options />, document.getElementById('root')!);
+render(
+  <>
+    <Options />
+    <SensitivityPanel />
+  </>,
+  document.getElementById('root')!,
+);

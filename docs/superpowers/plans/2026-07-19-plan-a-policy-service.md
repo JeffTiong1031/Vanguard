@@ -2773,5 +2773,5 @@ Deliberately deferred, so nobody implements them here:
 
 - **The extension knows nothing about this service yet.** Enrolment UI, the policy client in the background service worker, registry detection, the warn banner, and event shipping are **Plan B**.
 - **The ethics classifier does not exist.** `policy_category` rows are seeded and the `ethics_block` event type is accepted, but nothing produces one yet — **Plan C**.
-- **ADR 0029** (recording the ADR 0016 sequencing departure) is written when Plan B starts, since that is where the extension itself changes.
+- **ADR 0031** (recording the ADR 0016 sequencing departure) is written when Plan B starts, since that is where the extension itself changes.
 - **No `host_permissions` change.** That is a manifest edit and belongs with Plan B, alongside spec §5.4's LAN-plus-tunnel origins decision.

@@ -1,4 +1,8 @@
-# ADR 0029 — The governance platform departs from ADR 0016's sequencing
+# ADR 0031 — The governance platform departs from ADR 0016's sequencing
+
+> **Renumbered 0029 → 0031 on 2026-07-21** when this branch merged `main`, which already
+> carried an ADR 0029 (sensitivity weights) and 0030 (offscreen config). Standard etiquette:
+> the shared trunk keeps its numbers; the branch merging in renumbers its own ADR.
 
 **Date:** 2026-07-19
 **Status:** Accepted

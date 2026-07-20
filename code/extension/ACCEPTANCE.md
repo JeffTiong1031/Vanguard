@@ -19,6 +19,35 @@ Run every section on **both** `https://chatgpt.com` and `https://claude.ai`. Mar
 - [ ] Press Enter (or click Send) yourself → the message sends (the token matches; the gate does not stop it)
 - [ ] Paste `IC 890101-14-5555 and email me at a@b.com` → blocked; modal shows NRIC: 1, EMAIL: 1
 - [ ] Type `explain Einstein's theory` → blocked (stock NER PERSON); Ignore-with-reason "public figure" → sends unrewritten. **This FP is expected and is the measurement (ADR 0017 §Consequences).**
+
+### Span repair — check the masked span includes the honorific (added 2026-07-19)
+
+The stock NER proposes `Rahman`; doc 04 §4.3 requires the title **inside** the masked span, or
+`Encik ____` is left in the prompt as a re-identification pointer. Span repair fixes that, and
+these boxes are how you confirm it is running.
+
+- [ ] Type `Tolong ingatkan Encik Rahman pasal mesyuarat.` → the rewrite masks **`Encik Rahman`**, not just `Rahman`. **If you see `Encik PERSON_1`, repair is not running.**
+- [ ] Type `Please update Mr. John Doe on the invoice.` → masks **`Mr. John Doe`**, not `John Doe`
+- [ ] Type `请联系林女士确认订单。` → masks **`林女士`**, not `林`
+- [ ] Type `我们公司欠阿里巴巴一笔服务费。` → `阿里巴巴` is masked as **one** span, not split
+- [ ] Type `Kasir Rahman sudah balik.` → masks **`Rahman`** only — `Sir` must NOT be pulled out of `Kasir`
+- [ ] Type `Ask Alice about the report.` → masks `Alice` unchanged (no title, nothing to expand)
+
+> Measured on this pipeline over 265 gold MASK spans: full-span coverage **64.2% → 91.7%** with
+> repair and the org dictionary, Chinese **44.8% → 88.1%**. ~8% still misses — the NER proposes
+> nothing at all for some entities, which no rule can recover.
+
+### Org dictionary — OFF unless you load one
+
+Inert by default (`loadOrgTerms()` returns `[]`), so skip this section unless testing it.
+
+- [ ] With an empty dictionary, behaviour is unchanged from the boxes above
+- [ ] Load terms, then type a sentence naming one the NER usually misses (`Tolong bayar bil tertunggak TNB.`) → **`TNB` is masked**
+- [ ] Type `I ate an apple a day` with `Apple` in the dictionary → **NOT blocked** (exact match is case-sensitive; this is the precision guarantee ADR 0004 exists for)
+
+> ⚠️ `chrome.storage.local` is a Slice 1 placeholder. ADR 0009 puts the real dictionary on
+> `chrome.storage.managed` with per-tenant DEKs — a local, unencrypted, user-writable list is
+> fine for a team test and is not fine for a tenant's counterparty list.
 - [ ] Type `what is 1 + 1` → NOT blocked (the guardrail holds)
 - [ ] Compose in Chinese via Microsoft Pinyin → Enter commits candidates normally; only a send-intent Enter is gated (U12-b)
 - [ ] Kill the offscreen document (chrome://extensions → inspect → close) mid-session → next send degrades to advisory ("protection degraded"), does NOT hang (ADR 0014)

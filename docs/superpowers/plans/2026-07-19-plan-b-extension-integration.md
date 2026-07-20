@@ -48,7 +48,7 @@ Spec §5.1 says the extension polls every 30 seconds. **This plan uses 5 seconds
 | `src/policy/lookup.ts` | Pure: given a policy and a hostname, is this tool approved? |
 | `src/ui/warn-banner.ts` | The dismissible banner plus its Request-access form |
 | `entrypoints/guard.ts` | New content script on every registry host |
-| `docs/adr/0029-governance-platform-sequencing-departure.md` | Records the ADR 0016 departure |
+| `docs/adr/0031-governance-platform-sequencing-departure.md` | Records the ADR 0016 departure |
 
 **Modify:**
 
@@ -1583,18 +1583,18 @@ git commit -m "feat(ext): organisation enrolment in the options page"
 
 ---
 
-## Task 11: ADR 0029 and the end-to-end walkthrough
+## Task 11: ADR 0031 and the end-to-end walkthrough
 
 **Files:**
-- Create: `docs/adr/0029-governance-platform-sequencing-departure.md`
+- Create: `docs/adr/0031-governance-platform-sequencing-departure.md`
 - Create: `code/extension/DEMO.md`
 
 - [ ] **Step 1: Write the ADR**
 
-`docs/adr/0029-governance-platform-sequencing-departure.md`:
+`docs/adr/0031-governance-platform-sequencing-departure.md`:
 
 ```markdown
-# ADR 0029 — The governance platform departs from ADR 0016's sequencing
+# ADR 0031 — The governance platform departs from ADR 0016's sequencing
 
 **Date:** 2026-07-19
 **Status:** Accepted
@@ -1703,8 +1703,8 @@ Run every row of the table above against a real Plan A service. Expected: step 6
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/adr/0029-governance-platform-sequencing-departure.md code/extension/DEMO.md
-git commit -m "docs: ADR 0029 sequencing departure and the two-laptop demo runbook"
+git add docs/adr/0031-governance-platform-sequencing-departure.md code/extension/DEMO.md
+git commit -m "docs: ADR 0031 sequencing departure and the two-laptop demo runbook"
 ```
 
 ---

@@ -60,7 +60,7 @@ export default defineContentScript({
     files.subscribe(() => renderChips(files.list(), (id) => files.remove(id)));
 
     const scanText = (text: string) =>
-      scanInto(new VerdictCache(), text, { l2TimeoutMs: CLIENT_LIMITS.fileScanTimeoutMs });
+      scanInto(new VerdictCache(), text, { l2TimeoutMs: CLIENT_LIMITS.fileScanTimeoutMs, purpose: 'file' });
 
     installFileCapture({
       onFiles: (picked) => {
@@ -114,7 +114,7 @@ export default defineContentScript({
     });
 
     const scan = async (text: string) => {
-      const verdict = await scanInto(cache, text, { l2TimeoutMs: L2_TIMEOUT_MS });
+      const verdict = await scanInto(cache, text, { l2TimeoutMs: L2_TIMEOUT_MS, purpose: 'chat' });
       hashes.set(text, await sha256Hex(text));
       if (verdict.complete) hideProtectionDegraded();
       else showProtectionDegraded();

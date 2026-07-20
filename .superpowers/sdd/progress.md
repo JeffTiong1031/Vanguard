@@ -484,7 +484,7 @@ Task 10: complete (commit ba42afd).
   (Also delivered entrypoints/popup/main.tsx as an enhancement in commit 2a3c6e1).
 
 Task 11: complete (commit e573314).
-  Delivered: docs/adr/0029-governance-platform-sequencing-departure.md and code/extension/DEMO.md.
+  Delivered: docs/adr/0031-governance-platform-sequencing-departure.md and code/extension/DEMO.md.
 
 
 

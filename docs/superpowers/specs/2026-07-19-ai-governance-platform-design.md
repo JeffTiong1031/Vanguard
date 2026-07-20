@@ -382,7 +382,7 @@ fresh session sees what was considered and does not reopen them.
 | Department: employee-picked or token-encoded? | **Token-encoded** | Per-department `enroll_tokens` table (§4) + a minting screen (§5.2) |
 | Event batching interval | **Immediate, short debounce** | Demo needs sub-second dashboard updates (§5.1); production interval stays a measured number |
 | One machine or two? | **Two laptops** | Forces §5.4 — background-SW fetch and two baked-in origins |
-| ADR for the ADR 0016 departure? | **Yes — ADR 0029**, at implementation time | Records the sequencing departure and its scope limit (§1.1) |
+| ADR for the ADR 0016 departure? | **Yes — ADR 0031**, at implementation time | Records the sequencing departure and its scope limit (§1.1) |
 
 **Remaining, and deliberately unset:** the production event-batching interval, and the per-category
 classifier thresholds (§6.2) — both are measurements, and this package does not launder an estimate
