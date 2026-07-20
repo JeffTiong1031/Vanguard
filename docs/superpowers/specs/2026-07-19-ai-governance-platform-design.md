@@ -139,14 +139,15 @@ salted-hash finding reference, per decision #5 and invariant I3.
 
 ```
 enrol     employee pastes department token → POST /v1/enroll {token}
-                                    → {org_id, pseudo_id, department, policy, version}
+                                    → {org_id, org_name, pseudo_id, department, policy}
+                                      (version is nested INSIDE policy)
                                     → chrome.storage.local
 poll      GET /v1/policy  (If-None-Match: version)  every 30s + on tab focus  → 304 | new policy
 detect    content script on a registry host → host not approved? → warn banner + "Request access"
-request   POST /v1/requests {llm_host, reason} → admin queue
+request   POST /v1/requests {pseudo_id, llm_id, reason} → admin queue
 approve   admin approves → org policy_version bumps → employee's next poll clears the banner
 ethics    prompt submit → local classifier → violation? → red modal naming the category → blocked
-audit     POST /v1/events {pseudo_id, department, host, type, category, hash, ts}
+audit     POST /v1/events {pseudo_id, events:[{host, type, category, finding_hash, ts}]}
 ```
 
 🔴 **Every call to the policy service originates in the background service worker, never a content
