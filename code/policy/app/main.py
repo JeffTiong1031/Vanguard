@@ -39,3 +39,8 @@ def bootstrap_demo(name: str = "Acme Corp", password: str = "vanguard") -> str:
     org_id = seed_demo_org(conn, name, password)
     log.info("seeded demo org id=%s", org_id)
     return org_id
+
+
+from app.routes import enroll as _enroll  # noqa: E402  (import after `app` exists)
+
+app.include_router(_enroll.router)
