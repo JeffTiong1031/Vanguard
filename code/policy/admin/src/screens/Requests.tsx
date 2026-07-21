@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, UnauthorisedError, type RequestRow } from '../api';
+import { InboxIcon } from '../icons';
 
 export function Requests() {
   const [rows, setRows] = useState<RequestRow[]>([]);
@@ -54,41 +55,48 @@ export function Requests() {
   const pending = rows.filter((r) => r.status === 'pending');
 
   return (
-    <>
-      <h2>Access requests</h2>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="ico"><InboxIcon /></span>
+        <div>
+          <h2>Access Requests</h2>
+          <p class="sub">Employees request a blocked tool; approve to update policy — their next poll picks it up.</p>
+        </div>
+        <span class="tag count">{pending.length} pending</span>
+      </div>
       {error && <p class="error">{error}</p>}
-      {pending.length === 0 && <p>No pending requests.</p>}
-      <table>
-        <thead>
-          <tr><th>Department</th><th>Tool</th><th>Reason</th><th>Raised</th><th></th></tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.id}>
-              <td>{r.department}</td>
-              <td>{r.display_name}</td>
-              <td>{r.reason}</td>
-              <td>{new Date(r.created_at).toLocaleTimeString()}</td>
-              <td>
-                {r.status === 'pending' ? (
-                  <>
-                    <button disabled={busyId === r.id} onClick={() => decide(r.id, 'approved')}>
-                      Approve
-                    </button>{' '}
-                    <button disabled={busyId === r.id} onClick={() => decide(r.id, 'denied')}>
-                      Deny
-                    </button>
-                  </>
-                ) : (
-                  <span class={`pill ${r.status === 'approved' ? 'approved' : 'blocked'}`}>
-                    {r.status}
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </>
+      {rows.length === 0 && <p class="empty">No requests yet.</p>}
+      {rows.length > 0 && (
+        <table>
+          <thead>
+            <tr><th>Department</th><th>Tool</th><th>Reason</th><th>Raised</th><th></th></tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td><span class="name">{r.department}</span></td>
+                <td>{r.display_name}</td>
+                <td>{r.reason}</td>
+                <td><code>{new Date(r.created_at).toLocaleTimeString()}</code></td>
+                <td>
+                  {r.status === 'pending' ? (
+                    <div class="row-actions">
+                      <button class="btn-primary btn-sm" disabled={busyId === r.id} onClick={() => decide(r.id, 'approved')}>
+                        Approve
+                      </button>
+                      <button class="btn-danger btn-sm" disabled={busyId === r.id} onClick={() => decide(r.id, 'denied')}>
+                        Deny
+                      </button>
+                    </div>
+                  ) : (
+                    <span class={`pill ${r.status}`}>{r.status}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   );
 }

@@ -6,9 +6,17 @@ import { Tools } from './screens/Tools';
 import { Requests } from './screens/Requests';
 import { Usage } from './screens/Usage';
 import { Tokens } from './screens/Tokens';
+import { LayersIcon, ShieldIcon, InboxIcon, BarIcon, KeyIcon } from './icons';
 import './style.css';
 
 type Screen = 'tools' | 'requests' | 'usage' | 'tokens';
+
+const TABS: [Screen, string, typeof ShieldIcon][] = [
+  ['tools', 'Tools', ShieldIcon],
+  ['requests', 'Requests', InboxIcon],
+  ['usage', 'Usage', BarIcon],
+  ['tokens', 'Tokens', KeyIcon],
+];
 
 // The org NAME only -- never a token or credential. It is not a secret; it is
 // display text ("Acme Corp" in the nav bar) and a hint to re-check the cookie
@@ -75,17 +83,33 @@ function App() {
     setOrg(orgName);
   }
 
-  if (checking) return <p>Checking session…</p>;
+  if (checking) return <div class="login-wrap"><p class="empty">Checking session…</p></div>;
   if (!org) return <Login onDone={handleLogin} />;
 
   return (
-    <div class="shell">
-      <nav>
-        <strong>{org}</strong>
-        {(['tools', 'requests', 'usage', 'tokens'] as Screen[]).map((s) => (
-          <button class={screen === s ? 'active' : ''} onClick={() => setScreen(s)}>{s}</button>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark"><LayersIcon /></span>
+          <div>
+            <div class="brand-name">Vanguard</div>
+            <div class="brand-sub">AI Governance</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <span class="chip"><span class="dot" style="background:#4f46e5"></span> <strong>{org}</strong></span>
+          <span class="chip live"><span class="dot"></span> Live</span>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        {TABS.map(([id, label, Icon]) => (
+          <button key={id} class={screen === id ? 'active' : ''} onClick={() => setScreen(id)}>
+            <Icon /> {label}
+          </button>
         ))}
       </nav>
+
       <main>
         {screen === 'tools' && <Tools />}
         {screen === 'requests' && <Requests />}

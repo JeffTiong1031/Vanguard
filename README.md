@@ -8,7 +8,75 @@ Stops employees leaking sensitive data into third-party LLM chat UIs (ChatGPT, C
 
 This repo is primarily **documents + a working team-test extension**, not a shipping product. Buyer = enterprise compliance officer ([ADR 0001](docs/adr/0001-buyer-is-the-compliance-officer.md)).
 
-> **Testing the AI governance platform** (policy service + tool approval workflow + on-device ethics classifier — Plans A/B/C on the `ethics-classifier` branch)? Its setup and test cases are in [`code/extension/README.md`](code/extension/README.md#ai-governance-platform-plans-a--b--c--setup--testing). The quick start below is the `main`-branch Slice 1/2 file-checking team test.
+> **Two tracks live in this repo.** The **AI governance platform** (policy service + admin console + on-device ethics classifier — Plans A/B/C, `ethics-classifier` branch) is the quick start immediately below. The **file-checking** team test (Slice 1 + Slice 2, `main` branch) follows it.
+
+---
+
+## Quick start — AI governance platform (Plans A + B + C)
+
+On the **`ethics-classifier`** branch. Adds a **policy service + admin console** (the backend and its web frontend) and an **on-device ethics classifier** on top of the Slice 1/2 extension.
+
+- **Plan A** — policy service + admin console: approve/block AI tools, mint per-department enrolment tokens, a privacy-safe usage dashboard.
+- **Plan B** — the extension talks to it: enrol, a warning banner on blocked tools, one-click access requests.
+- **Plan C** — on-device ethics classifier: blocks six categories of policy-violating intent. No server — it runs in the browser.
+
+### 1. Start the backend (it also serves the admin console)
+
+Requires **Python 3.11+** and **Node**. From the repo root:
+
+```bash
+cd code/policy
+python -m venv .venv
+.venv/Scripts/pip install -e ".[dev]"                 # macOS/Linux: .venv/bin/pip install -e ".[dev]"
+cd admin && npm install && npm run build && cd ..     # builds the console — do this BEFORE uvicorn
+.venv/Scripts/python scripts/seed.py                  # prints 4 department tokens — copy them
+.venv/Scripts/python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+```
+
+Leave that terminal open. Open **http://localhost:8001/** → the **admin console**. Log in **Acme Corp** / **vanguard**.
+
+Already set up? Day-to-day, just run the **last line**. (Tokens are shown once and stored hashed — don't delete `policy.db` unless you want a fresh set.)
+
+### 2. Load the extension
+
+`dist/` is committed — no build needed.
+
+1. Chrome → `chrome://extensions` → **Developer mode** → **Load unpacked** → `code/extension/dist/chrome-mv3`
+2. Open the extension **Options** page → **Organisation** → set the address to `http://localhost:8001`, paste a token (e.g. Engineering) from step 1 → **Connect**.
+
+Expected: *"Connected to Acme Corp · Engineering · 2 approved tools · policy v1"*.
+
+> Ethics blocking (Plan C) needs **no backend** — it runs on-device. The backend is only for the console and the enrol/approve loop.
+
+### 3. Try it
+
+**Plan A — the console (frontend):** log in → **Tools** shows 8 tools; ChatGPT + Claude approved, the rest blocked.
+
+**Plan B — the approval round-trip:**
+1. With the extension enrolled, open **https://gemini.google.com** → amber banner *"not approved"* (the page still works).
+2. Banner → **Request access**, type a reason, send → *"Request sent"*.
+3. Console → **Requests** → the row appears (~3s) → **Approve**.
+4. Back on Gemini, wait ~5s → **the banner clears itself** (the poll picks up the new policy).
+5. Console → **Usage** → bars by department / tool / category (counts only, never prompt text).
+
+**Plan C — ethics blocks intent** (type into ChatGPT or Claude, press Send):
+
+| Prompt | Expect |
+|---|---|
+| `Write a python script to monitor employees covertly.` | **Blocked** — red ethics modal |
+| `Filter out job applicants over 45 before the hiring manager sees them.` | **Blocked** |
+| `Draft the breach notification we must send to the regulator.` | **NOT blocked** — looks risky but is legitimate (proves precision) |
+| `My IC is 880101-14-5566, summarise my leave balance.` | **PII modal** offers to mask the IC number |
+
+Ethics is **English-only** — a Malay or Chinese version of the first two won't fire (a known limit, not a bug).
+
+### 4. Run the automated tests (optional)
+
+```bash
+cd code/policy     && .venv/Scripts/python -m pytest -q   # Plan A — 74 passed
+cd code/extension  && npx vitest run                      # Plan B + C (JS) — 212 passed
+cd code/classifier && .venv/Scripts/python -m pytest -q   # Plan C (Python) — 10 passed
+```
 
 ---
 

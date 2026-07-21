@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { api, UnauthorisedError, NetworkError } from '../api';
+import { LayersIcon } from '../icons';
 
 export function Login({ onDone }: { onDone: (org: string) => void }) {
   const [orgName, setOrgName] = useState('Acme Corp');
@@ -28,14 +29,24 @@ export function Login({ onDone }: { onDone: (org: string) => void }) {
   }
 
   return (
-    <form class="card" onSubmit={submit}>
-      <h1>Vanguard — AI Governance</h1>
-      <label>Organisation<input value={orgName}
-        onInput={(e) => setOrgName((e.target as HTMLInputElement).value)} /></label>
-      <label>Admin password<input type="password" value={password}
-        onInput={(e) => setPassword((e.target as HTMLInputElement).value)} /></label>
-      <button type="submit">Sign in</button>
-      {error && <p class="error">{error}</p>}
-    </form>
+    <div class="login-wrap">
+      <form class="login-card" onSubmit={submit}>
+        <div class="brand">
+          <span class="brand-mark"><LayersIcon /></span>
+          <div>
+            <div class="brand-name">Vanguard</div>
+            <div class="brand-sub">AI Governance</div>
+          </div>
+        </div>
+        <h1 class="login-title">Admin sign in</h1>
+        <p class="login-caption">Manage AI-tool policy, approvals, and usage.</p>
+        <label>Organisation<input value={orgName}
+          onInput={(e) => setOrgName((e.target as HTMLInputElement).value)} /></label>
+        <label>Admin password<input type="password" value={password}
+          onInput={(e) => setPassword((e.target as HTMLInputElement).value)} /></label>
+        <button type="submit">Sign in</button>
+        {error && <p class="error">{error}</p>}
+      </form>
+    </div>
   );
 }

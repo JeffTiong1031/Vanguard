@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api, UnauthorisedError, type Usage as UsageData } from '../api';
+import { BarIcon } from '../icons';
 
 function Bars({ title, rows }: { title: string; rows: { label: string; events: number }[] }) {
   const max = Math.max(1, ...rows.map((r) => r.events));
   return (
-    <section>
+    <div class="bars-group">
       <h3>{title}</h3>
-      {rows.length === 0 && <p>No events yet.</p>}
+      {rows.length === 0 && <p class="empty">No events yet.</p>}
       {rows.map((r) => (
-        <div key={r.label} style="display:flex;align-items:center;gap:10px;margin:6px 0">
-          <span style="width:220px;font-size:14px">{r.label}</span>
-          <span style={`height:14px;border-radius:3px;background:#e11d48;width:${
-            (r.events / max) * 320}px`} />
-          <span style="font-size:13px;color:#475569">{r.events}</span>
+        <div class="bar-row" key={r.label}>
+          <span class="lbl">{r.label}</span>
+          <span class="bar-track">
+            <span class="bar-fill" style={`width:${Math.max(4, (r.events / max) * 100)}%`} />
+          </span>
+          <span class="val">{r.events}</span>
         </div>
       ))}
-    </section>
+    </div>
   );
 }
 
@@ -41,19 +43,27 @@ export function Usage() {
     return () => clearInterval(timer);
   }, []);
 
-  if (!data) return <p>{error || 'Loading…'}</p>;
+  if (!data) return (
+    <section class="panel"><p class="empty">{error || 'Loading…'}</p></section>
+  );
 
   return (
-    <>
-      <h2>AI usage</h2>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="ico"><BarIcon /></span>
+        <div>
+          <h2>AI Usage</h2>
+          <p class="sub">Events carry a class, a count, and a salted hash — never prompt text.</p>
+        </div>
+        <span class="tag">Class · Count · Hash</span>
+      </div>
       {error && <p class="error">{error}</p>}
-      <p>Events carry a class, a count, and a salted hash — never prompt text.</p>
       <Bars title="By department"
             rows={data.by_department.map((r) => ({ label: r.department, events: r.events }))} />
       <Bars title="By tool"
             rows={data.by_tool.map((r) => ({ label: r.host, events: r.events }))} />
       <Bars title="By policy category"
             rows={data.by_category.map((r) => ({ label: r.category, events: r.events }))} />
-    </>
+    </section>
   );
 }
