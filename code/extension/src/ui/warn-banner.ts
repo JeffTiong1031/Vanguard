@@ -6,6 +6,8 @@
  * that outright bans push usage out of sight, and a blocked page sends the
  * employee to their phone, where we see nothing at all.
  */
+import { explain } from '../detection/explanations';
+
 const HOST_ATTR = 'data-vanguard-ui';
 
 export type WarnBannerOptions = {
@@ -67,6 +69,7 @@ export function showWarnBanner(options: WarnBannerOptions): void {
       `${options.toolName} is not approved at ${options.orgName}. ` +
       `You can still use it — this is a notice, not a block.`,
     ));
+    bar.append(text(explain('tool', '').why));
     bar.append(button('Request access', 'open-request'));
     bar.append(button('Dismiss', 'dismiss', 'ghost'));
     wire();
