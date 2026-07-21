@@ -6,6 +6,7 @@ export function Reviews() {
   const [rows, setRows] = useState<AppealRow[]>([]);
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const seq = useRef(0);
 
   async function load() {
@@ -29,7 +30,7 @@ export function Reviews() {
   async function decide(id: string, decision: 'upheld' | 'overturned') {
     setBusyId(id); setError('');
     try {
-      await api.post(`/v1/admin/appeals/${id}`, { decision });
+      await api.post(`/v1/admin/appeals/${id}`, { decision, note: notes[id]?.trim() || undefined });
       await load();
     } catch (err) {
       if (err instanceof UnauthorisedError) throw err;
@@ -66,11 +67,24 @@ export function Reviews() {
                   : <span style="color:#94a3b8">not shared</span>}</td>
                 <td>
                   {r.status === 'pending' ? (
-                    <div class="row-actions">
-                      <button class="btn-danger btn-sm" disabled={busyId === r.id} onClick={() => decide(r.id, 'upheld')}>Uphold</button>
-                      <button class="btn-primary btn-sm" disabled={busyId === r.id} onClick={() => decide(r.id, 'overturned')}>Overturn</button>
+                    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+                      <input
+                        placeholder="Note to the employee (optional)"
+                        value={notes[r.id] ?? ''}
+                        onInput={(e) => setNotes({ ...notes, [r.id]: (e.target as HTMLInputElement).value })}
+                        style="width:200px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12.5px"
+                      />
+                      <div class="row-actions">
+                        <button class="btn-danger btn-sm" disabled={busyId === r.id} onClick={() => decide(r.id, 'upheld')}>Uphold</button>
+                        <button class="btn-primary btn-sm" disabled={busyId === r.id} onClick={() => decide(r.id, 'overturned')}>Overturn</button>
+                      </div>
                     </div>
-                  ) : <span class={`pill ${r.status === 'overturned' ? 'approved' : 'blocked'}`}>{r.status}</span>}
+                  ) : (
+                    <div>
+                      <span class={`pill ${r.status === 'overturned' ? 'approved' : 'blocked'}`}>{r.status}</span>
+                      {r.admin_note && <div style="font-size:12px;color:#475569;margin-top:4px">“{r.admin_note}”</div>}
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
