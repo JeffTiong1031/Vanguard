@@ -664,3 +664,15 @@ FINAL WHOLE-BRANCH REVIEW: complete (opus). Verdict: Ready to merge, with fixes 
 ALL SUBAGENT-DISPATCHED WORK (Tasks 1-6 + final review + fix) COMPLETE. main @ db5881a.
 Remaining: Task 7 (founder-run Render deploy + real-value substitution + manual acceptance) --
   not dispatched to a subagent per the plan.
+
+Task 7 (founder-run): Steps 1-3 done by founder (Render Blueprint deployed from merged PR #19,
+  service `vanguard-extract`, VANGUARD_DEMO_TOKEN set, /healthz confirmed {"ok":true}).
+  Steps 4-5-7 done by controller (commit 442c729): DEMO_TOKEN -> real value in config.ts; URL already
+  matched placeholder exactly (vanguard-extract.onrender.com), no wxt.config.ts URL change needed
+  (cleaned up the now-stale "Task 7 substitutes" comment there); npm run build + check:dist clean
+  (dist/ matches fresh build); manifest.json confirmed carries the real origin.
+  Controller also live-verified the deployed gate directly (not just locally): POST /v1/extract with
+  no token -> 401, wrong token -> 401, correct token -> 200. Matches Task 1's local test coverage,
+  now confirmed against the actual public deployment.
+  Step 6 (manual acceptance on a clean machine, both chatgpt.com and claude.ai) STILL OWED -- needs
+  the founder's real Chrome (Load unpacked cannot be driven from the agent's sandboxed browser tool).
