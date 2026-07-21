@@ -236,5 +236,6 @@ also exits clean with no errors.
 
 ### Commit
 
-New commit on `code/governance-scaffold-task-1-2` (not an amend of `d841b9f`), sole author, no
-`Co-Authored-By` trailer: `fix(governance): add strictObject helper so callers can't skip .strict() (I3)`.
+`13be4dc` — `fix(governance): add strictObject helper so callers can't skip .strict() (I3)`, on
+`code/governance-scaffold-task-1-2` (not an amend of `d841b9f`), sole author, no `Co-Authored-By`
+trailer.
