@@ -71,3 +71,45 @@ def test_list_returns_only_the_callers_appeals():
     client.post("/v1/appeals", json={"pseudo_id": a, "decision_type": "ethics", "category": "x", "reason": "ra"})
     client.post("/v1/appeals", json={"pseudo_id": b, "decision_type": "ethics", "category": "x", "reason": "rb"})
     assert len(client.get("/v1/appeals", params={"pseudo_id": a}).json()) == 1
+
+
+def _admin():
+    a = TestClient(app)
+    a.post("/v1/admin/login", json={"org_name": "Acme Corp", "password": "vanguard"})
+    return a
+
+
+def test_admin_appeals_queue_requires_a_session():
+    assert TestClient(app).get("/v1/admin/appeals").status_code == 401
+
+
+def test_admin_sees_the_appeal_with_department_and_decides_it():
+    pid = _enrol()
+    appeal_id = client.post("/v1/appeals", json={
+        "pseudo_id": pid, "decision_type": "ethics", "category": "covert_surveillance",
+        "reason": "defence not attack",
+    }).json()["id"]
+    admin = _admin()
+    queue = admin.get("/v1/admin/appeals").json()
+    mine = [a for a in queue if a["id"] == appeal_id]
+    assert len(mine) == 1
+    assert mine[0]["department"] == "Engineering"
+    assert mine[0]["category"] == "covert_surveillance"
+
+    r = admin.post(f"/v1/admin/appeals/{appeal_id}", json={"decision": "overturned", "note": "fair point"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "overturned"
+    # the employee now sees the outcome
+    mine = client.get("/v1/appeals", params={"pseudo_id": pid}).json()
+    assert mine[0]["status"] == "overturned"
+    assert mine[0]["admin_note"] == "fair point"
+
+
+def test_deciding_twice_is_409():
+    pid = _enrol()
+    appeal_id = client.post("/v1/appeals", json={
+        "pseudo_id": pid, "decision_type": "pii", "category": "NRIC", "reason": "x",
+    }).json()["id"]
+    admin = _admin()
+    assert admin.post(f"/v1/admin/appeals/{appeal_id}", json={"decision": "upheld"}).status_code == 200
+    assert admin.post(f"/v1/admin/appeals/{appeal_id}", json={"decision": "overturned"}).status_code == 409
