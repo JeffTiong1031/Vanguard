@@ -676,3 +676,12 @@ Task 7 (founder-run): Steps 1-3 done by founder (Render Blueprint deployed from 
   now confirmed against the actual public deployment.
   Step 6 (manual acceptance on a clean machine, both chatgpt.com and claude.ai) STILL OWED -- needs
   the founder's real Chrome (Load unpacked cannot be driven from the agent's sandboxed browser tool).
+
+Task 7 Step 6: PASSED (founder, both chatgpt.com and claude.ai) -- Load unpacked, prompt gate caught
+  NRIC on-device, file attach -> Reading/Checking/Checked against the LIVE Render host, review ->
+  accept -> redacted file attached -> founder pressed Send. No terminal, no Python, no Docker on the
+  test machine. Confirmed by founder: "Ya everything works fine."
+
+PLAN COMPLETE. All 7 tasks done, final whole-branch review clean (fixes applied), Task 7 live
+  acceptance PASSED on both target surfaces. Hosted demo file-backend is live at
+  https://vanguard-extract.onrender.com, gated by VANGUARD_DEMO_TOKEN, extension ships wired to it.
