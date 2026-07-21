@@ -2,9 +2,10 @@ import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { getApiBase, setApiBase } from '../../src/files/config';
 import { getPolicyBase, setPolicyBase } from '../../src/policy/config';
-import type { PolicyRequest, PolicyResponse } from '../../src/policy/messages';
+import type { PolicyRequest, PolicyResponse, AppealsResponse } from '../../src/policy/messages';
 import { clearEnrolment } from '../../src/policy/store';
 import type { Enrolment, Policy } from '../../src/policy/types';
+import type { AppealRow } from '../../src/policy/appeals';
 import { SensitivityPanel } from '../../src/ui/sensitivity-panel';
 
 function ask(msg: PolicyRequest): Promise<PolicyResponse> {
@@ -108,12 +109,40 @@ function FileService() {
   );
 }
 
+function MyReviews() {
+  const [rows, setRows] = useState<AppealRow[]>([]);
+  useEffect(() => {
+    const load = () => (chrome.runtime.sendMessage({ kind: 'appeals-get' }) as Promise<AppealsResponse>)
+      .then((r) => { if (r?.ok) setRows(r.appeals); }).catch(() => {});
+    void load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
+  if (rows.length === 0) return null;
+  return (
+    <section style="margin-top:28px;border-top:1px solid #e2e8f0;padding-top:20px">
+      <h1 style="font-size:18px">My reviews</h1>
+      <p style="color:#475569">Decisions you asked a person to review.</p>
+      {rows.map((r) => (
+        <div key={r.id} style="display:flex;gap:10px;align-items:center;margin:8px 0;font-size:14px">
+          <span style="width:190px">{r.decision_type} · {r.category}</span>
+          <strong style={r.status === 'overturned' ? 'color:#15803d' : r.status === 'upheld' ? 'color:#b91c1c' : 'color:#64748b'}>
+            {r.status}
+          </strong>
+          {r.admin_note && <span style="color:#475569">— {r.admin_note}</span>}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function Options() {
   return (
     <div style="font:14px/1.5 system-ui, sans-serif; max-width:560px">
       <h1 style="font-size:18px">Vanguard</h1>
       <Organisation />
       <FileService />
+      <MyReviews />
     </div>
   );
 }
