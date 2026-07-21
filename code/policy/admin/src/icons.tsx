@@ -47,3 +47,11 @@ export const KeyIcon = (p: P) => (
     <path d="m15.5 7.5 3 3L22 7l-3-3" />
   </svg>
 );
+
+export const GavelIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="m14 13-7.5 7.5a2.12 2.12 0 0 1-3-3L11 10" />
+    <path d="m16 16 6-6" /><path d="m8 8 6-6" />
+    <path d="m9 7 8 8" /><path d="m21 11-8-8" />
+  </svg>
+);
