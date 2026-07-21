@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ExtractError, extractFile } from '../../src/files/api';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { extractFile } from '../../src/files/api';
+import { setApiBase, setDemoToken } from '../../src/files/config';
 
 const okBody = {
   extract: 'Ahmad 880101-14-5566',
@@ -17,6 +18,11 @@ function mockFetch(status: number, body: unknown) {
   }));
 }
 
+beforeEach(async () => {
+  await setApiBase('https://vanguard-extract.onrender.com');
+  await setDemoToken('test-demo-token');
+});
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe('extractFile', () => {
@@ -30,7 +36,7 @@ describe('extractFile', () => {
     vi.stubGlobal('fetch', mockFetch(422, {
       error: { code: 'no_text_layer', message: 'This PDF looks like a scan…' },
     }));
-    await expect(extractFile(new File(['x'], 'a.pdf'))).rejects.toMatchObject({
+    await expect(extractFile(new File(['x'], 'a.txt'))).rejects.toMatchObject({
       code: 'no_text_layer',
       message: 'This PDF looks like a scan…',
     });
@@ -51,12 +57,33 @@ describe('extractFile', () => {
 });
 
 describe('demo bearer token', () => {
-  it('sends Authorization: Bearer on extract', async () => {
+  it('sends Authorization: Bearer from Options storage on extract', async () => {
     const spy = mockFetch(200, okBody);
     vi.stubGlobal('fetch', spy);
     await extractFile(new File(['x'], 'a.txt'));
     const init = spy.mock.calls[0][1] as RequestInit;
     const headers = init.headers as Record<string, string>;
-    expect(headers.Authorization).toMatch(/^Bearer .+/);
+    expect(headers.Authorization).toBe('Bearer test-demo-token');
+  });
+
+  it('refuses hosted extract when no key is pasted', async () => {
+    await setDemoToken('');
+    const spy = mockFetch(200, okBody);
+    vi.stubGlobal('fetch', spy);
+    await expect(extractFile(new File(['x'], 'a.txt'))).rejects.toMatchObject({
+      code: 'unauthorized',
+    });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('omits Authorization on localhost when no key is pasted', async () => {
+    await setApiBase('http://localhost:8000');
+    await setDemoToken('');
+    const spy = mockFetch(200, okBody);
+    vi.stubGlobal('fetch', spy);
+    await extractFile(new File(['x'], 'a.txt'));
+    const init = spy.mock.calls[0][1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBeUndefined();
   });
 });

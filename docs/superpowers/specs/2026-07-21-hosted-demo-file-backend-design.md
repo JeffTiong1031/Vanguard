@@ -92,24 +92,29 @@ chose a container PaaS over Vercel serverless — see §10).
    `http://localhost:8000` to the committed Render origin. `getApiBase()` still honours a
    `vg_api_base` storage override, so local dev and the future ship host need no code change.
 2. **Send the bearer token on both file fetches.** `src/files/api.ts`: add
-   `Authorization: Bearer <token>` to the `/v1/extract` and `/v1/redact` requests. The token is a
-   committed constant (baked into the build; testers do **not** paste it in Options).
+   `Authorization: Bearer <token>` to the `/v1/extract` and `/v1/redact` requests. The token is
+   **pasted once in Options → File checking** and stored in `chrome.storage.local`
+   (`vg_demo_token`) — **not** committed to the repo or baked into `dist/`. (Amended 2026-07-22:
+   Path A originally used a committed constant; the repo is public, so that published the gate
+   key. Options paste keeps the key off GitHub; teammates receive it out-of-band.)
 3. **`host_permissions`: replace the placeholder.** `wxt.config.ts` already carries
    `https://vanguard-extract.example.com/*` with a "set this before the team test" note. Replace it
    with the real Render origin. **Keep** `http://localhost:8000/*` and `http://127.0.0.1:8000/*` for
    local dev. (`host_permissions` is baked at build time — the URL must be final before the build.)
 4. **Rebuild + recommit `dist/`.** `npm run build` then `npm run check:dist` so the committed build
-   matches source and a fresh clone loads the hosted-wired extension with no toolchain.
+   matches source and a fresh clone loads the hosted URL with no toolchain; each tester still pastes
+   the demo key in Options.
 
 ### 5.3 Where the token lives
 
 One pre-shared team credential, in two places that must match:
-- **Extension:** committed constant (a `DEMO_TOKEN` in `src/files/config.ts`, used by `api.ts`).
+- **Extension:** `vg_demo_token` in `chrome.storage.local`, set via Options (never in git).
 - **Render:** `VANGUARD_DEMO_TOKEN` env var, set in the dashboard.
 
-Told to testers in the demo brief; not entered anywhere by them. Rotating it = edit the constant,
-rebuild `dist/`, update the Render env var. Acknowledged: since it ships in the (private) repo it is
-a deterrent against stumbling onto the bare URL, not extension-only secrecy.
+Told to testers out-of-band; they paste it once. Rotating it = update the Render env var and resend
+the new value to the team (no rebuild required). **Not claimed as confidential against a motivated
+attacker** — anyone with the key can call the free-tier host — but it is no longer world-readable
+from a public GitHub clone.
 
 ## 6. Security posture (demo)
 

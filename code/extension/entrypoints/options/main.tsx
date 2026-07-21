@@ -1,6 +1,11 @@
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { getApiBase, setApiBase } from '../../src/files/config';
+import {
+  getApiBase,
+  getDemoToken,
+  setApiBase,
+  setDemoToken,
+} from '../../src/files/config';
 import { getPolicyBase, setPolicyBase } from '../../src/policy/config';
 import type { PolicyRequest, PolicyResponse, AppealsResponse } from '../../src/policy/messages';
 import { clearEnrolment } from '../../src/policy/store';
@@ -85,22 +90,41 @@ function Organisation() {
 
 function FileService() {
   const [base, setBase] = useState('');
+  const [token, setToken] = useState('');
   const [saved, setSaved] = useState(false);
-  useEffect(() => { void getApiBase().then(setBase); }, []);
+  useEffect(() => {
+    void getApiBase().then(setBase);
+    void getDemoToken().then(setToken);
+  }, []);
   return (
     <section style="margin-top:32px">
       <h2 style="font-size:16px">File checking</h2>
       <p style="color:#475569">
         Address of the file-checking service. Use <code>http://localhost:8000</code> if you are
-        running it yourself, or the shared address your team was given.
+        running it yourself, or leave the default hosted address. For the hosted demo, also paste
+        the access key your team lead sent you (it is not in the repo).
       </p>
+      <label style="display:block;margin-bottom:4px;color:#334155">Service address</label>
       <input
         value={base}
         onInput={(e) => { setBase((e.target as HTMLInputElement).value); setSaved(false); }}
+        style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;margin-bottom:12px"
+      />
+      <label style="display:block;margin-bottom:4px;color:#334155">Demo access key</label>
+      <input
+        type="password"
+        value={token}
+        autocomplete="off"
+        onInput={(e) => { setToken((e.target as HTMLInputElement).value); setSaved(false); }}
+        placeholder="Paste the key from your team lead"
         style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px"
       />
       <button
-        onClick={async () => { await setApiBase(base); setSaved(true); }}
+        onClick={async () => {
+          await setApiBase(base);
+          await setDemoToken(token);
+          setSaved(true);
+        }}
         style="margin-top:12px;padding:8px 14px;border:none;border-radius:6px;
                background:#e11d48;color:#fff;cursor:pointer"
       >Save</button>
