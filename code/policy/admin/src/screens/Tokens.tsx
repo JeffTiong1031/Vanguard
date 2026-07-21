@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api, UnauthorisedError, type TokenRow } from '../api';
+import { KeyIcon } from '../icons';
 
 export function Tokens() {
   const [rows, setRows] = useState<TokenRow[]>([]);
@@ -58,50 +59,63 @@ export function Tokens() {
   }
 
   return (
-    <>
-      <h2>Enrolment tokens</h2>
-      <p>One token per department. The department is encoded in the token, so an
-         employee cannot choose their own.</p>
-      <div>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="ico"><KeyIcon /></span>
+        <div>
+          <h2>Enrolment Tokens</h2>
+          <p class="sub">One token per department — the department is baked into the token, so an employee cannot choose their own.</p>
+        </div>
+        <span class="tag count">{rows.filter((r) => !r.revoked).length} active</span>
+      </div>
+
+      <div class="field">
         <input value={department}
+               placeholder="Department (e.g. Engineering)"
                onInput={(e) => setDepartment((e.target as HTMLInputElement).value)} />
-        <button disabled={busy === 'mint'} onClick={mint}>Mint token</button>
+        <button class="btn-primary" disabled={busy === 'mint'} onClick={mint}>Mint token</button>
       </div>
       {error && <p class="error">{error}</p>}
       {minted && (
-        <p class="card mint-result">
+        <div class="mint-result">
           <strong>Copy this token now — it will not be shown again.</strong><br />
           The server keeps only a hash of it, so if you navigate away before copying
           it, the plaintext is gone for good and you will need to mint a new one.
-          <br /><code>{minted}</code>
-        </p>
+          <code>{minted}</code>
+        </div>
       )}
       <p class="hint">
         <strong>What &quot;Revoke&quot; does:</strong> it stops the token being used
         for <em>new</em> enrolments. It does <strong>not</strong> remove access for
         anyone who already enrolled with it — this system has no way to cut off an
-        individual employee once they are in, so a revoked token's earlier
+        individual employee once they are in, so a revoked token&apos;s earlier
         enrollees keep polling policy indefinitely.
       </p>
-      <table>
-        <thead><tr><th>Department</th><th>Created</th><th>State</th><th></th></tr></thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td>{row.department}</td>
-              <td>{new Date(row.created_at).toLocaleString()}</td>
-              <td><span class={`pill ${row.revoked ? 'revoked' : 'active'}`}>
-                {row.revoked ? 'revoked' : 'active'}
-              </span></td>
-              <td>
-                {!row.revoked && (
-                  <button disabled={busy === row.id} onClick={() => revoke(row.id)}>Revoke</button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </>
+
+      {rows.length === 0 && <p class="empty">No tokens minted yet.</p>}
+      {rows.length > 0 && (
+        <table>
+          <thead><tr><th>Department</th><th>Created</th><th>State</th><th></th></tr></thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td><span class="name">{row.department}</span></td>
+                <td><code>{new Date(row.created_at).toLocaleString()}</code></td>
+                <td><span class={`pill ${row.revoked ? 'revoked' : 'active'}`}>
+                  {row.revoked ? 'revoked' : 'active'}
+                </span></td>
+                <td>
+                  <div class="row-actions">
+                    {!row.revoked && (
+                      <button class="btn-danger btn-sm" disabled={busy === row.id} onClick={() => revoke(row.id)}>Revoke</button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   );
 }

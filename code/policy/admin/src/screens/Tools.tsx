@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api, UnauthorisedError, type Tool } from '../api';
+import { ShieldIcon } from '../icons';
 
 export function Tools() {
   const [tools, setTools] = useState<Tool[]>([]);
@@ -40,28 +41,38 @@ export function Tools() {
   }
 
   return (
-    <>
-      <h2>AI tools</h2>
-      <p>Approved tools are usable without a warning. Blocked tools show a banner
-         and offer the employee a one-click access request.</p>
+    <section class="panel">
+      <div class="panel-head">
+        <span class="ico"><ShieldIcon /></span>
+        <div>
+          <h2>AI Tools</h2>
+          <p class="sub">Approved tools run without a warning; blocked tools show a banner and a one-click access request.</p>
+        </div>
+        <span class="tag count">{tools.length} tools</span>
+      </div>
       {error && <p class="error">{error}</p>}
       <table>
         <thead><tr><th>Tool</th><th>Host</th><th>Status</th><th></th></tr></thead>
         <tbody>
           {tools.map((t) => (
             <tr key={t.llm_id}>
-              <td>{t.display_name}</td>
+              <td><span class="name">{t.display_name}</span></td>
               <td><code>{t.host}</code></td>
               <td><span class={`pill ${t.status}`}>{t.status}</span></td>
               <td>
-                <button disabled={busy === t.llm_id} onClick={() => toggle(t)}>
-                  {t.status === 'approved' ? 'Block' : 'Approve'}
-                </button>
+                <div class="row-actions">
+                  <button
+                    class={`btn-sm ${t.status === 'approved' ? 'btn-danger' : 'btn-primary'}`}
+                    disabled={busy === t.llm_id} onClick={() => toggle(t)}
+                  >
+                    {t.status === 'approved' ? 'Block' : 'Approve'}
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </>
+    </section>
   );
 }
