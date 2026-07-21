@@ -524,6 +524,7 @@ export function Modal({
               Ignore
             </button>
           </div>
+          <ReportWrongFlag cls={openFinding.cls} matched={openFinding.text} />
         </div>
       )}
 
@@ -537,6 +538,51 @@ export function Modal({
           to { opacity: 1; transform: none; }
         }
       `}</style>
+    </div>
+  );
+}
+
+/**
+ * Redressal for a PII/redaction decision: report a flag the employee believes is
+ * wrong. Distinct from "Ignore with reason" (a local self-override) — this asks a
+ * human to review the decision. 🔴 I3: the appeal carries the class + reason;
+ * the flagged text goes only when the employee ticks the opt-in box.
+ */
+export function ReportWrongFlag({ cls, matched }: { cls: string; matched: string }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [optIn, setOptIn] = useState(false);
+  const [sent, setSent] = useState(false);
+  if (sent) return <div style="font-size:12px;color:#15803d;margin-top:8px">Report sent for review.</div>;
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        style="font-size:12px;background:none;border:none;color:#e11d48;cursor:pointer;padding:6px 0 0">
+        Report a wrong flag
+      </button>
+    );
+  }
+  return (
+    <div style="margin-top:8px">
+      <input placeholder="Why is this not sensitive?" value={reason}
+        onInput={(e) => setReason((e.target as HTMLInputElement).value)}
+        onKeyDown={(e) => e.stopPropagation()}
+        style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" />
+      <label style="display:flex;gap:6px;align-items:flex-start;margin-top:6px;font-size:12px;color:#334155">
+        <input type="checkbox" checked={optIn} onChange={(e) => setOptIn((e.target as HTMLInputElement).checked)} />
+        Include the flagged text so a person can review it.
+      </label>
+      <button type="button"
+        onClick={() => {
+          void chrome.runtime.sendMessage({
+            kind: 'appeal-submit', decisionType: 'pii', category: cls, reason,
+            disclosedText: optIn ? matched : undefined,
+          }).catch(() => undefined);
+          setSent(true);
+        }}
+        style="margin-top:6px;font-size:12px;border:none;border-radius:6px;background:#e11d48;color:#fff;padding:6px 10px;cursor:pointer">
+        Send report
+      </button>
     </div>
   );
 }
