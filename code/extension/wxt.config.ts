@@ -34,7 +34,7 @@ export default defineConfig({
       // No host_permission is needed for it: the NER already fetches remote weights with none
       // listed. The local model server it replaced needed two entries here and a Python process.
       // [set this to the founder-hosted team-test origin before the team test]
-      'https://vanguard-extract.example.com/*',
+      'https://vanguard-extract.onrender.com/*',
 
       // --- Policy service (Plan A) ---
       // 🔴 THREE origins, and all three must ship. host_permissions is baked at
