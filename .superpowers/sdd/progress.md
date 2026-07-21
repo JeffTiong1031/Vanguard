@@ -597,3 +597,9 @@ the destructive Edit; controller restored all 6 files via `git checkout HEAD --`
 verified clean, nothing lost (git-tracked, never committed-over). Fix (founder-approved): from Task 4
 onward this plan's briefs/reports use plan-scoped names: task-hosted-demo-N-brief.md /
 task-hosted-demo-N-report.md, passed as task-brief's explicit OUTFILE arg.
+
+Task 3: complete (commit be98fcd, review clean). Delivered: render.yaml at repo root (type: web,
+  runtime: docker, rootDir: code/backend, dockerfilePath: ./Dockerfile, plan: free,
+  healthCheckPath: /healthz, VANGUARD_DEMO_TOKEN sync:false). YAML validated (python yaml.safe_load).
+  From this task on, briefs/reports use plan-scoped filenames (task-hosted-demo-N-*.md) per the
+  process-incident fix above.
