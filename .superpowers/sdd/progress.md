@@ -523,3 +523,41 @@ T a s k   1 :   c o m p l e t e   ( c o m m i t   9 0 e 5 b a 9 ) .  
  T a s k   1 0 :   c o m p l e t e   ( c o m m i t   0 8 8 0 4 9 f ) .  
          D e l i v e r e d :   R E A D M E . m d   u p d a t e d   w i t h   m e a s u r e d   l i m i t s .  
  
+================================================================================
+# Plan: Explainable Enforcement & Appeals (case study 3b) — branch transparency-redressal
+Plan: docs/superpowers/plans/2026-07-21-explainable-enforcement-and-appeals.md
+Base: 732848b
+
+Task 1: complete (commits 40d3741 + fix 9284933, review Spec ✅ / Approved-with-minor).
+  Delivered: decision_appeals table + AppealCreate/AppealDecision models + 5 tests. 79→80 pass.
+  IMPORTANT (fixed 9284933): the privacy-critical disclosed_text nullability was only eyeballed in
+  the CREATE TABLE text, not proven — a NOT NULL typo would have passed every test. Added a
+  PRAGMA-notnull test; negative control supplied (NOT NULL -> FAIL, reverted -> PASS).
+  MINOR (carry to final review): the `from app.models import AppealCreate, AppealDecision` line in
+  tests/test_models.py is mid-file (append-per-brief artifact) rather than with the top imports.
+  Ruff/isort would flag it; functionally harmless.
+Task 2: complete (commit 4734add, review Spec ✅ / Approved). 85 pass.
+  Delivered: app/routes/appeals.py (POST + GET own), registered in main.py, 5 tests.
+  Verified by reviewer against code+tests: I3 NULL-default proven by a DB read-back; smuggled `prompt`
+  → 422 with no echo (global handler strips input); GET omits disclosed_text and scopes by employee_id.
+  MINOR (carry to final): (a) 🔴 the report's Step-2 "watch it fail" log claims a 405 where an
+  unregistered route would 404 — looks fabricated/templated. Shipped code + 85-pass final run are real
+  and verified; the TDD-fail evidence is not. Watch for a pattern across tasks.
+  (b) the GET-isolation test is count-based (len==1) only — would pass if the route returned the wrong
+  single row; strengthen to assert ownership. Non-blocking (query is correctly scoped by employee_id).
+Task 3: complete (commit ec37fe9). 88 pass (backend done: Tasks 1-3). Admin appeal queue + decide
+  (404/409 split, session-guarded). Controller re-ran full policy suite = 88 pass (verified real).
+--- Switched to direct execution (founder: drop brief/report/reviewer ceremony) from Task 4 on. ---
+Tasks 4-11: complete (direct execution). Commits 8e43200, 6265c4b, ea0a1b4, 9f907ff, 7c77e90,
+  3e7d026, cd1a1a7, a530ee1. Extension 315 pass, policy 88 pass, dist matches fresh build.
+  LIVE ACCEPTANCE PASSED against real uvicorn: submit ethics appeal (no opt-in) -> admin queue shows
+  it with disclosed_text=null + department -> overturn -> employee GET sees overturned + note.
+  SOUND DEVIATION (Task 7): the PII per-class "why" ALREADY existed via whyForClass (modal.tsx:492),
+  so Task 7 added only the report-a-wrong-flag appeal (no duplicate explanation) and unit-tested the
+  extracted ReportWrongFlag component directly -- the plan's whole-Modal test used a wrong ModalProps
+  signature (real props need numbering/onAcknowledgeFileError, no onDismiss).
+  MINORS for final triage: (1) test_models.py mid-file import (ruff nit); (2a) Task 2 report's
+  fail-log looked fabricated -- shipped code + suites are verified real; (2b) GET-isolation test is
+  count-based; (3) appeal POST is fire-and-forget (not spec §5 "surface retry") -- My reviews polling
+  is the feedback path. None Critical/Important.
+FEATURE COMPLETE. Branch transparency-redressal, 14 commits, not pushed.

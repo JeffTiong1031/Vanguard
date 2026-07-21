@@ -27,7 +27,7 @@ from fastapi import APIRouter, Body, Cookie, HTTPException, Response
 
 from app.db import bump_policy_version
 from app.deps import get_conn
-from app.models import AdminLogin
+from app.models import AdminLogin, AppealDecision
 from app.security import hash_password, issue_session, new_token, now_iso, session_org, verify_password
 
 # Compute dummy hash once at import time for timing-side-channel defense in login.
@@ -236,6 +236,51 @@ async def decide_request(
         "SELECT policy_version FROM orgs WHERE id = ?", (org_id,)
     ).fetchone()["policy_version"]
     return {"version": int(version)}
+
+
+@router.get("/appeals")
+async def list_appeals(vg_admin: str | None = Cookie(default=None)) -> list[dict]:
+    org_id = _require_admin(vg_admin)
+    return [dict(r) for r in get_conn().execute(
+        "SELECT a.id, a.decision_type, a.category, a.employee_reason, a.disclosed_text,"
+        "       a.status, a.admin_note, a.created_at, e.department"
+        " FROM decision_appeals a"
+        " JOIN employees e ON e.id = a.employee_id"
+        " WHERE a.org_id = ? ORDER BY a.created_at DESC",
+        (org_id,),
+    )]
+
+
+@router.post("/appeals/{appeal_id}")
+async def decide_appeal(
+    appeal_id: str,
+    body: AppealDecision,
+    vg_admin: str | None = Cookie(default=None),
+) -> dict[str, str]:
+    org_id = _require_admin(vg_admin)
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM decision_appeals WHERE id = ? AND org_id = ? AND status = 'pending'",
+        (appeal_id, org_id),
+    ).fetchone()
+    if row is None:
+        # Same 404-vs-409 split as decide_request: a decided appeal must not be
+        # silently re-decided just because the console offered the buttons again.
+        exists = conn.execute(
+            "SELECT 1 FROM decision_appeals WHERE id = ? AND org_id = ?",
+            (appeal_id, org_id),
+        ).fetchone()
+        if exists is None:
+            raise HTTPException(status_code=404, detail="unknown appeal")
+        raise HTTPException(status_code=409, detail="appeal already decided")
+
+    conn.execute(
+        "UPDATE decision_appeals SET status = ?, admin_note = ?, decided_at = ?"
+        " WHERE id = ? AND org_id = ? AND status = 'pending'",
+        (body.decision, body.note, now_iso(), appeal_id, org_id),
+    )
+    conn.commit()
+    return {"status": body.decision}
 
 
 @router.get("/usage")

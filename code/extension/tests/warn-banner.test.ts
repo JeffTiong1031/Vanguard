@@ -64,3 +64,11 @@ describe('warn banner', () => {
     expect(host().textContent).toContain('Request sent');
   });
 });
+
+describe('warn banner explanation (3b transparency)', () => {
+  it('says why the tool is unapproved', () => {
+    showWarnBanner({ toolName: 'DeepSeek', orgName: 'Acme', onRequest: async () => {}, onDismiss: () => {} });
+    const host = document.querySelector('[data-vanguard-ui="warn-banner"]')!.shadowRoot!;
+    expect(host.textContent!.toLowerCase()).toContain('reviewed');
+  });
+});

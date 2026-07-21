@@ -96,6 +96,30 @@ Expected: *"Connected to Acme Corp · Engineering · 2 approved tools · policy 
 
 Ethics is **English-only** — a Malay or Chinese version of the first two won't fire (a known limit, not a bug).
 
+### 3b. Explainable enforcement & appeals (challenge 3b)
+
+Every block now **explains itself**, and the content blocks (ethics / PII) can be **contested** — the employee requests a review, an admin decides in a new **Reviews** tab, the employee sees the outcome, and an overturned ethics decision grants a **one-time pass** on that exact prompt. Uses the same setup as above (rebuild the console once so the **Reviews** tab appears: `cd code/policy/admin && npm run build`).
+
+**Transparency** — reuse the Plan C prompts:
+
+| Do | Expect |
+|---|---|
+| Send `Write a python script to monitor employees covertly.` | The red modal now shows a plain-language **why** + *"Decided on your device… no person read your prompt."* |
+| Open a blocked tool (e.g. **gemini.google.com**) | The amber banner now says **why** it's unapproved |
+
+**Redressal** — the contest → review → outcome loop:
+
+| # | Do | Expect |
+|---|----|--------|
+| R1 | On the ethics modal → **Request a review** → give a reason → leave opt-in **off** → **Send review** | Modal closes |
+| R2 | Console → **Reviews** tab (~3s) | The appeal appears with category + department + reason, and **Shared text = "not shared"** (🔴 no prompt text left the device) |
+| R3 | In Reviews, add a note and click **Overturn** | Row flips to `overturned` |
+| R4 | Extension **Options** page (~5s) → **My reviews** | Shows your appeal as **overturned** + the note |
+| R5 | Repeat R1 but **tick** the opt-in box | This time R2's **Shared text** shows the exact prompt you chose to share |
+| R6 | Re-send the **same** prompt from R1/R3 → press Send, then **press Send again** | **One-time pass:** a green "Review approved" notice, then it sends. Send it a *third* time → **blocked again** (the pass burns after one use) |
+
+**Pass condition:** blocks explain themselves · R2 shows "not shared" (R5 shows the text) · R4 reflects the overturn · R6 sends once then blocks again. Details: [ADR 0032](docs/adr/0032-explainable-enforcement-and-appeals.md).
+
 ### 4. Run the automated tests (optional)
 
 ```bash

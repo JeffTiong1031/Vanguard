@@ -73,3 +73,27 @@ def test_usage_event_finding_hash_optional():
     # Explicitly None
     event2 = UsageEvent(host="chatgpt.com", type="pii_block", ts="t", finding_hash=None)
     assert event2.finding_hash is None
+
+
+from app.models import AppealCreate, AppealDecision
+
+
+def test_appeal_create_defaults_disclosed_text_to_none():
+    a = AppealCreate(pseudo_id="p1", decision_type="ethics", category="covert_surveillance", reason="I meant defence")
+    assert a.disclosed_text is None
+
+
+def test_appeal_create_rejects_unknown_field():
+    with pytest.raises(ValidationError):
+        AppealCreate(pseudo_id="p1", decision_type="pii", category="NRIC", reason="ok", prompt="leaked")
+
+
+def test_appeal_create_rejects_bad_decision_type():
+    with pytest.raises(ValidationError):
+        AppealCreate(pseudo_id="p1", decision_type="tool", category="x", reason="ok")
+
+
+def test_appeal_decision_only_allows_two_verdicts():
+    assert AppealDecision(decision="overturned").note is None
+    with pytest.raises(ValidationError):
+        AppealDecision(decision="maybe")

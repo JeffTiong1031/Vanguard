@@ -68,6 +68,25 @@ CREATE TABLE IF NOT EXISTS access_requests (
     decided_at  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS decision_appeals (
+    id              TEXT PRIMARY KEY,
+    org_id          TEXT NOT NULL REFERENCES orgs(id),
+    employee_id     TEXT NOT NULL REFERENCES employees(id),
+    decision_type   TEXT NOT NULL CHECK (decision_type IN ('ethics', 'pii')),
+    category        TEXT NOT NULL,
+    employee_reason TEXT NOT NULL,
+    disclosed_text  TEXT,
+    status          TEXT NOT NULL CHECK (status IN ('pending', 'upheld', 'overturned')),
+    admin_note      TEXT,
+    created_at      TEXT NOT NULL,
+    decided_at      TEXT,
+    -- One-time pass: an overturned ethics appeal carries a hash of the prompt so
+    -- the extension can grant a single pass on that exact prompt. pass_used flips
+    -- to 1 the moment the pass is granted, so it is never handed out twice.
+    prompt_hash     TEXT,
+    pass_used       INTEGER NOT NULL DEFAULT 0
+);
+
 -- finding_hash is a salted hash reference. There is no column for prompt text
 -- and there must never be one.
 CREATE TABLE IF NOT EXISTS usage_events (
@@ -89,6 +108,7 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
 
 CREATE INDEX IF NOT EXISTS ix_events_org_ts ON usage_events (org_id, ts);
 CREATE INDEX IF NOT EXISTS ix_requests_org_status ON access_requests (org_id, status);
+CREATE INDEX IF NOT EXISTS ix_appeals_org_status ON decision_appeals (org_id, status);
 """
 
 
@@ -101,7 +121,19 @@ def connect(path: str) -> sqlite3.Connection:
 
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    _migrate_appeals(conn)
     conn.commit()
+
+
+def _migrate_appeals(conn: sqlite3.Connection) -> None:
+    """Idempotently add the one-time-pass columns to a decision_appeals table that
+    predates them. `CREATE TABLE IF NOT EXISTS` never alters an existing table, so
+    a DB seeded before this feature needs the columns added by hand."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(decision_appeals)")}
+    if "prompt_hash" not in cols:
+        conn.execute("ALTER TABLE decision_appeals ADD COLUMN prompt_hash TEXT")
+    if "pass_used" not in cols:
+        conn.execute("ALTER TABLE decision_appeals ADD COLUMN pass_used INTEGER NOT NULL DEFAULT 0")
 
 
 def bump_policy_version(conn: sqlite3.Connection, org_id: str) -> int:

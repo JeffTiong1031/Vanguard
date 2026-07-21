@@ -71,3 +71,8 @@ export type Usage = {
   by_tool: { host: string; events: number }[];
   by_category: { category: string; events: number }[];
 };
+export type AppealRow = {
+  id: string; decision_type: string; category: string; employee_reason: string;
+  disclosed_text: string | null; status: 'pending' | 'upheld' | 'overturned';
+  admin_note: string | null; created_at: string; department: string;
+};

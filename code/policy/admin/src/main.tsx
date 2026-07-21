@@ -6,14 +6,16 @@ import { Tools } from './screens/Tools';
 import { Requests } from './screens/Requests';
 import { Usage } from './screens/Usage';
 import { Tokens } from './screens/Tokens';
-import { LayersIcon, ShieldIcon, InboxIcon, BarIcon, KeyIcon } from './icons';
+import { Reviews } from './screens/Reviews';
+import { LayersIcon, ShieldIcon, InboxIcon, BarIcon, KeyIcon, GavelIcon } from './icons';
 import './style.css';
 
-type Screen = 'tools' | 'requests' | 'usage' | 'tokens';
+type Screen = 'tools' | 'requests' | 'usage' | 'tokens' | 'reviews';
 
 const TABS: [Screen, string, typeof ShieldIcon][] = [
   ['tools', 'Tools', ShieldIcon],
   ['requests', 'Requests', InboxIcon],
+  ['reviews', 'Reviews', GavelIcon],
   ['usage', 'Usage', BarIcon],
   ['tokens', 'Tokens', KeyIcon],
 ];
@@ -113,6 +115,7 @@ function App() {
       <main>
         {screen === 'tools' && <Tools />}
         {screen === 'requests' && <Requests />}
+        {screen === 'reviews' && <Reviews />}
         {screen === 'usage' && <Usage />}
         {screen === 'tokens' && <Tokens />}
       </main>
