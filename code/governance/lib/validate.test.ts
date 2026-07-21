@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
-import { parseStrict, ValidationError, validationResponse } from "./validate";
+import { parseStrict, strictObject, ValidationError, validationResponse } from "./validate";
 
 /**
  * Test-only plumbing: parseStrict throws ValidationError on a bad parse;
@@ -71,5 +71,15 @@ describe("parseStrict", () => {
   test("throws ValidationError (not a raw ZodError) on failure", () => {
     const schema = z.object({ pseudo_id: z.string() }).strict();
     expect(() => parseStrict(schema, {})).toThrow(ValidationError);
+  });
+});
+
+describe("strictObject", () => {
+  test("rejects unknown keys the same way a manually-.strict()'d schema does", () => {
+    const schema = strictObject({ pseudo_id: z.string() });
+    const err = catchParse(schema, { pseudo_id: "abc", prompt: "extra field" });
+    expect(err.zodError.issues.some((issue) => issue.code === "unrecognized_keys")).toBe(
+      true,
+    );
   });
 });

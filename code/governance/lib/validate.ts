@@ -26,6 +26,15 @@ export class ValidationError extends Error {
  * the caller didn't ask for (Zod's `unrecognized_keys` issue), so a bug that
  * sends prompt text alongside metadata gets a 422 instead of being accepted
  * and stored.
+ *
+ * `parseStrict` accepts any `z.ZodType<T>` -- not just object schemas -- so
+ * it cannot itself enforce "the schema must be strict"; that concept only
+ * applies to object schemas, and a runtime introspection check here would
+ * be fragile across Zod versions and would wrongly constrain callers passing
+ * e.g. `z.string()`. For the common case of building an object schema to
+ * pass in, use `strictObject` below instead of `z.object(shape).strict()` --
+ * it makes the `.strict()` call impossible to forget rather than merely
+ * documented.
  */
 export function parseStrict<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
@@ -33,6 +42,19 @@ export function parseStrict<T>(schema: z.ZodType<T>, body: unknown): T {
     throw new ValidationError(result.error);
   }
   return result.data;
+}
+
+/**
+ * Build a strict object schema: `z.object(shape).strict()`. Use this instead
+ * of `z.object(shape)` when constructing the schema you'll pass to
+ * `parseStrict` -- it converts "the caller must remember to call
+ * `.strict()`" into "the caller can't forget," for the common case (every
+ * route handler in this plan builds an object schema). `parseStrict` itself
+ * cannot enforce strictness (see its JSDoc above); this is the ergonomic
+ * fix at the call site instead.
+ */
+export function strictObject<T extends z.ZodRawShape>(shape: T) {
+  return z.object(shape).strict();
 }
 
 /**
