@@ -1,4 +1,9 @@
-import { CLIENT_LIMITS, DEMO_TOKEN, getApiBase } from './config';
+import {
+  CLIENT_LIMITS,
+  getApiBase,
+  getDemoToken,
+  isLocalApiBase,
+} from './config';
 import type { ApiErrorCode, ExtractResponse } from './types';
 
 export class ExtractError extends Error {
@@ -6,6 +11,41 @@ export class ExtractError extends Error {
     super(message);
     this.name = 'ExtractError';
   }
+}
+
+const MISSING_TOKEN_MSG =
+  "Vanguard needs the demo access key in Options (File checking) before it can " +
+  "reach the hosted file-checking service. Paste the key your team lead sent you, save, and try again.";
+
+/**
+ * Bearer for the hosted Path A gate. Local backends usually leave
+ * VANGUARD_DEMO_TOKEN unset, so we omit the header when talking to localhost
+ * with no pasted key. Hosted URL with no key fails closed here (clearer than a 401).
+ */
+async function authHeaderFor(base: string): Promise<Record<string, string>> {
+  const token = await getDemoToken();
+  if (token) return { Authorization: `Bearer ${token}` };
+  if (isLocalApiBase(base)) return {};
+  throw new ExtractError('unauthorized', MISSING_TOKEN_MSG);
+}
+
+function mapApiError(
+  payload: { error?: { code?: ApiErrorCode; message?: string } } | null,
+  fallbackCode: ApiErrorCode,
+  fallbackMessage: string,
+): ExtractError {
+  const code = payload?.error?.code ?? fallbackCode;
+  const message = payload?.error?.message ?? fallbackMessage;
+  if (code === 'unauthorized') {
+    return new ExtractError(
+      'unauthorized',
+      message.includes('Options')
+        ? message
+        : "The demo access key in Options does not match the file-checking service. " +
+          "Ask your team lead for the current key, paste it under File checking, and try again.",
+    );
+  }
+  return new ExtractError(code, message);
 }
 
 export async function extractFile(file: File): Promise<ExtractResponse> {
@@ -21,6 +61,7 @@ export async function extractFile(file: File): Promise<ExtractResponse> {
   }
 
   const base = await getApiBase();
+  const auth = await authHeaderFor(base);
   const body = new FormData();
   body.append('file', file, file.name);
 
@@ -35,10 +76,11 @@ export async function extractFile(file: File): Promise<ExtractResponse> {
       signal: abort.signal,
       headers: {
         'x-vanguard-filename': encodeURIComponent(file.name),
-        Authorization: `Bearer ${DEMO_TOKEN}`,
+        ...auth,
       },
     });
   } catch (err) {
+    if (err instanceof ExtractError) throw err;
     if (abort.signal.aborted) {
       throw new ExtractError(
         'timeout',
@@ -59,10 +101,10 @@ export async function extractFile(file: File): Promise<ExtractResponse> {
     const payload = (await response.json().catch(() => null)) as
       | { error?: { code?: ApiErrorCode; message?: string } }
       | null;
-    throw new ExtractError(
-      payload?.error?.code ?? 'parse_failed',
-      payload?.error?.message ??
-        `"${file.name}" could not be checked, so it has not been sent to the AI.`,
+    throw mapApiError(
+      payload,
+      'parse_failed',
+      `"${file.name}" could not be checked, so it has not been sent to the AI.`,
     );
   }
 
@@ -89,6 +131,7 @@ export async function redactFile(
   spans: RedactSpanPayload[],
 ): Promise<File> {
   const base = await getApiBase();
+  const auth = await authHeaderFor(base);
   const body = new FormData();
   body.append('file', file, file.name);
   body.append('spec', JSON.stringify({ extract_sha256: extractSha256, spans }));
@@ -102,9 +145,10 @@ export async function redactFile(
       method: 'POST',
       body,
       signal: abort.signal,
-      headers: { Authorization: `Bearer ${DEMO_TOKEN}` },
+      headers: { ...auth },
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ExtractError) throw err;
     throw new ExtractError(
       'network',
       "Vanguard couldn't reach the file-checking service to apply your changes, so " +
@@ -118,10 +162,10 @@ export async function redactFile(
     const payload = (await response.json().catch(() => null)) as
       | { error?: { code?: ApiErrorCode; message?: string } }
       | null;
-    throw new ExtractError(
-      payload?.error?.code ?? 'redaction_failed',
-      payload?.error?.message ??
-        `"${file.name}" could not be redacted, so it has not been sent to the AI.`,
+    throw mapApiError(
+      payload,
+      'redaction_failed',
+      `"${file.name}" could not be redacted, so it has not been sent to the AI.`,
     );
   }
 
