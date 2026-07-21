@@ -47,3 +47,13 @@ def test_employees_table_has_no_column_that_could_hold_a_name():
     conn = _conn()
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(employees)")}
     assert cols == {"id", "org_id", "pseudo_id", "department", "created_at"}
+
+
+def test_decision_appeals_table_exists_with_expected_columns():
+    conn = _conn()
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(decision_appeals)")}
+    assert cols == {
+        "id", "org_id", "employee_id", "decision_type", "category",
+        "employee_reason", "disclosed_text", "status", "admin_note",
+        "created_at", "decided_at",
+    }

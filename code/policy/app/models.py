@@ -85,3 +85,25 @@ class AdminLogin(BaseModel):
     model_config = ConfigDict(extra="forbid")
     org_name: str
     password: str
+
+
+class AppealCreate(BaseModel):
+    """An employee contesting an automated enforcement decision.
+
+    I3: there is NO field for the prompt by default. `disclosed_text` is the one
+    place raw text can enter, and only when the employee ticks the opt-in box in
+    the modal. extra="forbid" means a client cannot smuggle the prompt under some
+    other key.
+    """
+    model_config = ConfigDict(extra="forbid")
+    pseudo_id: str
+    decision_type: Literal["ethics", "pii"]
+    category: str
+    reason: str = Field(max_length=500)
+    disclosed_text: Optional[str] = Field(default=None, max_length=4000)
+
+
+class AppealDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    decision: Literal["upheld", "overturned"]
+    note: Optional[str] = Field(default=None, max_length=500)
