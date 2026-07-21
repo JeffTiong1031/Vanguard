@@ -524,6 +524,7 @@ Expected: `{"ok":true}` (first hit may take ~50s to wake).
 
 - In `code/extension/src/files/config.ts`: set `DEFAULT_BASE` to the real `https://<name>.onrender.com` and `DEMO_TOKEN` to the exact value set in Step 2.
 - In `code/extension/wxt.config.ts`: if the subdomain differs from `vanguard-extract`, update the `https://<name>.onrender.com/*` host_permissions entry to match.
+- **Simplest path: in Step 1, name the Render service exactly `vanguard-extract`** (Render only appends a suffix on a name collision within your account, which is unlikely on a fresh deploy). If it matches, `README.md` and `code/extension/ACCEPTANCE.md` — which both also reference `vanguard-extract.onrender.com` — stay valid with no further edits. If the name ends up different, update those two files' URL references as well, not just `config.ts`/`wxt.config.ts`.
 
 - [ ] **Step 5: Rebuild and verify no drift**
 

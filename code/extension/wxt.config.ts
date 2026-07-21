@@ -33,7 +33,9 @@ export default defineConfig({
       // The sensitivity classifier loads from a public, hash-pinned Hugging Face repo (ADR 0029).
       // No host_permission is needed for it: the NER already fetches remote weights with none
       // listed. The local model server it replaced needed two entries here and a Python process.
-      // [set this to the founder-hosted team-test origin before the team test]
+      // Placeholder origin already set (Path A hosted demo backend, render.yaml's
+      // `name: vanguard-extract`). Task 7 Step 4 substitutes the real subdomain here
+      // only if the deployed Render service name ends up different from this placeholder.
       'https://vanguard-extract.onrender.com/*',
 
       // --- Policy service (Plan A) ---
