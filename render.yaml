@@ -1,0 +1,20 @@
+# Path A demo host for the Slice 2 file-checking backend.
+# Deploy: Render dashboard -> New -> Blueprint -> connect this repo.
+# NOT production: production file path is Malaysia + DPA + zero-retention (Path B).
+services:
+  - type: web
+    name: vanguard-extract
+    runtime: docker
+    rootDir: code/backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /healthz
+    # NOT hardened like local docker-compose.yml (read_only, tmpfs, mem_limit): Render's
+    # container runtime does not apply those compose-level settings. The app is stateless/
+    # in-memory by design (no filesystem writes on the request path) and the token gate +
+    # CORS origin restriction bound reach, but there is no Render-side filesystem-retention
+    # guarantee to match compose's read_only posture. Path A accepts this; Path B (production)
+    # does not inherit any of render.yaml.
+    envVars:
+      - key: VANGUARD_DEMO_TOKEN
+        sync: false   # set in the Render dashboard; never committed

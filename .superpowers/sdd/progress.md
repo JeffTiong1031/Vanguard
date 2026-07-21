@@ -561,3 +561,106 @@ Tasks 4-11: complete (direct execution). Commits 8e43200, 6265c4b, ea0a1b4, 9f90
   count-based; (3) appeal POST is fire-and-forget (not spec §5 "surface retry") -- My reviews polling
   is the feedback path. None Critical/Important.
 FEATURE COMPLETE. Branch transparency-redressal, 14 commits, not pushed.
+
+================================================================================
+# Plan: Hosted demo file-backend (Slice 2, Path A) — on main, no worktree (founder call)
+Plan: docs/superpowers/plans/2026-07-21-hosted-demo-file-backend.md
+Base: 12b4ecf
+
+Task 1: complete (commits 12b4ecf..24da395, review clean after 1 fix loop). Delivered:
+  app/auth.py check_bearer() (hmac.compare_digest), wired into /v1/extract + /v1/redact, opt-in via
+  VANGUARD_DEMO_TOKEN, /healthz stays open. Backend suite 47 pass.
+  FIX (24da395): review found /v1/redact had the gate wired but zero test coverage
+  (plan-mandated gap — brief's Step 1 only wrote extract tests). Added 3 tests +
+  _post_redact() helper mirroring test_redact.py's request shape. Re-review: Approved.
+  MINORS for final triage: (1) empty-string VANGUARD_DEMO_TOKEN silently treated as unset
+  (app/auth.py `or None`) — low-risk, undocumented; (2) 3-line gate-check block duplicated in
+  extract() and redact() — plan-mandated (brief Step 4 specifies inline, not a dependency).
+
+Task 2: complete (commit 82105a0, review clean). Delivered: CORS allow_headers += "authorization"
+  (app/main.py), Dockerfile CMD -> shell form with ${PORT:-8000} (defaults 8000 for local compose,
+  honors Render's $PORT), 1 new preflight test (9/9 auth tests, 48/48 full suite, verified clean
+  twice by controller). NOTE: implementer's report claimed a "pre-existing" test_redact_keeps_nothing
+  failure; controller verified this independently at base AND head (isolated worktree) -- test passes
+  cleanly both places, twice each. False claim, not a real issue; treated as a one-off sandbox flake,
+  not carried forward.
+  MINOR for final triage: Dockerfile CMD shell form (Dockerfile:13) doesn't use `exec`, so uvicorn's
+  PID-1/SIGTERM status relies on dash's last-command optimization rather than being guaranteed --
+  cheap fix is `"exec uvicorn ..."` in the CMD string. Not blocking (single-process container behind
+  Render's own supervision; worst case is a slower graceful shutdown, not data loss).
+
+## Process incident (2026-07-21, controller-caught, no data lost)
+task-N-brief.md/task-N-report.md filenames in this shared scratch dir are numbered ONLY, not
+plan-scoped -- this plan's Task 1/2/3 dispatches silently overwrote (uncommitted, working-tree only)
+the transparency-redressal plan's real committed Task 1/2/3 docs. A subagent's own self-report flagged
+the destructive Edit; controller restored all 6 files via `git checkout HEAD --` before continuing --
+verified clean, nothing lost (git-tracked, never committed-over). Fix (founder-approved): from Task 4
+onward this plan's briefs/reports use plan-scoped names: task-hosted-demo-N-brief.md /
+task-hosted-demo-N-report.md, passed as task-brief's explicit OUTFILE arg.
+
+Task 3: complete (commit be98fcd, review clean). Delivered: render.yaml at repo root (type: web,
+  runtime: docker, rootDir: code/backend, dockerfilePath: ./Dockerfile, plan: free,
+  healthCheckPath: /healthz, VANGUARD_DEMO_TOKEN sync:false). YAML validated (python yaml.safe_load).
+  From this task on, briefs/reports use plan-scoped filenames (task-hosted-demo-N-*.md) per the
+  process-incident fix above.
+
+Task 4: complete (commit 7be5199, review clean). Delivered: config.ts DEMO_TOKEN (placeholder) +
+  DEFAULT_BASE -> hosted placeholder URL, getApiBase/setApiBase override unchanged; api.ts sends
+  Authorization: Bearer on both /v1/extract and /v1/redact; 1 new test asserting real header content
+  (31/31 extension file tests pass).
+  MINORS for final triage (both plan-mandated, brief's own prescribed shape, not implementer gaps):
+  (1) no test asserts Authorization header on redactFile specifically (only extractFile tested);
+  (2) `Bearer ${DEMO_TOKEN}` literal duplicated in api.ts (extract + redact) rather than a shared
+  helper -- worth a follow-up refactor once Task 7 substitutes the real token.
+
+Task 5: complete (commit 2bbb03d, review clean, zero findings). Delivered: wxt.config.ts placeholder
+  swap (vanguard-extract.example.com -> vanguard-extract.onrender.com), one line, localhost/127.0.0.1
+  entries untouched. dist/ rebuilt (7 files: manifest.json + hashed chunks + content.js + offscreen/
+  options .html). check:dist PASS (real transcript verified by reviewer against check-dist-drift.mjs
+  source). 318/318 vitest pass (up from 301/302 pre-Task-4/5 -- the dist-drift test now passes because
+  dist/ is no longer stale). Reviewer aside about "unstaged ACCEPTANCE.md/pyproject.toml" was checked
+  and is incorrect/stale -- working tree confirmed clean by controller.
+
+Task 6: complete (commit 3c94cd0, review clean). Delivered: README.md hosted-backend subsection
+  (Path A framing preserved, warm-before-demo + token-brief + deploy-order all present) inserted into
+  the TEAM TEST quick-start (not the governance one), after "Start the file-checking API"; ACCEPTANCE.md
+  Slice 2 Prerequisites line extended with the hosted-option sentence, original localhost/compose text
+  intact. MINOR (not fixed, cosmetic): ACCEPTANCE.md prerequisites line is 361 chars, could wrap.
+
+TASKS 1-6 COMPLETE. All committed on main (12b4ecf..3c94cd0), each task reviewed clean (Task 1 needed
+  one fix loop for missing /v1/redact test coverage; Tasks 2-6 approved first pass). Backend: 47 tests
+  pass (opt-in bearer gate on both file routes, CORS, $PORT binding). Extension: 318/318 vitest pass,
+  dist matches source. render.yaml ready for founder's one-time Render deploy. Extension currently
+  ships PLACEHOLDER token/URL (REPLACE_WITH_DEMO_TOKEN, vanguard-extract.onrender.com as literal
+  placeholder) -- Task 7 (founder-run, not dispatched to a subagent) substitutes real values after
+  deploying and produces the demo-final dist/.
+  MINORS carried to final whole-branch review: (1) app/auth.py empty-string env var treated as unset;
+  (2) gate-check block duplicated in extract()/redact() -- plan-mandated; (3) Dockerfile CMD shell
+  form lacks `exec`, PID-1/SIGTERM relies on dash's optimization rather than being guaranteed; (4) no
+  redact-side test for Authorization header (extract-side only) -- plan-mandated; (5) Bearer token
+  literal duplicated in api.ts extract/redact calls -- plan-mandated, worth a helper post-Task-7;
+  (6) ACCEPTANCE.md prerequisites line is 361 chars, cosmetic wrap suggestion.
+
+FINAL WHOLE-BRANCH REVIEW: complete (opus). Verdict: Ready to merge, with fixes -- fixes applied,
+  no re-review requested (both were doc/config-only, no logic touched).
+  Strengths confirmed: auth gate correct+minimal, fail-closed UX consistent, Path A/B framing airtight
+  across all docs, env-var/JS-constant split clean, local-dev affordances preserved, token rotation
+  single-source.
+  IMPORTANT #1 (FIXED, db5881a): render.yaml deploy loses docker-compose.yml's read_only/tmpfs/
+  mem_limit hardening on Render (Render builds Dockerfile directly, ignores compose file) -- now
+  documented with a comment in render.yaml stating the gap and why Path A accepts it.
+  IMPORTANT #2 (FIXED, db5881a): hosted URL placeholder appears in 4 files (config.ts, wxt.config.ts,
+  README.md, ACCEPTANCE.md) but plan's Task 7 Step 4 only listed 2 for substitution -- added a bullet
+  to Task 7 recommending the Render service be named exactly `vanguard-extract` (keeps README/
+  ACCEPTANCE valid without further edits) with a fallback to update those two docs if the name differs.
+  MINOR #3 (FIXED, db5881a): stale "[set this... before the team test]" TODO comment in wxt.config.ts
+  replaced with an accurate one pointing to Task 7 Step 4.
+  MINOR #4/#5 (not fixed, carried to Task 7 acceptance per reviewer's own recommendation): empty-string
+  env-var footgun in auth.py; "unauthorized" not in ApiErrorCode union (harmless -- message renders
+  correctly, only .code branching would miss it -- worth a glance during Task 7's live acceptance).
+  Sanity checks post-fix: render.yaml YAML-valid; wxt.config.ts verified via manifest-permissions.test.ts
+  (8/8 pass).
+
+ALL SUBAGENT-DISPATCHED WORK (Tasks 1-6 + final review + fix) COMPLETE. main @ db5881a.
+Remaining: Task 7 (founder-run Render deploy + real-value substitution + manual acceptance) --
+  not dispatched to a subagent per the plan.

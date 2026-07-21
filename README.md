@@ -178,6 +178,26 @@ docker compose up --build
 
 Same URL: `http://127.0.0.1:8000`.
 
+#### Option: hosted demo backend (no terminal)
+
+For demos where nobody should run Python/Docker, the file-checking API is hosted
+on Render (Path A demo host — **not** the production/residency path). The committed
+extension build already points at it, so testers just **clone → Load unpacked → use it**.
+
+- **Testers:** you do not paste anything. The demo bearer token is baked into the build.
+  Before a live demo, open `https://vanguard-extract.onrender.com/healthz` once to **wake
+  the server** (free tier sleeps after ~15 min idle; first hit can take ~50s). It should show
+  `{"ok":true}`.
+- **If a file says "couldn't reach the file-checking service":** the host was asleep or is
+  waking — wait a few seconds and attach again. The file is never sent to the AI unchecked.
+- **Founder (one-time deploy):** Render dashboard → New → Blueprint → connect this repo
+  (reads `render.yaml`); set `VANGUARD_DEMO_TOKEN` in the service env; then wire the real URL
+  + token into the build (see the plan's Task 7). No terminal on any demo machine.
+
+> This host is demo scaffolding only. It is not in-region, has no DPA, and is not the
+> compliance story. Production (Path B) keeps files in Malaysia (`ap-southeast-5`),
+> zero-retention, under DPA.
+
 ### 3. Load the extension (no toolchain required)
 
 `dist/` is committed — you do **not** need `npm install` to try it.

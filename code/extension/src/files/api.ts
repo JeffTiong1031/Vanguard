@@ -1,4 +1,4 @@
-import { CLIENT_LIMITS, getApiBase } from './config';
+import { CLIENT_LIMITS, DEMO_TOKEN, getApiBase } from './config';
 import type { ApiErrorCode, ExtractResponse } from './types';
 
 export class ExtractError extends Error {
@@ -33,7 +33,10 @@ export async function extractFile(file: File): Promise<ExtractResponse> {
       method: 'POST',
       body,
       signal: abort.signal,
-      headers: { 'x-vanguard-filename': encodeURIComponent(file.name) },
+      headers: {
+        'x-vanguard-filename': encodeURIComponent(file.name),
+        Authorization: `Bearer ${DEMO_TOKEN}`,
+      },
     });
   } catch (err) {
     if (abort.signal.aborted) {
@@ -95,7 +98,12 @@ export async function redactFile(
 
   let response: Response;
   try {
-    response = await fetch(`${base}/v1/redact`, { method: 'POST', body, signal: abort.signal });
+    response = await fetch(`${base}/v1/redact`, {
+      method: 'POST',
+      body,
+      signal: abort.signal,
+      headers: { Authorization: `Bearer ${DEMO_TOKEN}` },
+    });
   } catch {
     throw new ExtractError(
       'network',

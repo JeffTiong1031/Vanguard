@@ -1,8 +1,8 @@
 # Slice 1 acceptance — run on chatgpt.com AND claude.ai
 
-**Status: CHECKLIST WRITTEN — LIVE RUN DEFERRED TO TEAM TEST**
+**Status: CHECKLIST OPEN — founder will mark after live runs (do not pre-fill)**
 
-This document is the Slice 1 acceptance definition (doc 05 §1.2 visual criterion requires a human browser). There is no CI workflow yet: `npm run build`, `npm run test`, and `npm run check:dist` must be run locally and their output recorded. All live checkboxes below remain unchecked until the founder's team completes a manual session on both surfaces.
+This document is the Slice 1 acceptance definition (doc 05 §1.2 visual criterion requires a human browser). There is no CI workflow yet: `npm run build`, `npm run test`, and `npm run check:dist` must be run locally and their output recorded. All live checkboxes below remain unchecked until you confirm each one.
 
 Run every section on **both** `https://chatgpt.com` and `https://claude.ai`. Mark each box only after observing the criterion on that surface.
 
@@ -103,7 +103,7 @@ These augment the checklist above; they do not replace any brief item.
 
 ## Slice 1.5 — L1 Grammarly-while-typing (ADR 0024)
 
-**Status: IMPLEMENTED — LIVE RUN DEFERRED_MANUAL**
+**Status: IMPLEMENTED — LIVE MARKS OPEN**
 
 Unit coverage: `tests/hint-logic.test.ts` (L1-only, Accept one span, Dismiss prune, arithmetic guardrail). Gate UI skip: `tests/gate.test.ts`. Live boxes below need a human on both surfaces.
 
@@ -128,56 +128,58 @@ On ChatGPT **and** Claude:
 
 ## Slice 2 — file content checking
 
-**Status: CORE LIVE PATH PASSED (2026-07-19) · EDGE ROWS STILL OPEN · EDIT-MESSAGE DEFERRED**
+**Status: MARKS OPEN · tell the agent which rows you ran**
 
-Run every manual row below on **both** `https://chatgpt.com` and `https://claude.ai`. Do not mark a live checkbox until you observe the criterion on that surface.
+**Core path** = rows **1–6, 9, 18**.  
+**Edge rows** = rows **7, 7b, 7c, 8, 10–17, 19–20**.  
+**Known gaps (do not invent a PASS):** **7a** = U30 real corpus · **21** = edit-message (deferred unless you reopen it).
 
-**Prerequisites:** local `uvicorn` / `docker compose` in `code/backend/` (or the API base URL on Options) · Slice 1 acceptance still applies to the prompt path.
+Run every manual row below on **both** `https://chatgpt.com` and `https://claude.ai`.
 
-### Automated gates (already green — re-run locally before the live session)
+**Prerequisites:** local `uvicorn` / `docker compose` in `code/backend/` · Options API URL `http://localhost:8000` (default). Alternatively, use the hosted demo backend (Path A): the committed build points at it and the demo token is baked in — no local API needed. Warm `https://vanguard-extract.onrender.com/healthz` before the session (free tier sleeps).
+
+### Automated gates (re-run locally before the live session)
 
 | Gate | Command | Last verified | Notes |
 |---|---|---|---|
-| Extension unit + integration | `cd code/extension && npm run test` | 2026-07-19 | **154 passed** — files, review panes, oversized dialog, gate-files |
+| Extension unit + integration | `cd code/extension && npm run test` | 2026-07-19 | **154 passed** |
 | Committed dist matches src | `cd code/extension && npm run check:dist` | 2026-07-19 | ADR 0017 §3 |
-| Backend contract + safety | `cd code/backend && python -m pytest -q` | 2026-07-19 | **39 passed** — parsers, zip-bomb guard, redact, format-preserving |
-
-These gates cover **mechanism and contract**, not provider UX. Passing them does **not** substitute for the live checklist below.
+| Backend contract + safety | `cd code/backend && python -m pytest -q` | 2026-07-19 | **39 passed** |
 
 ### Live acceptance checklist
 
-**Legend:** **PASS** = founder observed on that surface · **PENDING** = not yet run · **DEFERRED** = known gap, not blocking this merge · **CONDITIONAL** = blocked on a named register entry.
+**Legend:** leave blank until you report · **PASS** / **FAIL** / **SKIP** / **DEFERRED** / **CONDITIONAL**
 
-| # | Step | Expected | chatgpt.com | claude.ai |
-|---|---|---|---|---|
-| 1 | Start the API (`uvicorn` / compose or shared Options URL), open `/healthz` | `{"ok":true}` | **PASS** | **PASS** |
-| 2 | Attach a clean `.txt`, type a clean prompt, press Send | Review may open (all clean) → Proceed → Send; LLM receives the file | **PASS** | **PASS** |
-| 3 | Attach a `.docx` containing `880101-14-5566`, type a clean prompt | Our chip appears; provider does not keep the dirty original; `Reading…` → `Checking…` → `Checked` | **PASS** | **PASS** |
-| 4 | Press Send | Review opens. **Prompt** tab first, File tab badged | **PASS** | **PASS** |
-| 5 | Hover the underlined NRIC in the File tab | Why + recommendation + Accept + Ignore | **PASS** | **PASS** |
-| 6 | Accept it, press Proceed | `.redacted.docx` (or equivalent) attached; **user presses Send** | **PASS** | **PASS** |
-| 7 | Download the attachment and open in Word | Opens; IC masked | PENDING | PENDING |
-| 7a | PDF + image redaction | Image preserved, span gone | **CONDITIONAL — U30 real corpus** | same |
-| 7b | CSV masked | `.redacted.csv` | PENDING | PENDING |
-| 7c | Stop API after review, Proceed | Red banner; nothing attached | PENDING | PENDING |
-| 8 | Ignore span with reason | Original `.docx` re-attached | PENDING | PENDING |
-| 9 | Attach file **> 10 MB** | Immediate oversize dialog; Proceed = attach unchecked; Don't attach = discard | **PASS** | **PASS** |
-| 10 | Scanned PDF | `no_text_layer`, never "all good" | PENDING | PENDING |
-| 11 | Password-protected DOCX | `password_protected` | PENDING | PENDING |
-| 12 | `zip_bomb.docx` fixture | `suspicious_archive` | PENDING | PENDING |
-| 13 | API stopped, attach file | `network` message; prompt gate still works | PENDING | PENDING |
-| 14 | Acknowledge unchecked + Proceed | Original attaches; audit has reason, not raw name | PENDING | PENDING |
-| 15 | Send before `Checked` | Blocked; File tab `Checking…` | PENDING | PENDING |
-| 16 | Drag-and-drop PDF | Same as row 3 | PENDING | PENDING |
-| 17 | Paste image | `unsupported_type` | PENDING | PENDING |
-| 18 | Paste text into composer | Slice 1 prompt path unchanged | **PASS** | **PASS** |
-| 19 | Two files at once | Two chips / tabs | PENDING | PENDING |
-| 20 | `chrome.storage.local` `vg_audit` | Classes/counts/fps only — no extract/filename/bytes | PENDING | PENDING |
-| 21 | Edit prior user message + paste NRIC + Save | Same review on the **edit** editor | **DEFERRED** | **DEFERRED** |
+| # | Kind | Step | Expected | chatgpt.com | claude.ai |
+|---|---|---|---|---|---|
+| 1 | Core | Start API, open `/healthz` | `{"ok":true}` | | |
+| 2 | Core | Attach clean `.txt`, clean prompt, Send | Review → Proceed → Send; LLM gets file | | |
+| 3 | Core | Attach `.docx` with `880101-14-5566` | Chip; no dirty original kept; Reading→Checking→Checked | | |
+| 4 | Core | Press Send | Review; Prompt tab first; File tab badged | | |
+| 5 | Core | Hover NRIC in File tab | Why + recommendation + Accept + Ignore | | |
+| 6 | Core | Accept → Proceed | `.redacted.docx` attached; **you** press Send | | |
+| 7 | Edge | Download attachment, open in Word | Opens; IC masked | | |
+| 7a | Gap | PDF + image redaction | Image preserved, span gone | CONDITIONAL — U30 | same |
+| 7b | Edge | CSV masked | `.redacted.csv` | | |
+| 7c | Edge | Stop API after review, Proceed | Red banner; nothing attached | | |
+| 8 | Edge | Ignore span with reason | Original `.docx` re-attached | | |
+| 9 | Core | File **> 10 MB** | Oversize dialog; Proceed unchecked / Don't attach | | |
+| 10 | Edge | Scanned PDF | `no_text_layer`, never "all good" | | |
+| 11 | Edge | Password-protected DOCX | `password_protected` | | |
+| 12 | Edge | `zip_bomb.docx` fixture | `suspicious_archive` | | |
+| 13 | Edge | API stopped, attach file | `network` message; prompt gate still works | | |
+| 14 | Edge | Acknowledge unchecked + Proceed | Original attaches; audit reason, not raw name | | |
+| 15 | Edge | Send before `Checked` | Blocked; File tab `Checking…` | | |
+| 16 | Edge | Drag-and-drop PDF | Same as row 3 | | |
+| 17 | Edge | Paste image | `unsupported_type` | | |
+| 18 | Core | Paste text into composer | Slice 1 prompt path unchanged | | |
+| 19 | Edge | Two files at once | Two chips / tabs | | |
+| 20 | Edge | `chrome.storage.local` `vg_audit` | Classes/counts/fps only — no extract/filename/bytes | | |
+| 21 | Gap | Edit prior message + NRIC + Save | Same review on **edit** editor | DEFERRED | DEFERRED |
 
 ### What the team should report back
 
-> **The most valuable output of this test is not pass/fail.** Per ADR 0017 §4 it is the **Ignore rate per class**, now extended to files. Run this in the DevTools console on either surface and paste the result into the team thread:
+> **Ignore rate per class** (paste into the team thread):
 >
 > ```js
 > chrome.storage.local.get('vg_audit').then(r => console.table(
@@ -189,13 +191,13 @@ These gates cover **mechanism and contract**, not provider UX. Passing them does
 > ));
 > ```
 >
-> **Also report, because these are the numbers Slice 2 exists to produce:** how long `Checking…` lasted for a typical work file *(this is U6-b's curve for the file path — the curve is ours; the threshold is still B3-blocked)*, and how often you hit `Not checked` and why.
+> Also: how long `Checking…` lasted for a typical work file, and how often you hit `Not checked` and why.
 
 ### Sign-off
 
 | Surface | Tester | Date | Pass / Fail | Notes |
 |---------|--------|------|-------------|-------|
-| chatgpt.com | JeffTiong1031 | 2026-07-19 | **Pass (core)** | Rows 1–6, 9, 18. Edge PENDING. Edit-message **DEFERRED**. |
-| claude.ai | JeffTiong1031 | 2026-07-19 | **Pass (core)** | Same. |
+| chatgpt.com | | | | |
+| claude.ai | | | | |
 
-**Slice 2 team-test merge bar (this branch):** automated gates green + core live path (1–6, 9, 18) on both surfaces. Full checklist (7–8, 10–17, 19–20) and edit-message (21) remain follow-ups; U30 real-corpus still gates 7a.
+**Reply to the agent with:** which IDs you PASSed / FAILed / SKIPped on ChatGPT and on Claude. Marks get written only from that list.
