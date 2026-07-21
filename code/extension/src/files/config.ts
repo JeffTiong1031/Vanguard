@@ -14,7 +14,18 @@ export const CLIENT_LIMITS = {
   fileScanTimeoutMs: 180_000, // (estimate)
 } as const;
 
-const DEFAULT_BASE = 'http://localhost:8000';
+/**
+ * Shared demo bearer token, baked into the team-test build. Path A only, NOT a
+ * secret (it ships in the private repo build) -- a casual-abuse deterrent for the
+ * public host. Must equal VANGUARD_DEMO_TOKEN in the Render environment.
+ * See docs/superpowers/specs/2026-07-21-hosted-demo-file-backend-design.md.
+ * Replaced with the real value at deploy time (Task 7).
+ */
+export const DEMO_TOKEN = 'REPLACE_WITH_DEMO_TOKEN';
+
+// Path A demo host (Render). Local dev: set `vg_api_base` in Options to http://localhost:8000.
+// Replaced with the real onrender.com URL at deploy time (Task 7).
+const DEFAULT_BASE = 'https://vanguard-extract.onrender.com';
 const KEY = 'vg_api_base';
 
 export async function getApiBase(): Promise<string> {

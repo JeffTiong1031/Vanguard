@@ -49,3 +49,14 @@ describe('extractFile', () => {
     await expect(extractFile(new File(['x'], 'a.txt'))).rejects.toMatchObject({ code: 'network' });
   });
 });
+
+describe('demo bearer token', () => {
+  it('sends Authorization: Bearer on extract', async () => {
+    const spy = mockFetch(200, okBody);
+    vi.stubGlobal('fetch', spy);
+    await extractFile(new File(['x'], 'a.txt'));
+    const init = spy.mock.calls[0][1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toMatch(/^Bearer .+/);
+  });
+});
