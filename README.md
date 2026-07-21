@@ -8,13 +8,13 @@ Stops employees leaking sensitive data into third-party LLM chat UIs (ChatGPT, C
 
 This repo is primarily **documents + a working team-test extension**, not a shipping product. Buyer = enterprise compliance officer ([ADR 0001](docs/adr/0001-buyer-is-the-compliance-officer.md)).
 
-> **Two tracks live in this repo.** The **AI governance platform** (policy service + admin console + on-device ethics classifier — Plans A/B/C, `ethics-classifier` branch) is the quick start immediately below. The **file-checking** team test (Slice 1 + Slice 2, `main` branch) follows it.
+> **Two tracks live in this repo.** The **AI governance platform** (policy service + admin console + on-device ethics classifier — Plans A/B/C) is the quick start immediately below. The **file-checking** team test (Slice 1 + Slice 2, `main` branch) follows it.
 
 ---
 
 ## Quick start — AI governance platform (Plans A + B + C)
 
-On the **`ethics-classifier`** branch. Adds a **policy service + admin console** (the backend and its web frontend) and an **on-device ethics classifier** on top of the Slice 1/2 extension.
+Adds a **policy service + admin console** (the backend and its web frontend) and an **on-device ethics classifier** on top of the Slice 1/2 extension.
 
 - **Plan A** — policy service + admin console: approve/block AI tools, mint per-department enrolment tokens, a privacy-safe usage dashboard.
 - **Plan B** — the extension talks to it: enrol, a warning banner on blocked tools, one-click access requests.
@@ -22,20 +22,46 @@ On the **`ethics-classifier`** branch. Adds a **policy service + admin console**
 
 ### 1. Start the backend (it also serves the admin console)
 
-Requires **Python 3.11+** and **Node**. From the repo root:
+**Every time you want to run the backend, this is the ONLY command you need** (from the repo root):
 
 ```bash
 cd code/policy
-python -m venv .venv
-.venv/Scripts/pip install -e ".[dev]"                 # macOS/Linux: .venv/bin/pip install -e ".[dev]"
-cd admin && npm install && npm run build && cd ..     # builds the console — do this BEFORE uvicorn
-.venv/Scripts/python scripts/seed.py                  # prints 4 department tokens — copy them
-.venv/Scripts/python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+.venv/Scripts/python -m uvicorn app.main:app --host 0.0.0.0 --port 8001   # macOS/Linux: .venv/bin/python
 ```
 
 Leave that terminal open. Open **http://localhost:8001/** → the **admin console**. Log in **Acme Corp** / **vanguard**.
 
-Already set up? Day-to-day, just run the **last line**. (Tokens are shown once and stored hashed — don't delete `policy.db` unless you want a fresh set.)
+> ⚠️ **Do not re-run the setup commands below every time — you only run them once.** Nothing here
+> resets your data on a normal start; the *only* thing that wipes tokens/approvals is **deleting
+> `policy.db`**, which you should not do for a demo.
+
+<details>
+<summary><b>First-time setup — run these ONCE per machine, before the command above</b></summary>
+
+Requires **Python 3.11+** and, for the one-time console build, **Node**. From the repo root:
+
+```bash
+cd code/policy
+python -m venv .venv                                  # 1. create the Python virtual environment
+.venv/Scripts/pip install -e ".[dev]"                 # 2. install backend deps (macOS/Linux: .venv/bin/pip)
+cd admin && npm install && npm run build && cd ..     # 3. build the admin console (the web UI the backend serves)
+.venv/Scripts/python scripts/seed.py                  # 4. create the demo org + print 4 tokens — COPY THEM NOW
+```
+
+| # | Command | What it's for | Re-run it? |
+|---|---------|---------------|------------|
+| 1 | `python -m venv .venv` | Creates the Python virtual environment | **No** — once per machine |
+| 2 | `pip install -e ".[dev]"` | Installs the backend's dependencies | Only if dependencies change |
+| 3 | `npm install && npm run build` (in `admin/`) | Builds the admin console the backend serves | Only if you change the console UI |
+| 4 | `scripts/seed.py` | Creates the demo org and prints the 4 department tokens | **No** — see the warning below |
+| — | `uvicorn … --port 8001` | **Starts the backend** | **Every time** (the command at the top) |
+
+🔴 **`seed.py` prints the tokens only once.** Re-running it does **not** reprint them (it just says
+*"already has a token"*) and does **not** reset anything — so copy the 4 tokens the first time. They
+are also saved to `code/policy/DEMO-TOKENS.md`. To get a fresh set you must delete `policy.db` first,
+which also wipes every approval — only do that if you deliberately want a clean slate.
+
+</details>
 
 ### 2. Load the extension
 
