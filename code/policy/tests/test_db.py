@@ -57,3 +57,22 @@ def test_decision_appeals_table_exists_with_expected_columns():
         "employee_reason", "disclosed_text", "status", "admin_note",
         "created_at", "decided_at",
     }
+
+
+def test_decision_appeals_nullability_matches_the_privacy_design():
+    """disclosed_text MUST be nullable: a default appeal stores no prompt text.
+
+    This is a schema-level enforcement of the privacy design (spec section 6.5).
+    Raw prompt text only ever reaches the server via an explicit opt-in, so the
+    default must store NULL. A typo making this NOT NULL would silently defeat
+    the entire architecture for appeals without disclosure.
+    """
+    conn = _conn()
+    cols = {r["name"]: r for r in conn.execute("PRAGMA table_info(decision_appeals)")}
+    # disclosed_text MUST be nullable: a default appeal stores no prompt text.
+    assert cols["disclosed_text"]["notnull"] == 0
+    assert cols["admin_note"]["notnull"] == 0
+    assert cols["decided_at"]["notnull"] == 0
+    # the load-bearing required columns must NOT be nullable
+    assert cols["employee_reason"]["notnull"] == 1
+    assert cols["decision_type"]["notnull"] == 1
