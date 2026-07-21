@@ -612,3 +612,11 @@ Task 4: complete (commit 7be5199, review clean). Delivered: config.ts DEMO_TOKEN
   (1) no test asserts Authorization header on redactFile specifically (only extractFile tested);
   (2) `Bearer ${DEMO_TOKEN}` literal duplicated in api.ts (extract + redact) rather than a shared
   helper -- worth a follow-up refactor once Task 7 substitutes the real token.
+
+Task 5: complete (commit 2bbb03d, review clean, zero findings). Delivered: wxt.config.ts placeholder
+  swap (vanguard-extract.example.com -> vanguard-extract.onrender.com), one line, localhost/127.0.0.1
+  entries untouched. dist/ rebuilt (7 files: manifest.json + hashed chunks + content.js + offscreen/
+  options .html). check:dist PASS (real transcript verified by reviewer against check-dist-drift.mjs
+  source). 318/318 vitest pass (up from 301/302 pre-Task-4/5 -- the dist-drift test now passes because
+  dist/ is no longer stale). Reviewer aside about "unstaged ACCEPTANCE.md/pyproject.toml" was checked
+  and is incorrect/stale -- working tree confirmed clean by controller.
