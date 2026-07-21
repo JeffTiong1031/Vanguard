@@ -25,6 +25,15 @@ import { clientAsUser, serviceTestClient } from "./rls-helpers";
  * table isn't simply broken/unreadable for everyone, which would make the
  * "0 rows for tenants" assertion vacuous).
  *
+ * Both read-denial tests (owner and dept_admin) insert their own
+ * uniquely-tagged row immediately before asserting the tenant read is
+ * empty, rather than depending on Test 1's insert still being present at
+ * that point in the file. That keeps each one provable on its own --
+ * correct or incorrect regardless of execution order, and runnable in
+ * isolation (e.g. `vitest -t "<name>"`) without silently degrading into
+ * "0 rows because the table is empty" rather than "0 rows because RLS
+ * denied a row that exists."
+ *
  * Execution note: needs `supabase start` (Docker) to run for real. Not
  * executed in the environment this was written in -- see
  * task-governance-6-report.md for the self-review that stands in for
@@ -126,7 +135,10 @@ describe("vendor_reports isolation (0004_vendor_reports.sql)", () => {
     // Cascades (on delete cascade) remove the department and both
     // membership rows along with the company. vendor_reports carries no
     // company_id, so any rows it inserted are cleaned up explicitly.
-    await svc.from("vendor_reports").delete().eq("extension_version", VENDOR_REPORT_VERSION);
+    // A `like` prefix match (not `eq`) because the read-denial tests below
+    // each insert their own row under `${VENDOR_REPORT_VERSION}-<suffix>`,
+    // not the bare `VENDOR_REPORT_VERSION` value.
+    await svc.from("vendor_reports").delete().like("extension_version", `${VENDOR_REPORT_VERSION}%`);
     await svc.from("companies").delete().eq("id", companyId);
     if (ownerUserId) {
       await svc.auth.admin.deleteUser(ownerUserId);
@@ -167,6 +179,25 @@ describe("vendor_reports isolation (0004_vendor_reports.sql)", () => {
   });
 
   test("the brief's exact scenario: no tenant (owner) JWT can read vendor_reports", async () => {
+    // Self-contained: this test inserts its own row (via the service-role
+    // client, the only writer) rather than relying on Test 1's insert still
+    // being in the table when this test runs. Without its own insert, this
+    // assertion would read 0 rows whenever the table is simply empty --
+    // e.g. run in isolation with `vitest -t "brief's exact scenario"`, or
+    // after a reorder/`.only` -- which would pass for the wrong reason
+    // (no rows exist at all) rather than the reason under test (RLS denies
+    // a row that does exist). A fresh, uniquely tagged row proves the deny
+    // is real, independent of any other test's execution or ordering.
+    const version = `${VENDOR_REPORT_VERSION}-brief-scenario`;
+    const { error: insertErr } = await svc.from("vendor_reports").insert({
+      kind: "fp",
+      class: "nric",
+      scrubbed_text: "x",
+      reason: "y",
+      extension_version: version,
+    });
+    if (insertErr) throw insertErr;
+
     // Brief's literal test, reproduced with this file's own seeded fixtures
     // in place of the brief's inline `ownerJwt`/`clientWithJwt` names:
     //   await service.from('vendor_reports').insert({...});
@@ -175,19 +206,40 @@ describe("vendor_reports isolation (0004_vendor_reports.sql)", () => {
     //   expect(data ?? []).toHaveLength(0);
     const asOwner = clientAsUser(ownerUserId);
 
-    const { data, error } = await asOwner.from("vendor_reports").select("*");
+    const { data, error } = await asOwner
+      .from("vendor_reports")
+      .select("*")
+      .eq("extension_version", version);
 
     // RLS hides denied rows by omission, not by erroring -- same reasoning
     // as every prior RLS test in this suite (rls_core/rls_enrollment/
-    // rls_policy). Here there is no policy at all, so every row is denied.
+    // rls_policy). Here there is no policy at all, so every row is denied
+    // -- and the row this test just inserted (and is filtering down to) is
+    // proof there was something to deny.
     expect(error).toBeNull();
     expect(data ?? []).toHaveLength(0);
   });
 
   test("no dept_admin JWT can read vendor_reports either (the matrix's second denied cell)", async () => {
+    // Same self-containment reasoning as the test above: insert a
+    // dedicated, uniquely tagged row here rather than depending on Test 1's
+    // row still existing at this point in the file/run.
+    const version = `${VENDOR_REPORT_VERSION}-dept-admin-scenario`;
+    const { error: insertErr } = await svc.from("vendor_reports").insert({
+      kind: "fp",
+      class: "nric",
+      scrubbed_text: "x",
+      reason: "y",
+      extension_version: version,
+    });
+    if (insertErr) throw insertErr;
+
     const asDeptAdmin = clientAsUser(deptAdminUserId);
 
-    const { data, error } = await asDeptAdmin.from("vendor_reports").select("*");
+    const { data, error } = await asDeptAdmin
+      .from("vendor_reports")
+      .select("*")
+      .eq("extension_version", version);
 
     expect(error).toBeNull();
     expect(data ?? []).toHaveLength(0);
