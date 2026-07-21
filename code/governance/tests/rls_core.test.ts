@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { clientAsUser, serviceTestClient } from "./rls-helpers";
 
@@ -52,8 +53,14 @@ function requireRow<T>(
 describe("departments RLS: is_owner / can_admin_department", () => {
   const svc = serviceTestClient();
 
-  const companyAName = `RLS Test Co A ${Date.now()}`;
-  const companyBName = `RLS Test Co B ${Date.now()}`;
+  // Suffix each name with a fresh UUID (not just `Date.now()`) so the two
+  // names can never collide even if both inserts land in the same
+  // millisecond -- a collision here would make `requireRow` (an
+  // `Array.find`) resolve both companyA and companyB to the same row,
+  // silently turning the cross-tenant "cannot select company B" assertion
+  // into a same-tenant comparison that passes without exercising RLS at all.
+  const companyAName = `RLS Test Co A ${Date.now()}-${randomUUID()}`;
+  const companyBName = `RLS Test Co B ${Date.now()}-${randomUUID()}`;
 
   let companyA: string;
   let companyB: string;
@@ -103,7 +110,7 @@ describe("departments RLS: is_owner / can_admin_department", () => {
 
     // --- a real auth user for the dept_admin (FK requires a real row) ---
     const { data: created, error: createErr } = await svc.auth.admin.createUser({
-      email: `rls-test-dept-admin-${Date.now()}@example.test`,
+      email: `rls-test-dept-admin-${Date.now()}-${randomUUID()}@example.test`,
       password: "correct-horse-battery-staple-1!",
       email_confirm: true,
     });
