@@ -374,3 +374,131 @@ All tests in `tests/policy-client.test.ts` now pass 8/8 (6 existing + 2 new).
 - ✅ Negative control 2 (unenrolled): deleted line 76 → test FAILS with wrong error message; restored → passes.
 - ✅ Full suite: 170/170 passing (31 files, no regressions).
 - ✅ Commit message explains which architectural guarantee the new tests cover (ADR 0014: dead service never blocks).
+
+---
+
+# Task 3 (Plan C): Admin appeal review routes (2026-07-21)
+
+⚠️ **Note on this file's history:** This section is the report for **Plan C Task 3**, as briefed in
+`C:\Projects\Vanguard\.superpowers\sdd\task-3-brief.md`: add admin review routes to the FastAPI
+governance service (list appeal queue, decide an appeal). This is a different task from the Plan A
+and Plan B Task 3s above.
+
+**Status: DONE**
+
+- **Commit:** `ec37fe9` — `feat(policy): admin appeal review queue and decide (409 on re-decide)`
+- **Author:** `HongHanTan <jasonthh123@gmail.com>` (git config untouched), no `Co-Authored-By`
+  trailer.
+- **Files:** `code/policy/app/routes/admin.py` (2 routes added), `code/policy/tests/test_appeals.py`
+  (3 tests appended).
+
+## What was implemented
+
+Two new admin routes (after `decide_request`, before `usage`):
+
+### `GET /v1/admin/appeals`
+- Session-guarded via `_require_admin(vg_admin)` → 401 without valid session
+- JOINs `employees` table to include `department` in response
+- Returns appeal queue with `disclosed_text` (admin needs it when employee opted in to share)
+- Ordered by `created_at DESC`
+
+### `POST /v1/admin/appeals/{appeal_id}`
+- Session-guarded via `_require_admin(vg_admin)`
+- Body: `AppealDecision` model (Literal["upheld","overturned"], optional note ≤500 chars)
+- Returns 404 for unknown appeal, 409 for already-decided (mirrors `decide_request` pattern)
+- Updates `status`, `admin_note`, `decided_at` atomically
+- Returns `{"status": decision}` on success
+
+## TDD sequence and exact output
+
+**Step 2: Failing tests (verify routes don't exist yet)**
+
+Appended 3 tests to `test_appeals.py` and ran them:
+
+```
+.....FFF                                                                 [100%]
+
+FAILED tests/test_appeals.py::test_admin_appeals_queue_requires_a_session - AssertionError: assert 404 == 401
+FAILED tests/test_appeals.py::test_admin_sees_the_appeal_with_department_and_decides_it - TypeError: string indices must be integers
+FAILED tests/test_appeals.py::test_deciding_twice_is_409 - AssertionError: assert 405 == 200
+
+3 failed, 5 passed, 1 warning in 1.86s
+```
+
+✅ Failure confirmed: routes do not exist yet (404, 405, TypeError from missing GET response).
+
+**Step 3: Implementation**
+- Added `AppealDecision` to import in `admin.py` (line 30)
+- Added `list_appeals()` (lines 241–251)
+- Added `decide_appeal()` (lines 254–281)
+
+**Step 4: Appeal tests (verify new tests pass)**
+
+```
+✓ tests/test_appeals.py (8 tests)
+8 passed, 1 warning in 1.79s
+```
+
+✅ All 8 tests pass (5 existing employee tests + 3 new admin tests).
+
+**Step 5: Full policy suite (verify no regressions)**
+
+```
+88 passed, 1 warning in 4.42s
+```
+
+✅ No regressions: 88 total (74 existing + 3 new appeal admin tests + 11 other tests).
+
+## Key implementation details
+
+### 404 vs. 409 split
+Exactly mirrors the existing `decide_request` pattern (lines 198–214 of admin.py):
+1. Check `WHERE id = ? AND org_id = ? AND status = 'pending'`
+2. If no row found:
+   - Check if appeal exists at all: `WHERE id = ? AND org_id = ?`
+   - If doesn't exist → 404 "unknown appeal"
+   - If exists but status ≠ 'pending' → 409 "appeal already decided"
+
+This prevents silent re-decisions when the client retries after the server has already processed the admin's decision.
+
+**Test proof:** `test_deciding_twice_is_409` verifies:
+- First POST → 200, status updates to "upheld"
+- Second POST with same appeal_id → 409 (appeal no longer pending)
+
+### Session guard
+`_require_admin(vg_admin)` throws 401 if no valid session cookie.
+
+**Test proof:** `test_admin_appeals_queue_requires_a_session` verifies an unauthenticated GET returns 401.
+
+### Department JOIN
+`GET /v1/admin/appeals` JOINs `employees` to include `department` in response, matching the pattern of the existing `list_requests` route.
+
+**Test proof:** `test_admin_sees_the_appeal_with_department_and_decides_it` asserts `mine[0]["department"] == "Engineering"`.
+
+### Idempotency
+`AppealDecision` uses `extra="forbid"` + `Literal["upheld","overturned"]` → invalid `decision` is 422 automatically (no manual validation needed, unlike the bare `Body` in `decide_request`).
+
+## Constraints met
+
+✅ Routes added after `decide_request`, before `usage` (no existing route reordering)  
+✅ 404 for unknown appeal, 409 for already-decided (idempotency boundary, mirrors `decide_request`)  
+✅ GET session-guarded (401 without valid vg_admin cookie)  
+✅ GET joins employees for department  
+✅ GET includes disclosed_text (admin needs it for context when employee shared it)  
+✅ AppealDecision model used with `extra="forbid"` for invalid decisions → 422 automatically  
+✅ No Co-Authored-By trailer in commit message  
+✅ All appeal tests pass (8/8)  
+✅ Full policy suite: 88 tests, no regressions  
+
+## Deviations
+
+None. Implementation follows the brief exactly:
+- Code verbatim from brief (lines 241–281 in admin.py for the two routes)
+- Tests verbatim from brief (lines 77–116 in test_appeals.py)
+- Commit message as specified
+- All constraints honored
+- All code patterns match existing routes (404-vs-409 from `decide_request`, JOIN pattern from `list_requests`)
+
+## Concerns
+
+None. The implementation is complete, tested, and verified against regressions.

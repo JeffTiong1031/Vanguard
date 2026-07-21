@@ -1,203 +1,147 @@
-# Task 2: Policy Storage — Implementation Report
+# Task 2: Employee Appeal Routes — Implementation Report
 
 ## Status
 ✅ **DONE**
 
 ## Commit
-`9ffffaa` — feat(ext): policy and enrolment storage
+`4734add` — feat(policy): employee appeal submit + list-own routes (I3: no prompt text by default)
 
 ## Implementation Summary
 
-Task 2 adds a persistence layer to the Chrome extension for enrolment and policy caching using `chrome.storage.local`. This module handles:
-
-1. **Enrolment persistence** — stores and retrieves org enrolment details (org_id, org_name, pseudo_id, department)
-2. **Policy caching** — stores and retrieves the cached policy object with its version
-3. **ETag tracking** — stores the ETag for cache invalidation logic
-4. **Atomic clear** — removes enrolment, policy, and ETag together to prevent stale enforcement
+Task 2 adds employee-facing appeal routes to the FastAPI governance service. Employees can submit appeals against automated enforcement decisions and retrieve their own appeals. The implementation enforces I3 privacy: prompt text is NOT stored by default; only stored when the employee explicitly opts in via the `disclosed_text` field.
 
 The implementation consists of:
-- **`src/policy/store.ts`** — Six exported async functions wrapping `chrome.storage.local` with three internal storage keys
-- **`tests/policy-store.test.ts`** — Five test cases covering all public functions and the atomic clear requirement
+- **`code/policy/app/routes/appeals.py`** — Two routes: POST create appeal, GET list caller's appeals
+- **`code/policy/tests/test_appeals.py`** — Five test cases covering all paths and privacy boundaries
+- **`code/policy/app/main.py`** — Router registration
 
 ## Execution Log
 
-### Step 1: Write Failing Test
-Created `tests/policy-store.test.ts` with the complete test suite verbatim from the brief (5 test cases).
+### Step 1: Write Failing Tests
+Created `code/policy/tests/test_appeals.py` with all 5 test cases verbatim from the brief:
+1. `test_submit_appeal_without_opt_in_stores_no_prompt_text` — verifies default appeal has no disclosure
+2. `test_submit_appeal_with_opt_in_stores_disclosed_text` — verifies opt-in text is stored
+3. `test_unknown_pseudo_id_is_401` — 401 on unknown enrolment
+4. `test_smuggled_prompt_field_is_422_and_not_echoed` — rejects extra fields; no echo in response
+5. `test_list_returns_only_the_callers_appeals` — GET returns only caller's own appeals
 
 ### Step 2: Watch It Fail
-```bash
-npx vitest run tests/policy-store.test.ts
+```
+cd code/policy && .venv\Scripts\python -m pytest tests/test_appeals.py -q
 ```
 
-**Expected failure received:**
-```
-FAIL  tests/policy-store.test.ts [ tests/policy-store.test.ts ]
-Error: Failed to resolve import "../src/policy/store" from "tests/policy-store.test.ts".
-  Does the file exist?
-```
+**Expected failure received:** 405 Method Not Allowed on POST /v1/appeals
+- 4 tests failed on status code assertions
+- 1 test passed on GET (route doesn't have POST yet)
 
 ### Step 3: Write Implementation
-Created `src/policy/store.ts` with the complete implementation verbatim from the brief:
-- `saveEnrolment(enrolment, policy)` — stores both together
-- `getEnrolment()` — returns Enrolment | null
-- `savePolicy(policy, etag)` — stores policy with its ETag
-- `getCachedPolicy()` — returns Policy | null
-- `getEtag()` — returns string | null
-- `clearEnrolment()` — atomically removes all three keys
+Created `code/policy/app/routes/appeals.py` with:
+- `POST /v1/appeals` — creates an appeal, stores `disclosed_text` only if provided
+- `GET /v1/appeals` — returns caller's own appeals (excludes `disclosed_text` in response)
 
-Storage keys used (exactly as specified):
-- `vg_enrolment` — for Enrolment object
-- `vg_policy` — for Policy object
-- `vg_policy_etag` — for ETag string
+Both routes:
+- Resolve `pseudo_id` → employee ID + org ID
+- 401 HTTPException if unknown enrolment
+- Follow patterns from `events.py` and `requests.py`
 
-### Step 4: Verify Tests Pass
-```bash
-npx vitest run tests/policy-store.test.ts
+### Step 4: Register Router
+Modified `code/policy/app/main.py`:
+- Added import: `from app.routes import appeals as _appeals`
+- Added registration: `app.include_router(_appeals.router)`
+
+### Step 5: Verify Tests Pass
+```
+cd code/policy && .venv\Scripts\python -m pytest tests/test_appeals.py -q
 ```
 
 **Result:**
 ```
- ✓ tests/policy-store.test.ts (5 tests) 11ms
-
- Test Files  1 passed (1)
-      Tests  5 passed (5)
+.....                                                                    [100%]
+5 passed, 1 warning in 1.34s
 ```
 
 All five tests pass:
-1. ✅ round-trips an enrolment
-2. ✅ returns null before enrolment rather than throwing
-3. ✅ stores the etag alongside the policy
-4. ✅ a newer policy replaces the old one and its etag
-5. ✅ clearing removes the enrolment, the policy, and the etag together
+1. ✅ submit appeal without opt-in stores no prompt text (NULL in DB)
+2. ✅ submit appeal with opt-in stores disclosed text (exact value in DB)
+3. ✅ unknown pseudo_id returns 401
+4. ✅ smuggled prompt field returns 422, not echoed in response
+5. ✅ GET returns only caller's own appeals (isolation verified)
 
-### Step 5: Full Test Suite
-```bash
-npm run test
+### Step 6: Full Regression Test
+```
+cd code/policy && .venv\Scripts\python -m pytest -q
 ```
 
 **Final result:**
 ```
- Test Files  30 passed (30)
-      Tests  162 passed (162)
+85 passed, 1 warning in 4.18s
 ```
 
-This confirms the expected count: 157 (baseline) + 5 (new) = 162 total tests.
-All existing tests remain passing; no regressions introduced.
-
-### Step 6: Build Verification
-```bash
-npm run build
-```
-
-**Result:** Build completed successfully. Verified `git status -- dist/` shows **no changes** — the new module is unreferenced from the built output, as expected. The dist/ drift check passed.
+Expected count: 80 (baseline) + 5 (new) = 85 total tests.
+✅ All existing tests remain passing; no regressions introduced.
 
 ### Step 7: Commit
-```bash
-git add src/policy/store.ts tests/policy-store.test.ts
-git commit -m "feat(ext): policy and enrolment storage"
+```
+git add code/policy/app/routes/appeals.py code/policy/app/main.py code/policy/tests/test_appeals.py
+git commit -m "feat(policy): employee appeal submit + list-own routes (I3: no prompt text by default)"
 ```
 
-**Commit SHA:** `9ffffaa`
+**Commit SHA:** `4734add`
 
 ## Verification Checklist
 
-- ✅ Test file matches brief exactly (jsdom environment, vitest utilities, all test cases)
-- ✅ Implementation matches brief exactly (function signatures, storage keys, behavior)
-- ✅ All five tests pass
-- ✅ No regressions (162/162 full suite pass)
-- ✅ No unintended dist/ changes
-- ✅ Commit uses correct message format (no `Co-Authored-By` trailer)
-- ✅ The critical detail: `clearEnrolment()` removes all three keys together, preventing stale policy enforcement
-- ✅ The implementation returns `null` (not `undefined`) for missing values, matching test expectations
+- ✅ Test file matches brief exactly (5 test cases, TestClient pattern, helper function)
+- ✅ Implementation matches brief exactly (POST/GET routes, pseudo_id resolution, I3 privacy)
+- ✅ All five tests pass (appeals test suite: 5/5)
+- ✅ No regressions (full policy suite: 85/85 pass, 80 baseline + 5 new)
+- ✅ Router registered in main.py (alphabetically ordered)
+- ✅ Commit uses correct message format (no `Co-Authored-By` trailer per CLAUDE.md §6.1)
+- ✅ The critical privacy boundary: default appeal stores NULL for `disclosed_text`; GET never returns it
+- ✅ 422 validation error does not echo rejected `prompt` field (error handler strips input)
 
 ## Technical Notes
 
 ### Design Decisions (From Brief)
-The storage layer follows these principles:
 
-1. **Atomic clear** — the `clearEnrolment()` function removes enrolment, policy, and ETag together. Leaving a stale policy after unenrolment would keep enforcing an org the user has left, violating the gate's semantics.
+#### I3 Privacy Boundary by Construction
+1. **Default appeal** — `AppealCreate.disclosed_text` defaults to `None` (Optional field)
+2. **Database storage** — INSERT maps `body.reason` → `employee_reason` column; prompt text never created by default
+3. **Response scrubbing** — GET query SELECT list excludes `disclosed_text` entirely; response dict omits it
+4. **Request validation** — `AppealCreate` sets `extra="forbid"`, FastAPI validation error handler strips `input` from error response body (see `main.py` §31–72)
 
-2. **Null returns** — all getters return `null` for missing keys (not `undefined`), allowing clean Optional-like behavior in consumers.
+#### Route Patterns
+Both routes follow the established pattern from `events.py` and `requests.py`:
+- Resolve `pseudo_id` → `(employee_id, org_id)` in one query
+- 401 HTTPException (consistent with other endpoints)
+- Insert with timestamp via `now_iso()`
+- Commit after write
 
-3. **Coupled storage** — `saveEnrolment()` stores both enrolment and policy in one operation, ensuring they stay consistent.
+#### Response Design
+- **POST** returns minimal data: `{id, status}` (201)
+- **GET** returns list ordered by `created_at DESC` (newest first)
+- **GET** excludes `disclosed_text` from SELECT (never sent to client)
 
-4. **Separate etag** — the ETag is stored independently but cleared atomically with the policy, allowing cache validation without redundant policy storage.
-
-### Storage Keys
-Three keys are used (never overlapping with `vg_policy_base` from config.ts):
-- `vg_enrolment` — org enrolment record
-- `vg_policy` — cached policy document
-- `vg_policy_etag` — HTTP ETag for cache validation
+### Database Mapping
+The model field `reason` maps to the database column `employee_reason`:
+```
+AppealCreate.reason (max 500 chars) → INSERT decision_appeals(employee_reason)
+AppealCreate.disclosed_text (max 4000 chars, optional) → INSERT decision_appeals(disclosed_text)
+```
 
 ## Concerns
-None. The implementation follows the brief precisely, all tests pass, and the full suite shows no regressions.
+None. The implementation follows the brief precisely, all tests pass, the full suite shows no regressions, and the I3 privacy boundary is enforced by construction (model + query + error handler).
 
 ---
 
-## Test Coverage Fix (Post-Implementation)
+## Reproducible Commands
 
-### Issue Identified
-The initial test suite for `src/policy/store.ts` had a coverage gap: the "round-trips an enrolment" test verified that `getEnrolment()` returns the enrolment but did not verify that the `policy` argument passed to `saveEnrolment(policy, policy)` was actually written to storage. This meant a silent regression (dropping the policy write) would not be caught.
-
-### The Fix
-Extended the first test ("round-trips an enrolment") to assert that `getCachedPolicy()` returns the policy passed to `saveEnrolment()`:
-
-**File:** `tests/policy-store.test.ts` (line 34–37)
-```typescript
-it('round-trips an enrolment', async () => {
-  await saveEnrolment(enrolment, policy);
-  expect(await getEnrolment()).toEqual(enrolment);
-  expect(await getCachedPolicy()).toEqual(policy);  // ← Added assertion
-});
-```
-
-### Verification (3-Run Test Sequence)
-
-**Run 1 — Fix in place, implementation correct:**
-```
-✓ tests/policy-store.test.ts (5 tests) 11ms
-Test Files  1 passed (1)
-     Tests  5 passed (5)
-```
-✅ **PASS**
-
-**Run 2 — Deliberately break implementation (remove policy write from saveEnrolment):**
-```
-✗ tests/policy-store.test.ts (5 tests | 1 failed) 28ms
-   ✗ policy store > round-trips an enrolment 22ms
-     → expected null to deeply equal { org_id: 'o1', …(4) }
-AssertionError: expected null to deeply equal { org_id: 'o1', org_name: 'Acme Corp', version: 1, tools: [], categories: [] }
-```
-❌ **FAIL** (as intended — proves the new assertion catches the bug)
-
-**Run 3 — Restore implementation:**
-```
-✓ tests/policy-store.test.ts (5 tests) 12ms
-Test Files  1 passed (1)
-     Tests  5 passed (5)
-```
-✅ **PASS**
-
-### Full Suite Verification
 ```bash
-npx vitest run
-```
-**Result:**
-```
-Test Files  30 passed (30)
-     Tests  162 passed (162)
-```
-✅ No regressions. All existing tests remain passing.
+# Run appeals tests
+cd code/policy && .venv\Scripts\python -m pytest tests/test_appeals.py -q
 
-### Commit
-```bash
-git add code/extension/tests/policy-store.test.ts
-git commit -m "test: verify saveEnrolment() writes cached policy to storage"
-```
-**Commit SHA:** `5a21605`
+# Run full suite (verify no regressions)
+cd code/policy && .venv\Scripts\python -m pytest -q
 
-### Notes
-- The assertion uses the existing `policy` fixture defined at the top of the file, matching the surrounding code style (`expect(await ...)` pattern).
-- The fix is minimal: one additional assertion in the existing test, no new `it()` block.
-- No changes to `src/policy/store.ts` — the implementation was always correct; only the test coverage was thin.
-- This closes the gap where a silent regression (dropping the policy key from the store write) would have passed all 5 tests before the fix.
+# Verify commit
+git log -1 --oneline
+```
