@@ -113,3 +113,33 @@ def test_deciding_twice_is_409():
     admin = _admin()
     assert admin.post(f"/v1/admin/appeals/{appeal_id}", json={"decision": "upheld"}).status_code == 200
     assert admin.post(f"/v1/admin/appeals/{appeal_id}", json={"decision": "overturned"}).status_code == 409
+
+
+def test_overturned_ethics_appeal_grants_a_one_time_pass_that_burns():
+    pid = _enrol()
+    # employee appeals an ethics block, carrying a hash of the prompt
+    aid = client.post("/v1/appeals", json={
+        "pseudo_id": pid, "decision_type": "ethics", "category": "security_evasion",
+        "reason": "defending our own systems", "prompt_hash": "abc123",
+    }).json()["id"]
+    # no pass yet -- still pending
+    assert client.get("/v1/appeals/allowances", params={"pseudo_id": pid}).json() == []
+    # admin overturns
+    _admin().post(f"/v1/admin/appeals/{aid}", json={"decision": "overturned"})
+    # now the hash is an active allowance
+    assert client.get("/v1/appeals/allowances", params={"pseudo_id": pid}).json() == ["abc123"]
+    # consuming it burns it
+    assert client.post("/v1/appeals/allowances/consume", json={"pseudo_id": pid, "prompt_hash": "abc123"}).json()["consumed"] == 1
+    assert client.get("/v1/appeals/allowances", params={"pseudo_id": pid}).json() == []
+    # a second consume is a no-op (one-time)
+    assert client.post("/v1/appeals/allowances/consume", json={"pseudo_id": pid, "prompt_hash": "abc123"}).json()["consumed"] == 0
+
+
+def test_upheld_appeal_grants_no_pass():
+    pid = _enrol()
+    aid = client.post("/v1/appeals", json={
+        "pseudo_id": pid, "decision_type": "ethics", "category": "x",
+        "reason": "y", "prompt_hash": "deadbeef",
+    }).json()["id"]
+    _admin().post(f"/v1/admin/appeals/{aid}", json={"decision": "upheld"})
+    assert client.get("/v1/appeals/allowances", params={"pseudo_id": pid}).json() == []

@@ -79,7 +79,12 @@ CREATE TABLE IF NOT EXISTS decision_appeals (
     status          TEXT NOT NULL CHECK (status IN ('pending', 'upheld', 'overturned')),
     admin_note      TEXT,
     created_at      TEXT NOT NULL,
-    decided_at      TEXT
+    decided_at      TEXT,
+    -- One-time pass: an overturned ethics appeal carries a hash of the prompt so
+    -- the extension can grant a single pass on that exact prompt. pass_used flips
+    -- to 1 the moment the pass is granted, so it is never handed out twice.
+    prompt_hash     TEXT,
+    pass_used       INTEGER NOT NULL DEFAULT 0
 );
 
 -- finding_hash is a salted hash reference. There is no column for prompt text
@@ -116,7 +121,19 @@ def connect(path: str) -> sqlite3.Connection:
 
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    _migrate_appeals(conn)
     conn.commit()
+
+
+def _migrate_appeals(conn: sqlite3.Connection) -> None:
+    """Idempotently add the one-time-pass columns to a decision_appeals table that
+    predates them. `CREATE TABLE IF NOT EXISTS` never alters an existing table, so
+    a DB seeded before this feature needs the columns added by hand."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(decision_appeals)")}
+    if "prompt_hash" not in cols:
+        conn.execute("ALTER TABLE decision_appeals ADD COLUMN prompt_hash TEXT")
+    if "pass_used" not in cols:
+        conn.execute("ALTER TABLE decision_appeals ADD COLUMN pass_used INTEGER NOT NULL DEFAULT 0")
 
 
 def bump_policy_version(conn: sqlite3.Connection, org_id: str) -> int:

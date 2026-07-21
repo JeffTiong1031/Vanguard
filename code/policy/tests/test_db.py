@@ -55,7 +55,7 @@ def test_decision_appeals_table_exists_with_expected_columns():
     assert cols == {
         "id", "org_id", "employee_id", "decision_type", "category",
         "employee_reason", "disclosed_text", "status", "admin_note",
-        "created_at", "decided_at",
+        "created_at", "decided_at", "prompt_hash", "pass_used",
     }
 
 
