@@ -603,3 +603,12 @@ Task 3: complete (commit be98fcd, review clean). Delivered: render.yaml at repo 
   healthCheckPath: /healthz, VANGUARD_DEMO_TOKEN sync:false). YAML validated (python yaml.safe_load).
   From this task on, briefs/reports use plan-scoped filenames (task-hosted-demo-N-*.md) per the
   process-incident fix above.
+
+Task 4: complete (commit 7be5199, review clean). Delivered: config.ts DEMO_TOKEN (placeholder) +
+  DEFAULT_BASE -> hosted placeholder URL, getApiBase/setApiBase override unchanged; api.ts sends
+  Authorization: Bearer on both /v1/extract and /v1/redact; 1 new test asserting real header content
+  (31/31 extension file tests pass).
+  MINORS for final triage (both plan-mandated, brief's own prescribed shape, not implementer gaps):
+  (1) no test asserts Authorization header on redactFile specifically (only extractFile tested);
+  (2) `Bearer ${DEMO_TOKEN}` literal duplicated in api.ts (extract + redact) rather than a shared
+  helper -- worth a follow-up refactor once Task 7 substitutes the real token.
