@@ -1,0 +1,14 @@
+# Path A demo host for the Slice 2 file-checking backend.
+# Deploy: Render dashboard -> New -> Blueprint -> connect this repo.
+# NOT production: production file path is Malaysia + DPA + zero-retention (Path B).
+services:
+  - type: web
+    name: vanguard-extract
+    runtime: docker
+    rootDir: code/backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: VANGUARD_DEMO_TOKEN
+        sync: false   # set in the Render dashboard; never committed
