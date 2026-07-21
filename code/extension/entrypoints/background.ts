@@ -5,8 +5,9 @@ import { recordStatus } from '../src/detection/l2/status-store';
 // Policy leg (Plan B governance integration).
 import { enrol, refreshPolicy, sendAccessRequest } from '../src/policy/client';
 import { queueEvent, flushNow } from '../src/policy/events';
-import { isPolicyRequest, type PolicyRequest, type PolicyResponse } from '../src/policy/messages';
+import { isPolicyRequest, type PolicyRequest, type PolicyResponse, type AppealsResponse } from '../src/policy/messages';
 import { getCachedPolicy, getEnrolment } from '../src/policy/store';
+import { submitAppeal, fetchMyAppeals } from '../src/policy/appeals';
 
 // [verify] WXT output path for entrypoints/offscreen/index.html — confirmed by inspecting a real
 // build (dist/chrome-mv3/); see .superpowers/sdd/task-3-report.md for the check.
@@ -97,6 +98,18 @@ export default defineBackground(() => {
               kind: 'policy-result', ok: true,
               policy: null, enrolment: null,
             } satisfies PolicyResponse);
+            return;
+          }
+          case 'appeal-submit': {
+            await submitAppeal({
+              decisionType: msg.decisionType, category: msg.category,
+              reason: msg.reason, disclosedText: msg.disclosedText,
+            });
+            sendResponse({ kind: 'policy-result', ok: true, policy: null, enrolment: null } satisfies PolicyResponse);
+            return;
+          }
+          case 'appeals-get': {
+            sendResponse({ kind: 'appeals-result', ok: true, appeals: await fetchMyAppeals() } satisfies AppealsResponse);
             return;
           }
         }
