@@ -1,7 +1,7 @@
 import { pickAdapter } from '../src/adapters/registry';
 import { recordFindings, recordIgnore } from '../src/audit/audit';
 import type { GovernanceEvent } from '../src/policy/types';
-import type { PolicyRequest } from '../src/policy/messages';
+import type { PolicyRequest, AllowanceResponse } from '../src/policy/messages';
 
 /** Fire-and-forget. A governance event must never delay the gate, and a policy
  *  service that is down must never stop someone sending a prompt (ADR 0014). */
@@ -13,7 +13,7 @@ function emitGovernance(event: GovernanceEvent): void {
 import { sha256Hex } from '../src/detection/hash';
 import { scanInto } from '../src/detection/scan';
 import { checkEthics } from '../src/detection/ethics';
-import { showEthicsModal } from '../src/ui/ethics-modal';
+import { showEthicsModal, showReviewApprovedModal } from '../src/ui/ethics-modal';
 import { VerdictCache } from '../src/detection/verdict-cache';
 import { attachFiles } from '../src/files/attach';
 import { buildCleanedFile } from '../src/files/cleaned';
@@ -141,26 +141,46 @@ export default defineContentScript({
         // so the PII path below must not be able to wave it through.
         const ethics = checkEthics(text);
         if (ethics) {
-          emitGovernance({
-            host: location.hostname,
-            type: 'ethics_block',
-            category: ethics.category,
-            ts: new Date().toISOString(),
-          });
-          showEthicsModal({
-            label: ethics.label,
-            category: ethics.category,
-            orgName: 'your organisation',
-            promptText: text,
-            onEdit: () => adapter.getComposer()?.focus(),
-            onRequestReview: (reason, disclosedText) => {
-              void chrome.runtime.sendMessage({
-                kind: 'appeal-submit', decisionType: 'ethics',
-                category: ethics.category, reason, disclosedText,
-              }).catch(() => undefined);
-            },
-          });
-          return;
+          const promptHash = hashes.get(text) ?? await sha256Hex(text);
+          // One-time pass: an overturned appeal for THIS exact prompt lets it
+          // through once. Checked here so the block is bypassed before the modal.
+          const passGranted = await chrome.runtime.sendMessage({ kind: 'appeal-allowance-check', promptHash })
+            .then((r: AllowanceResponse) => (r?.ok ? r.granted : false))
+            .catch(() => false);
+
+          if (!passGranted) {
+            emitGovernance({
+              host: location.hostname,
+              type: 'ethics_block',
+              category: ethics.category,
+              ts: new Date().toISOString(),
+            });
+            showEthicsModal({
+              label: ethics.label,
+              category: ethics.category,
+              orgName: 'your organisation',
+              promptText: text,
+              onEdit: () => adapter.getComposer()?.focus(),
+              onRequestReview: (reason, disclosedText) => {
+                void chrome.runtime.sendMessage({
+                  kind: 'appeal-submit', decisionType: 'ethics',
+                  category: ethics.category, reason, disclosedText, promptHash,
+                }).catch(() => undefined);
+              },
+            });
+            return;
+          }
+
+          // Pass granted. If the prompt is PII-clean, approve this exact prompt so
+          // the next Send goes through (once); if it also has PII, fall through to
+          // the PII path so masking still happens -- an ethics overturn must not
+          // wave PII the admin never reviewed past the gate.
+          if (!promptDirty) {
+            approvals.approve(promptHash, 60_000);
+            hashes.set(text, promptHash);
+            showReviewApprovedModal(() => adapter.getComposer()?.focus());
+            return;
+          }
         }
 
         // Always open review when we hold a file — including the all-clean

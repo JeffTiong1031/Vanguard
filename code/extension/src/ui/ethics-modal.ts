@@ -107,3 +107,41 @@ export function showEthicsModal(options: EthicsModalOptions): void {
   root.append(style, scrim);
   document.documentElement.append(host);
 }
+
+/**
+ * Shown when an overturned appeal grants a one-time pass on this exact prompt.
+ * The gate already stopped the current send, so — per decision #8 (the user
+ * always presses Send) — we tell them to press Send again; the approved hash
+ * then lets it through, once.
+ */
+export function showReviewApprovedModal(onClose: () => void): void {
+  hideEthicsModal();
+  const host = document.createElement('div');
+  host.setAttribute(HOST_ATTR, 'ethics-modal');
+  const root = host.attachShadow({ mode: 'open' });
+  const style = document.createElement('style');
+  style.textContent = `
+    .scrim { position: fixed; inset: 0; z-index: 2147483647; display: grid;
+             place-items: center; background: rgb(15 23 42 / 55%); }
+    .box { max-width: 460px; background: #fff; border-radius: 12px; overflow: hidden;
+           font: 15px/1.5 system-ui, sans-serif; box-shadow: 0 20px 50px rgb(0 0 0 / 30%); }
+    .head { background: #15803d; color: #fff; padding: 16px 20px; font-weight: 600; }
+    .body { padding: 20px; color: #0f172a; }
+    .foot { padding: 0 20px 20px; display: flex; justify-content: flex-end; }
+    button { border: none; border-radius: 6px; padding: 9px 16px; cursor: pointer;
+             background: #15803d; color: #fff; font-size: 14px; }
+  `;
+  const scrim = document.createElement('div');
+  scrim.className = 'scrim';
+  scrim.innerHTML = `
+    <div class="box" role="alertdialog" aria-modal="true">
+      <div class="head">Review approved</div>
+      <div class="body"><p>Your review was approved. <strong>Press Send again</strong> to send this
+        prompt once — this is a one-time pass for this exact prompt.</p></div>
+      <div class="foot"><button data-act="ok">OK</button></div>
+    </div>
+  `;
+  scrim.querySelector('[data-act="ok"]')!.addEventListener('click', () => { hideEthicsModal(); onClose(); });
+  root.append(style, scrim);
+  document.documentElement.append(host);
+}

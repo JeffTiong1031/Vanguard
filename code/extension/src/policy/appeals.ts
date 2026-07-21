@@ -15,6 +15,9 @@ export type AppealInput = {
   category: string;
   reason: string;
   disclosedText?: string;
+  /** A hash of the blocked prompt (never the text). Lets an overturned ethics
+   *  appeal grant a one-time pass on that exact prompt. */
+  promptHash?: string;
 };
 
 export type AppealRow = {
@@ -38,12 +41,38 @@ export async function submitAppeal(input: AppealInput): Promise<void> {
     reason: input.reason,
   };
   if (input.disclosedText) body.disclosed_text = input.disclosedText;
+  if (input.promptHash) body.prompt_hash = input.promptHash;
   const res = await fetch(`${base}/v1/appeals`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Appeal failed (${res.status}).`);
+}
+
+/**
+ * Grant a one-time pass if `promptHash` is an active overturned allowance.
+ * Checks the server list and, on a hit, burns the pass immediately so it can
+ * never be handed out twice. Returns true when a pass was granted.
+ */
+export async function grantPassIfAllowed(promptHash: string): Promise<boolean> {
+  const enrolment = await getEnrolment();
+  if (!enrolment) return false;
+  const base = await getPolicyBase();
+  try {
+    const res = await fetch(`${base}/v1/appeals/allowances?pseudo_id=${encodeURIComponent(enrolment.pseudo_id)}`);
+    if (!res.ok) return false;
+    const hashes = (await res.json()) as string[];
+    if (!hashes.includes(promptHash)) return false;
+    await fetch(`${base}/v1/appeals/allowances/consume`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pseudo_id: enrolment.pseudo_id, prompt_hash: promptHash }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function fetchMyAppeals(): Promise<AppealRow[]> {

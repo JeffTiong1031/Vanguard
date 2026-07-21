@@ -7,8 +7,9 @@ export type PolicyRequest =
   | { kind: 'policy-enrol'; token: string }
   | { kind: 'policy-request-access'; llmId: string; reason: string }
   | { kind: 'policy-event'; event: GovernanceEvent }
-  | { kind: 'appeal-submit'; decisionType: 'ethics' | 'pii'; category: string; reason: string; disclosedText?: string }
-  | { kind: 'appeals-get' };
+  | { kind: 'appeal-submit'; decisionType: 'ethics' | 'pii'; category: string; reason: string; disclosedText?: string; promptHash?: string }
+  | { kind: 'appeals-get' }
+  | { kind: 'appeal-allowance-check'; promptHash: string };
 
 export type PolicyResponse =
   | { kind: 'policy-result'; ok: true; policy: Policy | null; enrolment: Enrolment | null }
@@ -17,6 +18,10 @@ export type PolicyResponse =
 export type AppealsResponse =
   | { kind: 'appeals-result'; ok: true; appeals: AppealRow[] }
   | { kind: 'appeals-result'; ok: false; error: string };
+
+export type AllowanceResponse =
+  | { kind: 'allowance-result'; ok: true; granted: boolean }
+  | { kind: 'allowance-result'; ok: false; error: string };
 
 export function isPolicyRequest(msg: unknown): msg is PolicyRequest {
   const kind = (msg as PolicyRequest)?.kind;

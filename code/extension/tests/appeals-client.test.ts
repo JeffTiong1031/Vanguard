@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { submitAppeal } from '../src/policy/appeals';
+import { submitAppeal, grantPassIfAllowed } from '../src/policy/appeals';
 
 function stubEnrolled() {
   const bag: Record<string, unknown> = {
@@ -43,5 +43,29 @@ describe('submitAppeal', () => {
     vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}) } } });
     vi.stubGlobal('fetch', vi.fn());
     await expect(submitAppeal({ decisionType: 'ethics', category: 'x', reason: 'y' })).rejects.toThrow(/enrol/i);
+  });
+});
+
+describe('grantPassIfAllowed', () => {
+  it('grants and burns the pass when the hash is an active allowance', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      urls.push(String(url));
+      if (String(url).includes('/allowances/consume')) return new Response('{"consumed":1}', { status: 200 });
+      if (String(url).includes('/allowances')) return new Response('["hashA","hashB"]', { status: 200 });
+      return new Response('{}', { status: 200 });
+    }));
+    expect(await grantPassIfAllowed('hashA')).toBe(true);
+    expect(urls.some((u) => u.includes('/allowances/consume'))).toBe(true);   // burned it
+  });
+
+  it('does not grant a pass when the hash is not an allowance', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      urls.push(String(url));
+      return new Response('["someOtherHash"]', { status: 200 });
+    }));
+    expect(await grantPassIfAllowed('hashA')).toBe(false);
+    expect(urls.some((u) => u.includes('/consume'))).toBe(false);             // never burned
   });
 });
