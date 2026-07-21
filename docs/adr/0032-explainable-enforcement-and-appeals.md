@@ -22,8 +22,15 @@ a duplicate explanation. Tool-access blocks get an explanation only — their re
 the pre-existing "Request access" flow.
 
 ## Consequences
-- Redressal is review + record + feedback, NOT a real-time unblock; an ethics block
-  holds in the moment (fail-closed). An overturned appeal is a labelled false positive.
+- **Amended 2026-07-21:** an overturned **ethics** appeal now grants a **one-time pass** on that
+  exact prompt. The appeal carries a hash of the prompt (`prompt_hash`, never the text — I3); an
+  overturn makes that hash an active allowance; when the employee re-sends the same prompt, the gate
+  consumes the allowance and approves that one send (single-use, and the pass `burns` server-side so
+  it is never granted twice). The original block still held in the moment (fail-closed); the pass is
+  granted on the *next* send, and — per decision #8 — the employee still presses Send. A pass bypasses
+  only the **ethics** block: if the prompt also carries PII it still routes through the redaction
+  modal, because the admin who overturned an ethics decision did not review its PII.
+- An overturned appeal is also a labelled false positive (a classifier-improvement signal).
 - `disclosed_text` is the one path prompt text can reach the company server, opt-in and
   purpose-limited; a production build must add a retention limit and fold it into the DPA.
   Two executable tests guard the default: the policy service stores `disclosed_text = NULL`
