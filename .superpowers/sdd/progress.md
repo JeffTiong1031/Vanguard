@@ -561,3 +561,39 @@ Tasks 4-11: complete (direct execution). Commits 8e43200, 6265c4b, ea0a1b4, 9f90
   count-based; (3) appeal POST is fire-and-forget (not spec §5 "surface retry") -- My reviews polling
   is the feedback path. None Critical/Important.
 FEATURE COMPLETE. Branch transparency-redressal, 14 commits, not pushed.
+
+================================================================================
+# Plan: Hosted demo file-backend (Slice 2, Path A) — on main, no worktree (founder call)
+Plan: docs/superpowers/plans/2026-07-21-hosted-demo-file-backend.md
+Base: 12b4ecf
+
+Task 1: complete (commits 12b4ecf..24da395, review clean after 1 fix loop). Delivered:
+  app/auth.py check_bearer() (hmac.compare_digest), wired into /v1/extract + /v1/redact, opt-in via
+  VANGUARD_DEMO_TOKEN, /healthz stays open. Backend suite 47 pass.
+  FIX (24da395): review found /v1/redact had the gate wired but zero test coverage
+  (plan-mandated gap — brief's Step 1 only wrote extract tests). Added 3 tests +
+  _post_redact() helper mirroring test_redact.py's request shape. Re-review: Approved.
+  MINORS for final triage: (1) empty-string VANGUARD_DEMO_TOKEN silently treated as unset
+  (app/auth.py `or None`) — low-risk, undocumented; (2) 3-line gate-check block duplicated in
+  extract() and redact() — plan-mandated (brief Step 4 specifies inline, not a dependency).
+
+Task 2: complete (commit 82105a0, review clean). Delivered: CORS allow_headers += "authorization"
+  (app/main.py), Dockerfile CMD -> shell form with ${PORT:-8000} (defaults 8000 for local compose,
+  honors Render's $PORT), 1 new preflight test (9/9 auth tests, 48/48 full suite, verified clean
+  twice by controller). NOTE: implementer's report claimed a "pre-existing" test_redact_keeps_nothing
+  failure; controller verified this independently at base AND head (isolated worktree) -- test passes
+  cleanly both places, twice each. False claim, not a real issue; treated as a one-off sandbox flake,
+  not carried forward.
+  MINOR for final triage: Dockerfile CMD shell form (Dockerfile:13) doesn't use `exec`, so uvicorn's
+  PID-1/SIGTERM status relies on dash's last-command optimization rather than being guaranteed --
+  cheap fix is `"exec uvicorn ..."` in the CMD string. Not blocking (single-process container behind
+  Render's own supervision; worst case is a slower graceful shutdown, not data loss).
+
+## Process incident (2026-07-21, controller-caught, no data lost)
+task-N-brief.md/task-N-report.md filenames in this shared scratch dir are numbered ONLY, not
+plan-scoped -- this plan's Task 1/2/3 dispatches silently overwrote (uncommitted, working-tree only)
+the transparency-redressal plan's real committed Task 1/2/3 docs. A subagent's own self-report flagged
+the destructive Edit; controller restored all 6 files via `git checkout HEAD --` before continuing --
+verified clean, nothing lost (git-tracked, never committed-over). Fix (founder-approved): from Task 4
+onward this plan's briefs/reports use plan-scoped names: task-hosted-demo-N-brief.md /
+task-hosted-demo-N-report.md, passed as task-brief's explicit OUTFILE arg.
