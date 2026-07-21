@@ -640,3 +640,27 @@ TASKS 1-6 COMPLETE. All committed on main (12b4ecf..3c94cd0), each task reviewed
   redact-side test for Authorization header (extract-side only) -- plan-mandated; (5) Bearer token
   literal duplicated in api.ts extract/redact calls -- plan-mandated, worth a helper post-Task-7;
   (6) ACCEPTANCE.md prerequisites line is 361 chars, cosmetic wrap suggestion.
+
+FINAL WHOLE-BRANCH REVIEW: complete (opus). Verdict: Ready to merge, with fixes -- fixes applied,
+  no re-review requested (both were doc/config-only, no logic touched).
+  Strengths confirmed: auth gate correct+minimal, fail-closed UX consistent, Path A/B framing airtight
+  across all docs, env-var/JS-constant split clean, local-dev affordances preserved, token rotation
+  single-source.
+  IMPORTANT #1 (FIXED, db5881a): render.yaml deploy loses docker-compose.yml's read_only/tmpfs/
+  mem_limit hardening on Render (Render builds Dockerfile directly, ignores compose file) -- now
+  documented with a comment in render.yaml stating the gap and why Path A accepts it.
+  IMPORTANT #2 (FIXED, db5881a): hosted URL placeholder appears in 4 files (config.ts, wxt.config.ts,
+  README.md, ACCEPTANCE.md) but plan's Task 7 Step 4 only listed 2 for substitution -- added a bullet
+  to Task 7 recommending the Render service be named exactly `vanguard-extract` (keeps README/
+  ACCEPTANCE valid without further edits) with a fallback to update those two docs if the name differs.
+  MINOR #3 (FIXED, db5881a): stale "[set this... before the team test]" TODO comment in wxt.config.ts
+  replaced with an accurate one pointing to Task 7 Step 4.
+  MINOR #4/#5 (not fixed, carried to Task 7 acceptance per reviewer's own recommendation): empty-string
+  env-var footgun in auth.py; "unauthorized" not in ApiErrorCode union (harmless -- message renders
+  correctly, only .code branching would miss it -- worth a glance during Task 7's live acceptance).
+  Sanity checks post-fix: render.yaml YAML-valid; wxt.config.ts verified via manifest-permissions.test.ts
+  (8/8 pass).
+
+ALL SUBAGENT-DISPATCHED WORK (Tasks 1-6 + final review + fix) COMPLETE. main @ db5881a.
+Remaining: Task 7 (founder-run Render deploy + real-value substitution + manual acceptance) --
+  not dispatched to a subagent per the plan.
