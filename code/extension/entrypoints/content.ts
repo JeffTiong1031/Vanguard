@@ -149,8 +149,16 @@ export default defineContentScript({
           });
           showEthicsModal({
             label: ethics.label,
+            category: ethics.category,
             orgName: 'your organisation',
+            promptText: text,
             onEdit: () => adapter.getComposer()?.focus(),
+            onRequestReview: (reason, disclosedText) => {
+              void chrome.runtime.sendMessage({
+                kind: 'appeal-submit', decisionType: 'ethics',
+                category: ethics.category, reason, disclosedText,
+              }).catch(() => undefined);
+            },
           });
           return;
         }
