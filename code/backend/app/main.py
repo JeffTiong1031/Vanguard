@@ -16,7 +16,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://chatgpt.com", "https://claude.ai"],
     allow_methods=["POST", "GET"],
-    allow_headers=["content-type", "x-vanguard-filename"],
+    allow_headers=["content-type", "x-vanguard-filename", "authorization"],
     expose_headers=["x-vanguard-redacted-name"],
 )
 

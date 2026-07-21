@@ -10,4 +10,4 @@ COPY app ./app
 # No volume mounts for uploads. Nothing is written to this filesystem by the
 # request path, and there is nowhere for it to persist if it were (F4).
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --no-access-log"]

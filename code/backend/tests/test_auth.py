@@ -75,3 +75,17 @@ def test_redact_200_or_further_with_correct_bearer(monkeypatch):
     # Assert gate passes; the response may be 409 (extract_mismatch) from redact logic,
     # but NOT 401 from the auth gate.
     assert r.status_code != 401
+
+
+def test_cors_preflight_allows_authorization_header():
+    r = client.options(
+        "/v1/extract",
+        headers={
+            "Origin": "https://chatgpt.com",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+    assert r.status_code == 200
+    allowed = r.headers.get("access-control-allow-headers", "").lower()
+    assert "authorization" in allowed
