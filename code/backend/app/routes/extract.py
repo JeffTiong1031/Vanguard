@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 
 from app import limits
+from app.auth import check_bearer
 from app.models import Coverage, ErrorCode, ErrorResponse, ExtractResponse, RedactRequest, RedactSpan
 from app.parsers.docx import parse_docx
 from app.parsers.pdf import parse_pdf
@@ -50,6 +51,10 @@ async def extract(request: Request) -> JSONResponse:
     broken by a framework default, which is doc 02 section 4.3's exact
     failure mode and CLAUDE.md's "defaults are where the trap lives".
     """
+    denied = check_bearer(request)
+    if denied is not None:
+        return denied
+
     filename = request.headers.get("x-vanguard-filename", "upload")
 
     declared = request.headers.get("content-length")
@@ -195,6 +200,10 @@ def _parse_multipart_with_spec(raw: bytes) -> tuple[bytes, str | None, str]:
 @router.post("/v1/redact")
 async def redact(request: Request) -> Response:
     """Apply accepted masks to the original file, in its original format."""
+    denied = check_bearer(request)
+    if denied is not None:
+        return denied
+
     try:
         body, filename, spec_raw = await _read_multipart_with_spec(request)
     except SafetyError as err:
