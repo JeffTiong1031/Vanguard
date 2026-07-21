@@ -860,26 +860,27 @@ decision #5 hold even on the one opt-in text path into the company DB. **We do N
 
 ## ADRs to mint
 
-**Confirmed 2026-07-22 by reading `docs/adr/`: the directory runs through
-`0032-explainable-enforcement-and-appeals.md`. `0029` (sensitivity weights hub), `0030` (offscreen config
-via messages), `0031` (governance sequencing departure) and `0032` are TAKEN** — the earlier draft's
-0029–0031 collided (B1). The next free numbers are **0033–0035**, used below. Re-verify before minting in
-case another branch has landed 0033+.
+**Re-confirmed 2026-07-22, immediately before minting:** `docs/adr/` had advanced to
+`0033-demo-token-in-options-not-git.md` (landed by the separately-merged PR #21, pulled into `main` via
+merge) by the time this section's *previous* draft (0029–0031, then 0033–0035) was acted on — **both
+prior picks collided.** `0029`–`0032` and now **`0033` are all TAKEN.** The next free numbers, confirmed
+by re-listing `docs/adr/` a second time right before writing, are **0034–0036**, minted and used below.
+Always re-verify immediately before minting — a third collision is exactly as possible as the first two.
 
-- **ADR 0033 — Port governance to Vercel + Supabase; depart from the demo token model.** Records: full
+- **ADR 0034 — Port governance to Vercel + Supabase; depart from the demo token model.** Records: full
   replace of FastAPI with Next.js Route Handlers (one extension surface); Supabase Postgres + RLS as the
   permission boundary; **one-person one-time enroll tokens replace per-department shared tokens**; the
   `employees.enroll_token_id` link that enables **live revoke** (fixes the documented `admin.py:145`
   gap); `code/backend` stays separate/zero-retention. Consequence: the 422/`extra=forbid` privacy
   controls are **re-implemented in Zod** (Task 2) — they do not port for free off FastAPI.
-- **ADR 0034 — Personal/Enterprise binary + Leave-org.** Records the local state machine, the
+- **ADR 0035 — Personal/Enterprise binary + Leave-org.** Records the local state machine, the
   enrollment **hard-lock vs engine-advisory** distinction (Pushback 1, reconciled with ADR 0014), and
   the B3 future (hide Personal / disable Leave by policy) as out-of-scope-but-designed-for.
   🔴 **Revoke-latency honesty (S7):** *"immediate on next Send"* means the next Send **after** the cached
   `enrollment.status` has become `revoked`; worst-case idle ≤~60s (poll cadence); if a revoke races a Send,
   **at most one Send may still use the pre-revoke cache** — the on-Send refresh is fire-and-forget and is
   **never awaited** (decision #2/#8). Do not claim sub-poll or zero-race revocation.
-- **ADR 0035 — Report vendor store + L1-randomize default (and appeals L1-scrub).** Records:
+- **ADR 0036 — Report vendor store + L1-randomize default (and appeals L1-scrub).** Records:
   `vendor_reports` RLS-isolated, identity-free by schema **and** by handler contract; default scrub =
   structure-preserving L1 randomize; real numbers only via a second default-OFF consent; the residual
   (L1-recall-bounded, FN path) from Pushback 3; extends ADR 0026 (Report ≠ Ignore ≠ Accept; not a
@@ -994,14 +995,16 @@ prefers fewer.)*
 - Q8 permissions → RLS (Tasks 3–5) + guards (Task 7/12) + matrix suite (Task 17). ✅
 - Q9 tools lifecycle → Tasks 5 (states), 12 (escalation, cooldown), 9 (effective merge, B4), 14 (single
   screen). ✅
-- Q10 analytics-only + revoke-immediate-next-Send → Tasks 9, E3; latency honesty in ADR 0034 (S7);
+- Q10 analytics-only + revoke-immediate-next-Send → Tasks 9, E3; latency honesty in ADR 0035 (S7);
   quotas → Phase 2. ✅
 - Dashboards (company + dept) → Tasks 13, 14; **person-level revoke, not token-only (Task 14, S2)**. ✅
 - Appeals API port (B2) → Task 12b; architecture Route-Handler list includes `appeals`; `revoke-check`
   phantom removed (S1). ✅
 - 422/`extra=forbid` preserved → Task 2 (privacy re-implementation). ✅
 - `code/backend` untouched → Constraint 4, no task modifies it. ✅
-- ADR numbers → **0033–0035**, collision with committed 0029–0032 fixed (B1). ✅
+- ADR numbers → **0034–0036** (minted), a **second** collision caught and fixed before writing — the
+  0033–0035 draft also collided once PR #21's `0033-demo-token-in-options-not-git.md` merged into
+  `main`; re-listed `docs/adr/` immediately before minting per plan instructions. ✅
 
 **Placeholder note:** privacy/policy/permission tasks carry concrete failing-test code; UI tasks (13,
 14) are deliberately lighter (component tests) and inherit the guards/RLS built earlier — the executable
