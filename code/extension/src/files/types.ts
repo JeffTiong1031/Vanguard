@@ -11,7 +11,8 @@ export type ApiErrorCode =
   | 'suspicious_archive'
   | 'extract_mismatch'
   | 'redaction_failed'
-  | 'network';
+  | 'network'
+  | 'unauthorized';
 
 export type Coverage = {
   read: string[];

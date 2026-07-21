@@ -182,17 +182,19 @@ Same URL: `http://127.0.0.1:8000`.
 
 For demos where nobody should run Python/Docker, the file-checking API is hosted
 on Render (Path A demo host — **not** the production/residency path). The committed
-extension build already points at it, so testers just **clone → Load unpacked → use it**.
+extension build defaults to that URL.
 
-- **Testers:** you do not paste anything. The demo bearer token is baked into the build.
+- **Testers:** Load unpacked → open extension **Options → File checking** → paste the
+  **demo access key** your team lead sent you (it is **not** in the repo) → Save.
   Before a live demo, open `https://vanguard-extract.onrender.com/healthz` once to **wake
   the server** (free tier sleeps after ~15 min idle; first hit can take ~50s). It should show
   `{"ok":true}`.
 - **If a file says "couldn't reach the file-checking service":** the host was asleep or is
   waking — wait a few seconds and attach again. The file is never sent to the AI unchecked.
-- **Founder (one-time deploy):** Render dashboard → New → Blueprint → connect this repo
-  (reads `render.yaml`); set `VANGUARD_DEMO_TOKEN` in the service env; then wire the real URL
-  + token into the build (see the plan's Task 7). No terminal on any demo machine.
+- **If it asks for the demo access key:** paste the key under Options → File checking.
+- **Founder (one-time / rotate):** Render dashboard → set `VANGUARD_DEMO_TOKEN` in the service
+  env; send that same value to teammates out-of-band. Rotating the key does **not** require a
+  rebuild. See [ADR 0033](docs/adr/0033-demo-token-in-options-not-git.md).
 
 > This host is demo scaffolding only. It is not in-region, has no DPA, and is not the
 > compliance story. Production (Path B) keeps files in Malaysia (`ap-southeast-5`),
@@ -210,7 +212,10 @@ extension build already points at it, so testers just **clone → Load unpacked 
 code/extension/dist/chrome-mv3
 ```
 
-4. Open the extension **Options** page. **File checking API URL** should be `http://localhost:8000` (the default). Only change it if your API is elsewhere.
+4. Open the extension **Options** page.
+   - **Local backend:** set File checking address to `http://localhost:8000` (demo key optional).
+   - **Hosted demo:** leave the default Render URL; paste the **demo access key** your team lead
+     sent you under File checking → Save.
 5. Open [chatgpt.com](https://chatgpt.com) or [claude.ai](https://claude.ai).
 
 **Chat-only (Slice 1):** works without the backend.  

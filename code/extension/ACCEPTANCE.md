@@ -136,7 +136,7 @@ On ChatGPT **and** Claude:
 
 Run every manual row below on **both** `https://chatgpt.com` and `https://claude.ai`.
 
-**Prerequisites:** local `uvicorn` / `docker compose` in `code/backend/` · Options API URL `http://localhost:8000` (default). Alternatively, use the hosted demo backend (Path A): the committed build points at it and the demo token is baked in — no local API needed. Warm `https://vanguard-extract.onrender.com/healthz` before the session (free tier sleeps).
+**Prerequisites:** local `uvicorn` / `docker compose` in `code/backend/` · Options API URL `http://localhost:8000` (no demo key needed when the backend token env is unset). Alternatively, use the hosted demo backend (Path A): default URL is `https://vanguard-extract.onrender.com` — in **Options → File checking**, paste the demo access key your team lead sent you (not in the repo), Save, then warm `/healthz` before the session (free tier sleeps).
 
 ### Automated gates (re-run locally before the live session)
 
