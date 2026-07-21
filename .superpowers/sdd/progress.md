@@ -620,3 +620,23 @@ Task 5: complete (commit 2bbb03d, review clean, zero findings). Delivered: wxt.c
   source). 318/318 vitest pass (up from 301/302 pre-Task-4/5 -- the dist-drift test now passes because
   dist/ is no longer stale). Reviewer aside about "unstaged ACCEPTANCE.md/pyproject.toml" was checked
   and is incorrect/stale -- working tree confirmed clean by controller.
+
+Task 6: complete (commit 3c94cd0, review clean). Delivered: README.md hosted-backend subsection
+  (Path A framing preserved, warm-before-demo + token-brief + deploy-order all present) inserted into
+  the TEAM TEST quick-start (not the governance one), after "Start the file-checking API"; ACCEPTANCE.md
+  Slice 2 Prerequisites line extended with the hosted-option sentence, original localhost/compose text
+  intact. MINOR (not fixed, cosmetic): ACCEPTANCE.md prerequisites line is 361 chars, could wrap.
+
+TASKS 1-6 COMPLETE. All committed on main (12b4ecf..3c94cd0), each task reviewed clean (Task 1 needed
+  one fix loop for missing /v1/redact test coverage; Tasks 2-6 approved first pass). Backend: 47 tests
+  pass (opt-in bearer gate on both file routes, CORS, $PORT binding). Extension: 318/318 vitest pass,
+  dist matches source. render.yaml ready for founder's one-time Render deploy. Extension currently
+  ships PLACEHOLDER token/URL (REPLACE_WITH_DEMO_TOKEN, vanguard-extract.onrender.com as literal
+  placeholder) -- Task 7 (founder-run, not dispatched to a subagent) substitutes real values after
+  deploying and produces the demo-final dist/.
+  MINORS carried to final whole-branch review: (1) app/auth.py empty-string env var treated as unset;
+  (2) gate-check block duplicated in extract()/redact() -- plan-mandated; (3) Dockerfile CMD shell
+  form lacks `exec`, PID-1/SIGTERM relies on dash's optimization rather than being guaranteed; (4) no
+  redact-side test for Authorization header (extract-side only) -- plan-mandated; (5) Bearer token
+  literal duplicated in api.ts extract/redact calls -- plan-mandated, worth a helper post-Task-7;
+  (6) ACCEPTANCE.md prerequisites line is 361 chars, cosmetic wrap suggestion.
